@@ -1,0 +1,62 @@
+# LightShield 轻盾 — 现代化 Python 打包配置
+# 构建工具：setuptools
+# Python >= 3.10
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lightshield"
+version = "0.1.0"
+description = "LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "LightShield Team"},
+]
+
+# === 运行时核心依赖 ===
+# 仅包含代码中实际 import 的包（经全量 AST 扫描确认）
+dependencies = [
+    "requests>=2.28.0,<3.0",         # HTTP 请求 — web_vuln_scanner / weak_password / component_checker
+    "PyYAML>=6.0",                   # YAML 配置文件解析 — config.py
+    "beautifulsoup4>=4.11.0,<5.0",   # HTML 解析 — web_vuln_scanner（bs4 不可用时正则回退）
+]
+
+# === 可选依赖（非运行时必须） ===
+[project.optional-dependencies]
+nmap = ["python-nmap>=0.7.0,<1.0"]  # Nmap Python 封装（当前适配器通过 subprocess 直接调用 nmap）
+dev = [
+    "pytest>=7.0",                   # 测试框架
+    "ruff>=0.1.0",                   # Python 代码检查/格式化
+]
+
+# === 命令行入口 ===
+[project.scripts]
+lightshield = "lightshield.cli:main"
+
+# === 项目分类 ===
+[project.urls]
+Homepage = "https://github.com/LightShield/lightshield"
+Source = "https://github.com/LightShield/lightshield"
+BugTracker = "https://github.com/LightShield/lightshield/issues"
+
+# === 打包配置 ===
+[tool.setuptools.packages.find]
+include = ["lightshield*"]
+
+[tool.setuptools.package-data]
+"lightshield" = ["rules/*.json"]
+
+# === 工具配置（开发用） ===
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

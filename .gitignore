@@ -1,0 +1,41 @@
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 运行时生成
+logs/
+reports/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 敏感文件
+*.key
+*.pem
+*.p12
+*.pfx
+
+# 本地配置
+lightshield.local.yaml
+scripts/claude-*.ps1
+
+# 测试
+.pytest_cache/
+.coverage
+
+# MSF 相关
+msf_cache/
+.msf4/

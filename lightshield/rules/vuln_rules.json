@@ -1,0 +1,167 @@
+{
+  "rules": [
+    {
+      "rule_id": "VULN-001",
+      "name": "SSH 端口开放",
+      "match_type": "port",
+      "port": 22,
+      "severity": "high",
+      "vuln_type": "high_risk_port",
+      "title": "SSH 端口开放",
+      "description": "SSH 端口 (22) 处于开放状态。如使用弱口令或密码认证，存在被暴力破解的风险。",
+      "remediation": "1. 禁用密码登录，仅允许密钥认证\n2. 修改默认 SSH 端口（如 2222）\n3. 配置 fail2ban 防暴力破解\n4. 限制允许登录的 IP 白名单"
+    },
+    {
+      "rule_id": "VULN-002",
+      "name": "Telnet 端口开放",
+      "match_type": "port",
+      "port": 23,
+      "severity": "critical",
+      "vuln_type": "high_risk_port",
+      "title": "Telnet 端口开放（极度危险）",
+      "description": "Telnet 使用明文传输，包括用户名和密码。任何中间人攻击都可轻易获取凭据。",
+      "remediation": "立即关闭 Telnet 服务，使用 SSH 替代。Linux: systemctl disable telnet && systemctl stop telnet"
+    },
+    {
+      "rule_id": "VULN-003",
+      "name": "MySQL 端口开放",
+      "match_type": "port",
+      "port": 3306,
+      "severity": "high",
+      "vuln_type": "high_risk_port",
+      "title": "MySQL 端口对外开放",
+      "description": "MySQL 端口 (3306) 处于开放状态。数据库直接暴露在公网上存在严重安全隐患。",
+      "remediation": "1. 绑定 MySQL 到 127.0.0.1\n2. 使用防火墙阻止外部访问 3306\n3. 确保 root 密码强度足够"
+    },
+    {
+      "rule_id": "VULN-004",
+      "name": "RDP 端口开放",
+      "match_type": "port",
+      "port": 3389,
+      "severity": "high",
+      "vuln_type": "high_risk_port",
+      "title": "RDP 远程桌面端口开放",
+      "description": "Windows 远程桌面端口 (3389) 处于开放状态。RDP 是勒索病毒最常见的入侵途径之一。",
+      "remediation": "1. 如不需要，关闭远程桌面服务\n2. 修改 RDP 端口为非默认端口\n3. 启用网络级别身份验证 (NLA)\n4. 配置 IP 白名单"
+    },
+    {
+      "rule_id": "VULN-005",
+      "name": "Redis 无密码开放",
+      "match_type": "port",
+      "port": 6379,
+      "severity": "critical",
+      "vuln_type": "high_risk_port",
+      "title": "Redis 端口开放（如无密码则极度危险）",
+      "description": "Redis 默认无密码认证。如果 6379 端口对外开放且未配置密码，攻击者可直接读写全部数据甚至写入 SSH 公钥获得服务器控制权。",
+      "remediation": "1. 设置 requirepass 强密码\n2. 绑定到 127.0.0.1\n3. 重命名或禁用危险命令（FLUSHALL、CONFIG、EVAL）\n4. 使用防火墙阻止外部访问"
+    },
+    {
+      "rule_id": "VULN-006",
+      "name": "MongoDB 端口开放",
+      "match_type": "port",
+      "port": 27017,
+      "severity": "high",
+      "vuln_type": "high_risk_port",
+      "title": "MongoDB 端口对外开放",
+      "description": "MongoDB 早期版本默认无认证。如果 27017 端口对外开放且未配置认证，数据面临泄露和勒索风险。",
+      "remediation": "1. 启用 MongoDB 认证（SCRAM）\n2. 绑定到 127.0.0.1\n3. 启用 TLS 加密传输\n4. 使用防火墙阻止外部访问"
+    },
+    {
+      "rule_id": "VULN-007",
+      "name": "PostgreSQL 端口开放",
+      "match_type": "port",
+      "port": 5432,
+      "severity": "medium",
+      "vuln_type": "high_risk_port",
+      "title": "PostgreSQL 端口对外开放",
+      "description": "PostgreSQL 端口 (5432) 对外开放。数据库直接暴露增加了暴力破解和数据泄露的风险。",
+      "remediation": "1. 修改 pg_hba.conf 限制访问来源\n2. 使用防火墙阻止外部访问\n3. 确保 postgres 用户密码强度足够"
+    },
+    {
+      "rule_id": "VULN-008",
+      "name": "OpenSSH 老旧版本",
+      "match_type": "service_version",
+      "service": "ssh",
+      "max_affected_version": "8.9",
+      "severity": "high",
+      "vuln_type": "vulnerable_component",
+      "cve_id": "CVE-2023-38408",
+      "cvss_score": 9.8,
+      "title": "OpenSSH 版本过低",
+      "description": "检测到 OpenSSH {version}，存在已知漏洞。建议升级到最新版本。",
+      "remediation": "升级 OpenSSH: apt upgrade openssh-server (Ubuntu) / yum update openssh-server (CentOS)"
+    },
+    {
+      "rule_id": "VULN-009",
+      "name": "nginx 老旧版本",
+      "match_type": "service_version",
+      "service": "nginx",
+      "max_affected_version": "1.24.0",
+      "severity": "medium",
+      "vuln_type": "vulnerable_component",
+      "title": "Nginx 版本过低",
+      "description": "检测到 Nginx {version}，建议升级以获得安全修复。",
+      "remediation": "升级 Nginx: apt upgrade nginx (Ubuntu) / yum update nginx (CentOS)"
+    },
+    {
+      "rule_id": "VULN-010",
+      "name": "Apache httpd 老旧版本",
+      "match_type": "service_version",
+      "service": "httpd",
+      "max_affected_version": "2.4.57",
+      "severity": "medium",
+      "vuln_type": "vulnerable_component",
+      "title": "Apache httpd 版本过低",
+      "description": "检测到 Apache httpd {version}，建议升级。",
+      "remediation": "升级 Apache: apt upgrade apache2 (Ubuntu) / yum update httpd (CentOS)"
+    },
+    {
+      "rule_id": "VULN-011",
+      "name": "PHP 老旧版本",
+      "match_type": "service_version",
+      "service": "php",
+      "max_affected_version": "8.1.0",
+      "severity": "high",
+      "vuln_type": "vulnerable_component",
+      "title": "PHP 版本过低",
+      "description": "检测到 PHP {version}，低于安全支持的最低版本。旧版本不再接收安全更新。",
+      "remediation": "升级 PHP 到 8.1+ 版本"
+    },
+    {
+      "rule_id": "VULN-012",
+      "name": "MySQL 老旧版本",
+      "match_type": "service_version",
+      "service": "mysql",
+      "max_affected_version": "8.0.33",
+      "severity": "medium",
+      "vuln_type": "vulnerable_component",
+      "title": "MySQL 版本过低",
+      "description": "检测到 MySQL {version}，建议升级以修复已知漏洞。",
+      "remediation": "升级 MySQL 到最新版本并执行 mysql_upgrade"
+    },
+    {
+      "rule_id": "VULN-013",
+      "name": "SMB 端口开放",
+      "match_type": "port",
+      "port": 445,
+      "severity": "critical",
+      "vuln_type": "high_risk_port",
+      "title": "SMB 端口开放（永恒之蓝漏洞风险）",
+      "description": "SMB 端口 (445) 对外开放。该端口是 WannaCry/永恒之蓝等勒索病毒的主要传播途径。",
+      "remediation": "1. 立即通过防火墙关闭端口 445\n2. 安装 MS17-010 安全补丁\n3. 禁用 SMBv1 协议"
+    },
+    {
+      "rule_id": "VULN-014",
+      "name": "弱口令检测标记",
+      "match_type": "service_fingerprint",
+      "service": "ssh",
+      "match_vuln_type": "weak_password",
+      "auth_result": "weak",
+      "severity": "critical",
+      "vuln_type": "weak_auth",
+      "title": "检测到弱口令",
+      "description": "目标系统的认证凭据过于简单，可被轻易猜测或暴力破解。这是最常见的入侵途径之一。",
+      "remediation": "1. 立即修改为强密码（12+位，含大小写字母、数字、特殊字符）\n2. 启用多因素认证 (MFA)\n3. 实施账户锁定策略（连续失败 N 次后锁定）"
+    }
+  ]
+}

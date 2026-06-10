@@ -1,0 +1,72 @@
+#!/bin/bash
+# =============================================================================
+# LightShield Pre-commit Compliance Hook
+# Gate A: 自动执行 R1-R6 合规扫描
+# 基于 Nagi Dev Guardrails M8 Quality Gate
+# =============================================================================
+
+echo "🛡️  LightShield Gate A — 合规扫描中..."
+
+PASS=true
+
+# --- R1 + R3: 攻击/后门关键字黑名单 ---
+echo "  [R1/R3] 关键字扫描..."
+VIOLATIONS=$(grep -rInE \
+    "exploit|payload_creator|payload_injection|backdoor|trojan|bind_shell|reverse_shell|ransomware|botnet|rat_server|keylogger" \
+    lightshield/ --include="*.py" 2>/dev/null)
+if [ -n "$VIOLATIONS" ]; then
+    echo "  ❌ R1/R3 违规：检测到攻击/后门关键字"
+    echo "$VIOLATIONS"
+    PASS=false
+else
+    echo "  ✅ R1/R3 通过"
+fi
+
+# --- R5: MSF 白名单路径验证 ---
+echo "  [R5] MSF 路径白名单..."
+MSF_VIOLATIONS=$(grep -rh "auxiliary/" lightshield/ --include="*.py" 2>/dev/null | grep -v "auxiliary/scanner/" | grep -v "BLOCKED_MSF_PREFIXES" | grep -v "ALLOWED_MSF_PREFIXES")
+if [ -n "$MSF_VIOLATIONS" ]; then
+    echo "  ❌ R5 违规：检测到非白名单 MSF auxiliary 路径"
+    echo "$MSF_VIOLATIONS"
+    PASS=false
+else
+    echo "  ✅ R5 通过"
+fi
+
+# --- R2: CIDR/IP段扫描检测 ---
+echo "  [R2] IP 段扫描检测..."
+CIDR_VIOLATIONS=$(grep -rPn "\d+\.\d+\.\d+\.\d+/\d+" lightshield/ --include="*.py" 2>/dev/null | grep -v "validator.py" | grep -v "is_cidr" | grep -v "#")
+if [ -n "$CIDR_VIOLATIONS" ]; then
+    echo "  ❌ R2 违规：检测到 CIDR IP 段（仅 validator.py 的检测逻辑允许）"
+    echo "$CIDR_VIOLATIONS"
+    PASS=false
+else
+    echo "  ✅ R2 通过"
+fi
+
+# --- hackingtool import 检查 ---
+echo "  [DEP] hackingtool 引用检查..."
+HT_VIOLATIONS=$(grep -rInE "from hackingtool|import hackingtool" lightshield/ --include="*.py" 2>/dev/null)
+if [ -n "$HT_VIOLATIONS" ]; then
+    echo "  ❌ 架构违规：hackingtool 不作为依赖（仅允许设计参考注释）"
+    echo "$HT_VIOLATIONS"
+    PASS=false
+else
+    echo "  ✅ 依赖检查通过"
+fi
+
+# --- 最终判断 ---
+echo "════════════════════════════════════════"
+if [ "$PASS" = true ]; then
+    echo "✅ Gate A 合规扫描全部通过"
+    exit 0
+else
+    echo "❌ Gate A 合规扫描未通过 — commit 已拦截"
+    echo ""
+    echo "修复建议："
+    echo "  1. 搜索并移除违规关键字代码"
+    echo "  2. 确保 MSF 调用仅使用 auxiliary/scanner/* 白名单路径"
+    echo "  3. 确保 IP 校验逻辑只在 validator.py 中"
+    echo "  4. 确保不 import hackingtool"
+    exit 1
+fi

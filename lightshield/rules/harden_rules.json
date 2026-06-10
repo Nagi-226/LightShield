@@ -1,0 +1,106 @@
+{
+  "rules": [
+    {
+      "rule_id": "HARDEN-001",
+      "trigger_vuln_type": "high_risk_port",
+      "action": "关闭高危端口",
+      "reason": "减少攻击面：不必要的端口应通过防火墙关闭",
+      "commands": {
+        "linux": [
+          "# 使用 iptables 关闭端口 {port}",
+          "iptables -A INPUT -p tcp --dport {port} -j DROP",
+          "# 持久化规则",
+          "iptables-save > /etc/iptables/rules.v4"
+        ],
+        "windows": [
+          "# 使用 Windows 防火墙阻止端口 {port}",
+          "netsh advfirewall firewall add rule name=\"Block_{port}\" dir=in action=block protocol=TCP localport={port}"
+        ]
+      }
+    },
+    {
+      "rule_id": "HARDEN-002",
+      "trigger_vuln_type": "high_risk_port",
+      "action": "禁用不必要服务",
+      "reason": "减少后台运行的服务以降低攻击面",
+      "commands": {
+        "linux": [
+          "# 列出所有启用服务",
+          "systemctl list-unit-files --state=enabled",
+          "# 停用并禁用服务",
+          "systemctl stop <service>",
+          "systemctl disable <service>"
+        ]
+      }
+    },
+    {
+      "rule_id": "HARDEN-003",
+      "trigger_vuln_type": "weak_auth",
+      "action": "强制强密码策略",
+      "reason": "弱口令是最常见的入侵途径",
+      "commands": {
+        "linux": [
+          "# 安装密码质量检查工具",
+          "apt install libpam-pwquality -y",
+          "# 编辑 /etc/security/pwquality.conf",
+          "# minlen = 12",
+          "# minclass = 3"
+        ],
+        "windows": [
+          "# 启用密码复杂度要求",
+          "secedit /export /cfg C:\\secpol.cfg",
+          "# 编辑 secpol.cfg 设置 PasswordComplexity = 1"
+        ]
+      }
+    },
+    {
+      "rule_id": "HARDEN-004",
+      "trigger_vuln_type": "vulnerable_component",
+      "action": "升级老旧组件",
+      "reason": "旧版本存在已知 CVE 漏洞",
+      "commands": {
+        "linux": [
+          "# 更新包列表并升级所有包",
+          "apt update && apt upgrade -y",
+          "# 或 ",
+          "yum update -y"
+        ]
+      }
+    },
+    {
+      "rule_id": "HARDEN-005",
+      "trigger_vuln_type": "high_risk_port",
+      "action": "配置 SSH 安全",
+      "reason": "加固 SSH 服务防止暴力破解",
+      "commands": {
+        "linux": [
+          "# 备份原配置",
+          "cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak",
+          "# 禁用 root 登录（覆盖注释行和非注释行——Codex H3 修复）",
+          "sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config",
+          "grep -q '^PermitRootLogin ' /etc/ssh/sshd_config || echo 'PermitRootLogin no' >> /etc/ssh/sshd_config",
+          "# 禁用密码认证（仅密钥）",
+          "sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config",
+          "grep -q '^PasswordAuthentication ' /etc/ssh/sshd_config || echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config",
+          "# 重启 SSH",
+          "systemctl restart sshd"
+        ]
+      }
+    },
+    {
+      "rule_id": "HARDEN-006",
+      "trigger_vuln_type": "misconfiguration",
+      "action": "配置 Web 服务器安全头",
+      "reason": "HTTP 安全头可防御 XSS/点击劫持/MIME 嗅探等攻击",
+      "commands": {
+        "linux": [
+          "# Nginx: 在 server 块中添加",
+          "# add_header X-Frame-Options DENY;",
+          "# add_header X-Content-Type-Options nosniff;",
+          "# add_header X-XSS-Protection \"1; mode=block\";",
+          "# add_header Strict-Transport-Security \"max-age=31536000\";"
+        ]
+      }
+    }
+  ]
+}

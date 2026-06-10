@@ -1,0 +1,14 @@
+# === LightShield 轻盾 — Python 依赖 ===
+# 自动生成于 2026-06-09，基于全量 AST import 扫描
+# 仅包含实际被 import 的包（测试/构建工具在 pyproject.toml 中）
+#
+# 用法：
+#   pip install -r requirements.txt          # 安装运行时依赖
+#   pip install -e ".[dev]"                  # 安装运行时 + 开发依赖
+# ============================================
+
+# === 运行时核心依赖 ===
+
+requests>=2.28.0,<3.0           # HTTP 请求 — web_vuln_scanner.py / weak_password.py / component_checker.py
+PyYAML>=6.0                     # YAML 配置文件解析 — config.py
+beautifulsoup4>=4.11.0,<5.0    # HTML 解析 — web_vuln_scanner.py（bs4 不可用时正则回退）
