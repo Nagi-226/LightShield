@@ -22,7 +22,7 @@ import tempfile
 
 import pytest
 
-from lightshield.config import get_config, reset_config, LightShieldConfig
+from lightshield.config import LightShieldConfig, get_config, reset_config
 from lightshield.utils.constants import (
     ALLOWED_MSF_PREFIXES,
     BLOCKED_MSF_PREFIXES,
@@ -30,10 +30,10 @@ from lightshield.utils.constants import (
     MIN_SCAN_INTERVAL,
 )
 
-
 # =============================================================================
 # 辅助函数
 # =============================================================================
+
 
 def _set_env(key: str, value: str) -> str | None:
     """设置环境变量并返回旧值，方便测试后恢复"""
@@ -52,6 +52,7 @@ def _del_env(key: str) -> str | None:
 # =============================================================================
 # 单例与默认值
 # =============================================================================
+
 
 class TestConfigSingleton:
     """get_config() 单例行为与默认值"""
@@ -138,6 +139,7 @@ class TestConfigSingleton:
 # reset_config
 # =============================================================================
 
+
 class TestResetConfig:
     """reset_config() 行为验证"""
 
@@ -152,7 +154,7 @@ class TestResetConfig:
         assert old is not new, "reset_config 后应返回新实例"
 
     def test_reset_then_same_defaults(self):
-        """reset 后新实例仍使用默认值"""
+        """Reset 后新实例仍使用默认值"""
         cfg1 = get_config()
         cfg1.scan_timeout = 999  # 修改当前实例
         reset_config()
@@ -163,6 +165,7 @@ class TestResetConfig:
 # =============================================================================
 # load() — 无文件 / JSON 加载
 # =============================================================================
+
 
 class TestConfigLoad:
     """load() 方法验证"""
@@ -186,9 +189,7 @@ class TestConfigLoad:
             "report_lang": "en-US",
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump(json_data, f)
             json_path = f.name
 
@@ -207,9 +208,7 @@ class TestConfigLoad:
 
         json_data = {"scan_timeout": 45}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump(json_data, f)
             json_path = f.name
 
@@ -222,9 +221,7 @@ class TestConfigLoad:
     def test_load_unsupported_format_raises_value_error(self):
         """不支持的配置文件格式抛出 ValueError"""
         cfg = get_config()
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("some text")
             txt_path = f.name
 
@@ -238,6 +235,7 @@ class TestConfigLoad:
 # =============================================================================
 # 环境变量覆盖
 # =============================================================================
+
 
 class TestEnvOverrides:
     """_apply_env_overrides 环境变量覆盖验证"""
@@ -338,25 +336,26 @@ class TestEnvOverrides:
 
     # ---- LS_HARDEN_DRY_RUN 布尔转换 ----
 
-    @pytest.mark.parametrize("env_val,expected", [
-        ("true", True),
-        ("false", False),
-        ("1", True),
-        ("0", False),
-        ("yes", True),
-        ("no", False),
-        ("TRUE", True),
-        ("FALSE", False),
-    ])
+    @pytest.mark.parametrize(
+        "env_val,expected",
+        [
+            ("true", True),
+            ("false", False),
+            ("1", True),
+            ("0", False),
+            ("yes", True),
+            ("no", False),
+            ("TRUE", True),
+            ("FALSE", False),
+        ],
+    )
     def test_harden_dry_run_bool_conversion(self, env_val, expected):
         """LS_HARDEN_DRY_RUN 的 true/false/1/0/yes/no 转换正确"""
         old = _set_env("LS_HARDEN_DRY_RUN", env_val)
         try:
             cfg = get_config()
             cfg.load("/nonexistent.yaml")
-            assert cfg.harden_dry_run == expected, (
-                f"env={env_val!r} 期望 {expected}，实际 {cfg.harden_dry_run}"
-            )
+            assert cfg.harden_dry_run == expected, f"env={env_val!r} 期望 {expected}，实际 {cfg.harden_dry_run}"
         finally:
             if old is None:
                 _del_env("LS_HARDEN_DRY_RUN")
@@ -374,6 +373,7 @@ class TestEnvOverrides:
 # =============================================================================
 # validate_msf_config
 # =============================================================================
+
 
 class TestValidateMsfConfig:
     """validate_msf_config() MSF 白名单/黑名单冲突检测"""
@@ -417,6 +417,7 @@ class TestValidateMsfConfig:
 # validate
 # =============================================================================
 
+
 class TestValidate:
     """validate() 方法验证"""
 
@@ -458,6 +459,7 @@ class TestValidate:
 # to_dict
 # =============================================================================
 
+
 class TestToDict:
     """to_dict() 导出验证"""
 
@@ -473,12 +475,21 @@ class TestToDict:
     def test_contains_all_public_fields(self):
         """to_dict() 包含所有公开配置字段"""
         expected_keys = {
-            "scan_timeout", "max_concurrent_scans", "scan_interval",
-            "msf_path", "msf_whitelist", "msf_blacklist",
-            "nmap_path", "nmap_args",
-            "report_output_dir", "report_format", "report_lang",
-            "log_dir", "log_level",
-            "harden_dry_run", "harden_backup",
+            "scan_timeout",
+            "max_concurrent_scans",
+            "scan_interval",
+            "msf_path",
+            "msf_whitelist",
+            "msf_blacklist",
+            "nmap_path",
+            "nmap_args",
+            "report_output_dir",
+            "report_format",
+            "report_lang",
+            "log_dir",
+            "log_level",
+            "harden_dry_run",
+            "harden_backup",
         }
         cfg = get_config()
         result = cfg.to_dict()

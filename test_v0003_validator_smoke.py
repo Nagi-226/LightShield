@@ -3,8 +3,8 @@
 执行 Claude Code 下发的 4 组测试用例，验证 TargetValidator 的校验逻辑。
 """
 
-import sys
 import os
+import sys
 
 # 将项目根目录加入搜索路径，使 lightshield 包可被导入
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -16,8 +16,7 @@ failed = 0
 failures = []  # 记录失败用例的详情
 
 
-def check(case_id: str, actual_ok: bool, expected_ok: bool,
-          actual_msg: str, target_repr: str):
+def check(case_id: str, actual_ok: bool, expected_ok: bool, actual_msg: str, target_repr: str):  # noqa: D103
     global passed, failed
     if actual_ok == expected_ok:
         passed += 1
@@ -25,13 +24,15 @@ def check(case_id: str, actual_ok: bool, expected_ok: bool,
         print(f"  PASS  {case_id}: {target_repr} -> {tag} ({actual_msg})")
     else:
         failed += 1
-        failures.append({
-            "id": case_id,
-            "target": target_repr,
-            "expected": expected_ok,
-            "actual": actual_ok,
-            "message": actual_msg,
-        })
+        failures.append(
+            {
+                "id": case_id,
+                "target": target_repr,
+                "expected": expected_ok,
+                "actual": actual_ok,
+                "message": actual_msg,
+            }
+        )
         tag = "预期通过，实际拒绝" if expected_ok else "预期拒绝，实际通过"
         print(f"  FAIL  {case_id}: {target_repr} -> {tag} ({actual_msg})")
 
@@ -44,13 +45,13 @@ print("测试 1：合法输入（必须全部返回 True）")
 print("=" * 60)
 
 valid_targets = [
-    ("192.168.1.1",    "合法 IPv4"),
-    ("10.0.0.1",       "内网 IPv4"),
-    ("example.com",    "合法域名"),
+    ("192.168.1.1", "合法 IPv4"),
+    ("10.0.0.1", "内网 IPv4"),
+    ("example.com", "合法域名"),
     ("sub.example.cn", "多级域名"),
-    ("localhost",      "localhost"),
-    ("::1",            "IPv6 回环"),
-    ("fe80::1",        "IPv6 链路本地"),
+    ("localhost", "localhost"),
+    ("::1", "IPv6 回环"),
+    ("fe80::1", "IPv6 链路本地"),
 ]
 
 for i, (target, desc) in enumerate(valid_targets, 1):
@@ -67,15 +68,15 @@ print("测试 2：非法输入（必须全部返回 False）")
 print("=" * 60)
 
 invalid_targets = [
-    ("",                            "空字符串"),
-    ("192.168.1.0/24",             "CIDR 网段"),
-    ("10.0.0.1/8",                 "CIDR /8"),
-    ("192.168.1.1-192.168.1.10",   "IP 范围"),
-    ("192.168.1.1-10",             "IP 缩写范围"),
-    ("*.example.com",              "通配符域名"),
-    ("http://example.com",         "HTTP URL"),
-    ("https://example.com/path",   "HTTPS URL"),
-    ("example.com:443",            "带端口域名"),
+    ("", "空字符串"),
+    ("192.168.1.0/24", "CIDR 网段"),
+    ("10.0.0.1/8", "CIDR /8"),
+    ("192.168.1.1-192.168.1.10", "IP 范围"),
+    ("192.168.1.1-10", "IP 缩写范围"),
+    ("*.example.com", "通配符域名"),
+    ("http://example.com", "HTTP URL"),
+    ("https://example.com/path", "HTTPS URL"),
+    ("example.com:443", "带端口域名"),
 ]
 
 for i, (target, desc) in enumerate(invalid_targets, 1):
@@ -92,7 +93,7 @@ print("测试 3：扫描参数校验（R6 合规）")
 print("=" * 60)
 
 scan_params = [
-    (20, 5.0, True,  "并发 20 / 间隔 5.0s -> 应通过"),
+    (20, 5.0, True, "并发 20 / 间隔 5.0s -> 应通过"),
     (21, 5.0, False, "并发 21 / 间隔 5.0s -> 应拒绝（超过上限）"),
     (10, 2.0, False, "并发 10 / 间隔 2.0s -> 应拒绝（间隔不足）"),
 ]
@@ -115,18 +116,20 @@ has_keyword = "所有权" in ownership_text
 
 if has_keyword:
     passed += 1
-    print(f"  PASS  T4-1: confirm_ownership 返回文本包含 '所有权'")
+    print("  PASS  T4-1: confirm_ownership 返回文本包含 '所有权'")
     print(f"          内容: {ownership_text}")
 else:
     failed += 1
-    failures.append({
-        "id": "T4-1",
-        "target": "confirm_ownership('192.168.1.1')",
-        "expected": "包含 '所有权'",
-        "actual": ownership_text,
-        "message": "未包含所有权关键词",
-    })
-    print(f"  FAIL  T4-1: confirm_ownership 返回文本不包含'所有权'")
+    failures.append(
+        {
+            "id": "T4-1",
+            "target": "confirm_ownership('192.168.1.1')",
+            "expected": "包含 '所有权'",
+            "actual": ownership_text,
+            "message": "未包含所有权关键词",
+        }
+    )
+    print("  FAIL  T4-1: confirm_ownership 返回文本不包含'所有权'")
     print(f"          内容: {ownership_text}")
 
 print()

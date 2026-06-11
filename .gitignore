@@ -39,3 +39,6 @@ scripts/claude-*.ps1
 # MSF 相关
 msf_cache/
 .msf4/
+
+# 个人开发笔记（不推送）
+docs/interview-narratives/

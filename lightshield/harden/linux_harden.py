@@ -1,5 +1,4 @@
-"""
-LightShield Linux 加固脚本生成器
+"""LightShield Linux 加固脚本生成器
 
 消费规则引擎的加固建议，生成可审阅的加固脚本 + 回滚脚本。
 绝不自动执行任何系统命令——脚本生成后由操作员自行审阅与执行。
@@ -21,17 +20,17 @@ LightShield Linux 加固脚本生成器
 import os
 import sys as _sys
 from datetime import datetime
-from typing import Optional
 
 # Allow direct script execution (python lightshield/harden/linux_harden.py)
-if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
+if __name__ == "__main__" and _sys.path[0] != os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+):
     _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from lightshield.config import get_config
 from lightshield.harden.base import HardenBase, HardenResult, HardenStatus
 from lightshield.utils.constants import OSPlatform
 from lightshield.utils.logger import get_logger
-
 
 # =============================================================================
 # 命令回滚映射
@@ -85,7 +84,7 @@ def _build_rollback_cmd(line: str) -> str:
     for needle, replacement in _ROLLBACK_RULES:
         if needle in stripped:
             if needle == "sed ":
-                return f"# 回滚操作：请从备份目录恢复原配置。操作员请手动执行："
+                return "# 回滚操作：请从备份目录恢复原配置。操作员请手动执行："
             return stripped.replace(needle, replacement, 1)
 
     # 默认：无法自动生成回滚命令
@@ -111,12 +110,14 @@ def _has_placeholder(command: str) -> bool:
         True 表示包含未处理的占位符，命令应改写为注释。
     """
     import re
+
     return bool(re.search(r"<[\w-]+>", command))
 
 
 # =============================================================================
 # LinuxHardener
 # =============================================================================
+
 
 class LinuxHardener(HardenBase):
     """Linux 加固脚本生成器
@@ -136,7 +137,7 @@ class LinuxHardener(HardenBase):
         self,
         target: str,
         recommendations: list[dict],
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> HardenResult:
         """根据加固建议生成加固脚本与回滚脚本
 
@@ -221,9 +222,7 @@ class LinuxHardener(HardenBase):
     # 脚本组装
     # =========================================================================
 
-    def _build_harden_script(
-        self, target: str, recommendations: list[dict], ts: str
-    ) -> str:
+    def _build_harden_script(self, target: str, recommendations: list[dict], ts: str) -> str:
         """组装加固脚本全文"""
         lines = [
             "#!/bin/bash",
@@ -251,15 +250,15 @@ class LinuxHardener(HardenBase):
             "# 备份文件写入固定路径 /tmp/lightshield-harden-backup/",
             "# 回滚脚本读取同一路径，确保跨脚本可用（Codex B2 修复）",
             "_LS_BACKUP_DIR=/tmp/lightshield-harden-backup",
-            "mkdir -p \"$_LS_BACKUP_DIR\"",
+            'mkdir -p "$_LS_BACKUP_DIR"',
             "",
             'echo "[备份] 保存当前 iptables 规则..."',
-            "_IPT_BACKUP=\"$_LS_BACKUP_DIR/iptables.rules\"",
-            "iptables-save > \"$_IPT_BACKUP\" 2>/dev/null && echo \"[备份] $_IPT_BACKUP\" || echo \"[提示] iptables-save 不可用\"",
+            '_IPT_BACKUP="$_LS_BACKUP_DIR/iptables.rules"',
+            'iptables-save > "$_IPT_BACKUP" 2>/dev/null && echo "[备份] $_IPT_BACKUP" || echo "[提示] iptables-save 不可用"',
             "",
             'echo "[备份] 保存 sshd_config..."',
             "if [ -f /etc/ssh/sshd_config ]; then",
-            "    _SSHD_BACKUP=\"$_LS_BACKUP_DIR/sshd_config.bak\"",
+            '    _SSHD_BACKUP="$_LS_BACKUP_DIR/sshd_config.bak"',
             '    cp /etc/ssh/sshd_config "$_SSHD_BACKUP"',
             '    echo "[备份] $_SSHD_BACKUP"',
             "fi",
@@ -277,7 +276,7 @@ class LinuxHardener(HardenBase):
             port = str(rec.get("target", ""))
 
             lines += [
-                f"echo ''",
+                "echo ''",
                 f"echo '### [{i}/{len(recommendations)}] {action}'",
             ]
             if reason:
@@ -291,7 +290,7 @@ class LinuxHardener(HardenBase):
                 elif _has_placeholder(substituted):
                     # 含 <service> 等未填占位符——禁止作为命令执行，
                     # 改写为注释引导操作员填写（Codex B1 修复）
-                    lines.append(f"# [引导] 以下命令需要操作员指定具体值后手动执行：")
+                    lines.append("# [引导] 以下命令需要操作员指定具体值后手动执行：")
                     lines.append(f"# {substituted}")
                 else:
                     lines.append(f"echo '  + {substituted[:80]}'")
@@ -305,9 +304,7 @@ class LinuxHardener(HardenBase):
         ]
         return "\n".join(lines) + "\n"
 
-    def _build_rollback_script(
-        self, target: str, recommendations: list[dict], ts: str
-    ) -> str:
+    def _build_rollback_script(self, target: str, recommendations: list[dict], ts: str) -> str:
         """组装回滚脚本全文"""
         lines = [
             "#!/bin/bash",
@@ -322,8 +319,8 @@ class LinuxHardener(HardenBase):
             "",
             "# 备份文件路径——与加固脚本使用相同固定路径（Codex B2 修复）",
             "_LS_BACKUP_DIR=/tmp/lightshield-harden-backup",
-            "_IPT_BACKUP=\"$_LS_BACKUP_DIR/iptables.rules\"",
-            "_SSHD_BACKUP=\"$_LS_BACKUP_DIR/sshd_config.bak\"",
+            '_IPT_BACKUP="$_LS_BACKUP_DIR/iptables.rules"',
+            '_SSHD_BACKUP="$_LS_BACKUP_DIR/sshd_config.bak"',
             "",
             'echo "=== LightShield 轻盾 — 回滚操作 ==="',
             f'echo "  目标：{target}"',
@@ -349,9 +346,9 @@ class LinuxHardener(HardenBase):
                     # SSH 配置回滚：从 .bak 恢复
                     lines += [
                         "# 恢复 sshd_config 备份（固定路径，跨脚本可靠——Codex B2 修复）",
-                        "if [ -f \"$_SSHD_BACKUP\" ]; then",
+                        'if [ -f "$_SSHD_BACKUP" ]; then',
                         "    echo '  恢复 sshd_config 从备份'",
-                        "    cp \"$_SSHD_BACKUP\" /etc/ssh/sshd_config",
+                        '    cp "$_SSHD_BACKUP" /etc/ssh/sshd_config',
                         "    systemctl restart sshd || service ssh restart",
                         "else",
                         "    echo '  [警告] 未找到 sshd_config 备份：$_SSHD_BACKUP'",
@@ -367,9 +364,7 @@ class LinuxHardener(HardenBase):
                         "iptables-save > /etc/iptables/rules.v4 2>/dev/null || true",
                     ]
                     has_rollback = True
-                elif rollback.startswith("# ") and "待回滚" in rollback:
-                    lines.append(rollback)
-                elif rollback.startswith("# "):
+                elif rollback.startswith("# ") and "待回滚" in rollback or rollback.startswith("# "):
                     lines.append(rollback)
                 else:
                     lines.append(rollback)
@@ -381,10 +376,7 @@ class LinuxHardener(HardenBase):
             lines.append("")
 
         # iptables 全量回滚（仅 iptables 相关操作存在时）
-        has_iptables = any(
-            "iptables" in str(rec.get("commands", {}).get("linux", []))
-            for rec in recommendations
-        )
+        has_iptables = any("iptables" in str(rec.get("commands", {}).get("linux", [])) for rec in recommendations)
         if has_iptables:
             lines += [
                 'echo ""',
@@ -406,6 +398,7 @@ class LinuxHardener(HardenBase):
     def _gen_audit_id(target: str) -> str:
         """生成审计 ID"""
         import uuid
+
         return f"HARDEN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
 
@@ -484,7 +477,7 @@ if __name__ == "__main__":
         print(f"[OK] 状态: {result.status.value}")
 
         # 检查加固脚本内容
-        with open(result.script_path, "r", encoding="utf-8") as f:
+        with open(result.script_path, encoding="utf-8") as f:
             harden_text = f.read()
         assert "#!/bin/bash" in harden_text, "缺少 shebang"
         assert "R4" in harden_text, "缺少 R4 所有权提示"
@@ -495,7 +488,7 @@ if __name__ == "__main__":
         print(f"[OK] 加固脚本: {len(harden_text)} 字符，含 R4 阻断门 + iptables + SSH + apt")
 
         # 检查回滚脚本内容
-        with open(result.rollback_path, "r", encoding="utf-8") as f:
+        with open(result.rollback_path, encoding="utf-8") as f:
             rollback_text = f.read()
         assert "#!/bin/bash" in rollback_text, "回滚脚本缺少 shebang"
         assert "iptables -D INPUT -p tcp --dport 23 -j DROP" in rollback_text, "回滚脚本缺少 iptables -D"
@@ -515,4 +508,5 @@ if __name__ == "__main__":
         print("=== LinuxHardener: ALL PASSED ===")
     finally:
         import shutil
+
         shutil.rmtree(out_dir, ignore_errors=True)

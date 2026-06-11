@@ -1,5 +1,4 @@
-"""
-LightShield 全局配置管理
+"""LightShield 全局配置管理
 
 支持：
   - YAML 配置文件加载
@@ -13,15 +12,14 @@ LightShield 全局配置管理
     cfg.load("lightshield.yaml")
 """
 
+import json
 import os
 import sys as _sys
-import json
 from dataclasses import dataclass, field
 
 # Allow direct script execution (python lightshield/config.py)
 if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os.path.abspath(__file__))):
     _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from typing import Optional
 
 from lightshield.utils.constants import (
     ALLOWED_MSF_PREFIXES,
@@ -30,10 +28,10 @@ from lightshield.utils.constants import (
     MIN_SCAN_INTERVAL,
 )
 
-
 # =============================================================================
 # 配置数据类
 # =============================================================================
+
 
 @dataclass
 class LightShieldConfig:
@@ -68,6 +66,31 @@ class LightShieldConfig:
     # ---- 加固配置 ----
     harden_dry_run: bool = True
     harden_backup: bool = True
+
+    # =========================================================================
+    # 未来扩展（v1.0.0 — v2.0.0 预留，当前不生效）
+    # =========================================================================
+
+    # ---- Web Panel (v1.0.0) ----
+    web_host: str = "127.0.0.1"  # Flask 监听地址
+    web_port: int = 5000  # Flask 监听端口
+    auth_enabled: bool = False  # v1.0.0: 启用 Session 鉴权
+    scan_queue_backend: str = "memory"  # v1.0.0: memory, v2.0.0: redis
+
+    # ---- 存储后端 (v1.0.0) ----
+    repository_backend: str = "json"  # v0.2.0: json, v1.0.0: sqlite, v2.0.0: postgres
+    db_url: str = ""  # v1.0.0: sqlite:///data/lightshield.db
+    # v2.0.0: postgresql://user:pass@host/lightshield
+
+    # ---- 缓存 & 消息队列 (v2.0.0) ----
+    redis_url: str = ""  # redis://localhost:6379/0
+    celery_broker_url: str = ""  # redis://localhost:6379/1（或 RabbitMQ）
+    cache_ttl_seconds: int = 3600  # 扫描结果缓存有效期
+
+    # ---- API 鉴权 (v2.0.0) ----
+    jwt_secret: str = ""  # JWT 签名密钥
+    token_expire_hours: int = 24  # Token 有效期
+    rate_limit_per_hour: int = 100  # API 每 IP 每小时限制
 
     # ---- 内部状态 ----
     _loaded: bool = field(default=False, init=False, repr=False)
@@ -110,10 +133,11 @@ class LightShieldConfig:
         """从 YAML 文件加载"""
         try:
             import yaml
-            with open(path, "r", encoding="utf-8") as f:
+
+            with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
-        except ImportError:
-            raise ImportError("需要安装 PyYAML 来读取 .yaml 配置文件：pip install PyYAML")
+        except ImportError as err:
+            raise ImportError("需要安装 PyYAML 来读取 .yaml 配置文件：pip install PyYAML") from err
 
         if not isinstance(data, dict):
             raise ValueError(f"YAML 文件格式错误：期望顶层为字典，实际为 {type(data).__name__}")
@@ -122,7 +146,7 @@ class LightShieldConfig:
 
     def _load_json(self, path: str) -> None:
         """从 JSON 文件加载"""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
 
         if not isinstance(data, dict):
@@ -138,6 +162,7 @@ class LightShieldConfig:
         跳过以 _ 开头的内部字段。
         """
         from dataclasses import fields
+
         valid_keys = {f.name for f in fields(self) if not f.name.startswith("_")}
         for key in valid_keys:
             if key in data:
@@ -177,11 +202,12 @@ class LightShieldConfig:
             value = os.environ.get(env_var)
             if value is not None:
                 try:
-                    setattr(self, attr, converter(value))
+                    setattr(self, attr, converter(value))  # type: ignore[operator]  # converter 类型为 Callable，通过 dict 推导无法表达
                 except (ValueError, TypeError) as e:
                     # 使用项目统一日志（走审计与敏感信息脱敏），
                     # 惰性导入避免模块加载期就创建日志目录。
                     from lightshield.utils.logger import get_logger
+
                     get_logger().warning(
                         "config",
                         f"环境变量 {env_var}={value!r} 转换失败"
@@ -207,9 +233,7 @@ class LightShieldConfig:
             for allowed in self.msf_whitelist:
                 # 双向检查：黑名单不应是白名单的前缀，反之亦然
                 if blocked.startswith(allowed) or allowed.startswith(blocked):
-                    raise ValueError(
-                        f"MSF 配置冲突：白名单 [{allowed}] 与黑名单 [{blocked}] 重叠"
-                    )
+                    raise ValueError(f"MSF 配置冲突：白名单 [{allowed}] 与黑名单 [{blocked}] 重叠")
         return True
 
     def validate(self) -> tuple[bool, list[str]]:
@@ -222,13 +246,9 @@ class LightShieldConfig:
 
         # R6 校验
         if self.max_concurrent_scans > MAX_CONCURRENT_SCANS:
-            warnings.append(
-                f"并发数 {self.max_concurrent_scans} 超过合规上限 {MAX_CONCURRENT_SCANS}"
-            )
+            warnings.append(f"并发数 {self.max_concurrent_scans} 超过合规上限 {MAX_CONCURRENT_SCANS}")
         if self.scan_interval < MIN_SCAN_INTERVAL:
-            warnings.append(
-                f"扫描间隔 {self.scan_interval}s 低于合规要求 {MIN_SCAN_INTERVAL}s"
-            )
+            warnings.append(f"扫描间隔 {self.scan_interval}s 低于合规要求 {MIN_SCAN_INTERVAL}s")
 
         # MSF 配置
         try:
@@ -271,7 +291,7 @@ class LightShieldConfig:
 # 单例
 # =============================================================================
 
-_config_instance: Optional[LightShieldConfig] = None
+_config_instance: LightShieldConfig | None = None
 
 
 def get_config() -> LightShieldConfig:
@@ -300,7 +320,7 @@ def reset_config() -> None:
 
 if __name__ == "__main__":
     cfg = get_config()
-    print(f"[OK] 默认配置加载成功")
+    print("[OK] 默认配置加载成功")
     print(f"   扫描超时: {cfg.scan_timeout}s")
     print(f"   并发上限: {cfg.max_concurrent_scans}")
     print(f"   扫描间隔: {cfg.scan_interval}s")
@@ -310,10 +330,10 @@ if __name__ == "__main__":
 
     is_valid, warnings = cfg.validate()
     if is_valid:
-        print(f"[OK] 配置校验通过")
+        print("[OK] 配置校验通过")
     else:
         for w in warnings:
             print(f"[WARN]  {w}")
 
     cfg.validate_msf_config()
-    print(f"[OK] MSF 白名单/黑名单无冲突")
+    print("[OK] MSF 白名单/黑名单无冲突")

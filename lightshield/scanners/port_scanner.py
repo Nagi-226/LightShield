@@ -1,5 +1,4 @@
-"""
-LightShield 端口扫描器
+"""LightShield 端口扫描器
 
 基于 NmapAdapter 的高层封装，提供面向用户的资产扫描能力。
 包括：端口扫描、服务识别、敏感目录探测、高危端口告警。
@@ -10,11 +9,11 @@ LightShield 端口扫描器
     result = scanner.scan("192.168.1.1")
 """
 
+from lightshield.adapters.base import ScanResult
 from lightshield.adapters.nmap_adapter import NmapAdapter
-from lightshield.adapters.base import ScanResult, VulnFinding
-from lightshield.utils.constants import ScanStatus, RiskLevel, HIGH_RISK_PORTS
-from lightshield.utils.validator import TargetValidator
+from lightshield.utils.constants import HIGH_RISK_PORTS, ScanStatus
 from lightshield.utils.logger import get_logger
+from lightshield.utils.validator import TargetValidator
 
 
 class PortScanner:
@@ -28,9 +27,10 @@ class PortScanner:
     """
 
     def __init__(self, nmap_adapter: NmapAdapter = None):
-        """
+        """初始化端口扫描器。
+
         Args:
-            nmap_adapter: Nmap 适配器实例，默认自动创建
+        nmap_adapter: Nmap 适配器实例，默认自动创建
         """
         self._adapter = nmap_adapter or NmapAdapter()
         self._logger = get_logger()
@@ -81,10 +81,7 @@ class PortScanner:
         closed_count = sum(1 for p in result.ports if p.get("state") == "closed")
 
         # 高危端口数
-        high_risk = sum(
-            1 for p in result.ports
-            if p.get("state") == "open" and p.get("port") in HIGH_RISK_PORTS
-        )
+        high_risk = sum(1 for p in result.ports if p.get("state") == "open" and p.get("port") in HIGH_RISK_PORTS)
 
         return {
             "total": len(result.ports),
@@ -148,11 +145,12 @@ if __name__ == "__main__":
     scanner = PortScanner()
 
     # 1. 目标校验
-    assert TargetValidator.validate("127.0.0.1")[0] == True
+    assert TargetValidator.validate("127.0.0.1")[0]
     print("  目标校验通过")
 
     # 2. 高危端口识别（用模拟数据）
     from lightshield.adapters.base import ScanResult
+
     mock_result = ScanResult(
         status=ScanStatus.COMPLETED,
         target="127.0.0.1",

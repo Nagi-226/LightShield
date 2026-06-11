@@ -104,7 +104,7 @@ hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-XXX.md)"
 |:--:|------|------|:--:|:--:|
 | **v0.0.11** | `pyproject.toml` + 依赖更新 | 现代化打包配置 + 依赖清单对齐 | ✅ | ✅ |
 | **v0.0.18** | `deploy_linux.sh` + `deploy_win.ps1` | 一键部署脚本 | ✅ | ✅ 171+239行 |
-| **v0.0.20** | `LICENSE` + docs 骨架 | MIT + INSTALL/USAGE/FAQ 占位 | 🟢 当前 | ⬜ 已给提示词 |
+| **v0.0.20** | `LICENSE` + docs 骨架 | MIT + INSTALL/USAGE/FAQ 占位 | ✅ | ✅ CC 填充了 4 条 FAQ TODO + CHANGELOG 完整版 + README 架构细节 |
 
 ### Hermes 全任务完成统计
 
@@ -113,10 +113,12 @@ v0.0.01  骨架 (7 __init__.py + .gitignore)  ✅
 v0.0.02  constants.py + requirements.txt     ✅
 v0.0.11  pyproject.toml + 依赖更新            ✅
 v0.0.18  deploy_linux.sh + deploy_win.ps1    ✅
-v0.0.20  LICENSE + docs 骨架                 🟢 已给提示词
+v0.0.20  LICENSE + docs 骨架                 ✅ (CC 填充)
 ──────────────────────────────────────────────
-         5/5 完成，1 个进行中
+         5/5 完成，0 个待执行 ✅
 ```
+
+> 当前状态：**全部任务完成，零剩余。** 等待 v0.3.0 新任务分配。
 
 ---
 

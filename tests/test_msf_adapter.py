@@ -16,7 +16,6 @@ from unittest.mock import patch
 
 import pytest
 
-
 # 允许直接执行本文件或从 tests/ 目录运行 pytest。
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
@@ -107,9 +106,11 @@ def test_exec_msf_module_raises_security_violation_for_blocked_module(
     adapter: MsfScannerAdapter,
 ) -> None:
     """非法模块执行前必须抛出 SecurityViolationError，不能进入 subprocess。"""
-    with patch("lightshield.adapters.msf_adapter.subprocess.run") as mocked_run:
-        with pytest.raises(SecurityViolationError) as exc_info:
-            adapter.exec_msf_module("exploit/windows/smb/example", "127.0.0.1")
+    with (
+        patch("lightshield.adapters.msf_adapter.subprocess.run") as mocked_run,
+        pytest.raises(SecurityViolationError) as exc_info,
+    ):
+        adapter.exec_msf_module("exploit/windows/smb/example", "127.0.0.1")
 
     assert "安全违规" in str(exc_info.value), "异常信息应明确提示安全违规"
     assert mocked_run.called is False, "黑名单模块不得触发 subprocess.run"

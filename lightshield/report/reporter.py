@@ -1,5 +1,4 @@
-"""
-LightShield 中文安全报告生成器
+"""LightShield 中文安全报告生成器
 
 基于扫描结果和规则引擎输出，生成面向非专业用户的中文安全报告。
 支持 Markdown 和纯文本两种格式。
@@ -13,7 +12,6 @@ LightShield 中文安全报告生成器
 
 import os
 from datetime import datetime
-from typing import Optional
 
 from lightshield.adapters.base import ScanResult, VulnFinding
 from lightshield.utils.constants import RiskLevel
@@ -36,9 +34,7 @@ class ReportGenerator:
             os.makedirs(output_dir, exist_ok=True)
         except OSError as e:
             # 目录创建失败不阻断构造，延后到 save() 再尝试
-            self._logger.error(
-                "report", f"报告目录创建失败：{output_dir}", exception=e
-            )
+            self._logger.error("report", f"报告目录创建失败：{output_dir}", exception=e)
 
     # =========================================================================
     # 生成
@@ -47,8 +43,8 @@ class ReportGenerator:
     def generate(
         self,
         scan_result: ScanResult,
-        findings: Optional[list[VulnFinding]] = None,
-        harden_recommendations: Optional[list[dict]] = None,
+        findings: list[VulnFinding] | None = None,
+        harden_recommendations: list[dict] | None = None,
         fmt: str = "markdown",
     ) -> str:
         """生成安全报告
@@ -75,8 +71,8 @@ class ReportGenerator:
     def _generate_markdown(
         self,
         result: ScanResult,
-        findings: Optional[list[VulnFinding]],
-        harden: Optional[list[dict]],
+        findings: list[VulnFinding] | None,
+        harden: list[dict] | None,
     ) -> str:
         """生成 Markdown 格式报告"""
         findings = findings or result.findings or []
@@ -84,7 +80,7 @@ class ReportGenerator:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         lines = [
-            f"# LightShield 轻盾 — 安全自检报告",
+            "# LightShield 轻盾 — 安全自检报告",
             "",
             f"**生成时间**：{now}",
             f"**扫描目标**：{result.target}",
@@ -95,8 +91,8 @@ class ReportGenerator:
             "",
             "## 一、资产基本信息",
             "",
-            f"| 项目 | 详情 |",
-            f"|------|------|",
+            "| 项目 | 详情 |",
+            "|------|------|",
             f"| 目标地址 | {result.target} |",
             f"| 操作系统 | {result.os_info or '未识别'} |",
             f"| 开放端口数 | {len(result.ports)} |",
@@ -125,8 +121,8 @@ class ReportGenerator:
             "",
             "## 二、风险总览",
             "",
-            f"| 风险等级 | 数量 | 说明 |",
-            f"|----------|------|------|",
+            "| 风险等级 | 数量 | 说明 |",
+            "|----------|------|------|",
             f"| 🔴 严重 | {risk_summary['critical']} | 需立即处理：远程代码执行、数据泄露风险 |",
             f"| 🟠 高危 | {risk_summary['high']} | 建议 24 小时内处理：弱口令、高危端口开放 |",
             f"| 🟡 中危 | {risk_summary['medium']} | 建议本周内处理：配置问题、老旧组件 |",
@@ -175,8 +171,8 @@ class ReportGenerator:
                     lines.append("")
 
                 lines += [
-                    f"**修复建议**：",
-                    f"",
+                    "**修复建议**：",
+                    "",
                 ]
                 for step in f.remediation.split("\n"):
                     if step.strip():
@@ -216,7 +212,7 @@ class ReportGenerator:
             "",
             "---",
             "",
-            f"*本报告由 LightShield 轻盾 v0.1.0 自动生成。仅供自有资产安全自查使用。*",
+            "*本报告由 LightShield 轻盾 v0.1.0 自动生成。仅供自有资产安全自查使用。*",
         ]
 
         return "\n".join(lines)
@@ -224,8 +220,8 @@ class ReportGenerator:
     def _generate_text(
         self,
         result: ScanResult,
-        findings: Optional[list[VulnFinding]],
-        harden: Optional[list[dict]],
+        findings: list[VulnFinding] | None,
+        harden: list[dict] | None,
     ) -> str:
         """生成纯文本格式报告"""
         findings = findings or result.findings or []
@@ -323,7 +319,7 @@ class ReportGenerator:
                 f.write(report)
         except OSError as e:
             self._logger.error("report", f"报告保存失败：{filepath}", exception=e)
-            raise IOError(f"报告保存失败：{filepath}（{e}）") from e
+            raise OSError(f"报告保存失败：{filepath}（{e}）") from e
 
         self._logger.info("report", f"报告已保存：{filepath}")
         return filepath
@@ -350,7 +346,9 @@ class ReportGenerator:
 # =============================================================================
 
 if __name__ == "__main__":
-    import os, sys as _sys
+    import os
+    import sys as _sys
+
     _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     from lightshield.adapters.base import ScanResult

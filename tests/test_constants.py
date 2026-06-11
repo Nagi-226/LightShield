@@ -12,26 +12,26 @@
 import pytest
 
 from lightshield.utils.constants import (
-    RiskLevel,
-    ScanStatus,
-    ScanType,
+    ALLOWED_MSF_PREFIXES,
+    BLOCKED_MSF_PREFIXES,
+    DEFAULT_SCAN_TIMEOUT,
+    HIGH_RISK_PORTS,
+    MAX_CONCURRENT_SCANS,
+    MAX_TARGETS_PER_SESSION,
+    MIN_SCAN_INTERVAL,
+    WEAK_PASSWORD_PATTERNS,
     AdapterType,
     OSPlatform,
     OutputFormat,
-    ALLOWED_MSF_PREFIXES,
-    BLOCKED_MSF_PREFIXES,
-    HIGH_RISK_PORTS,
-    MAX_CONCURRENT_SCANS,
-    MIN_SCAN_INTERVAL,
-    MAX_TARGETS_PER_SESSION,
-    DEFAULT_SCAN_TIMEOUT,
-    WEAK_PASSWORD_PATTERNS,
+    RiskLevel,
+    ScanStatus,
+    ScanType,
 )
-
 
 # =============================================================================
 # RiskLevel 枚举
 # =============================================================================
+
 
 class TestRiskLevelEnum:
     """RiskLevel 枚举值存在性与正确性"""
@@ -66,17 +66,21 @@ class TestRiskLevelEnum:
 # ScanStatus 枚举
 # =============================================================================
 
+
 class TestScanStatusEnum:
     """ScanStatus 枚举值存在性（含 v0.0.04 新增的 PARTIAL / CANCELLED）"""
 
-    @pytest.mark.parametrize("name,value", [
-        ("PENDING", "pending"),
-        ("RUNNING", "running"),
-        ("COMPLETED", "completed"),
-        ("PARTIAL", "partial"),
-        ("FAILED", "failed"),
-        ("CANCELLED", "cancelled"),
-    ])
+    @pytest.mark.parametrize(
+        "name,value",
+        [
+            ("PENDING", "pending"),
+            ("RUNNING", "running"),
+            ("COMPLETED", "completed"),
+            ("PARTIAL", "partial"),
+            ("FAILED", "failed"),
+            ("CANCELLED", "cancelled"),
+        ],
+    )
     def test_scan_status_value(self, name, value):
         """ScanStatus.{name}.value == {value}"""
         member = getattr(ScanStatus, name)
@@ -92,16 +96,20 @@ class TestScanStatusEnum:
 # ScanType 枚举
 # =============================================================================
 
+
 class TestScanTypeEnum:
     """ScanType 枚举值存在性"""
 
-    @pytest.mark.parametrize("name,value", [
-        ("PORT_SCAN", "port_scan"),
-        ("SERVICE_DETECT", "service_detect"),
-        ("WEB_VULN", "web_vuln"),
-        ("WEAK_PASSWORD", "weak_password"),
-        ("COMPONENT_CHECK", "component_check"),
-    ])
+    @pytest.mark.parametrize(
+        "name,value",
+        [
+            ("PORT_SCAN", "port_scan"),
+            ("SERVICE_DETECT", "service_detect"),
+            ("WEB_VULN", "web_vuln"),
+            ("WEAK_PASSWORD", "weak_password"),
+            ("COMPONENT_CHECK", "component_check"),
+        ],
+    )
     def test_scan_type_value(self, name, value):
         """ScanType.{name}.value == {value}"""
         member = getattr(ScanType, name)
@@ -112,14 +120,18 @@ class TestScanTypeEnum:
 # AdapterType 枚举
 # =============================================================================
 
+
 class TestAdapterTypeEnum:
     """AdapterType 枚举值存在性"""
 
-    @pytest.mark.parametrize("name,value", [
-        ("NMAP", "nmap"),
-        ("SELF_SCRIPT", "self_script"),
-        ("MSF_SCANNER", "msf_scanner"),
-    ])
+    @pytest.mark.parametrize(
+        "name,value",
+        [
+            ("NMAP", "nmap"),
+            ("SELF_SCRIPT", "self_script"),
+            ("MSF_SCANNER", "msf_scanner"),
+        ],
+    )
     def test_adapter_type_value(self, name, value):
         """AdapterType.{name}.value == {value}"""
         member = getattr(AdapterType, name)
@@ -130,14 +142,18 @@ class TestAdapterTypeEnum:
 # OSPlatform 枚举
 # =============================================================================
 
+
 class TestOSPlatformEnum:
     """OSPlatform 枚举值存在性"""
 
-    @pytest.mark.parametrize("name,value", [
-        ("LINUX", "linux"),
-        ("WINDOWS", "windows"),
-        ("UNKNOWN", "unknown"),
-    ])
+    @pytest.mark.parametrize(
+        "name,value",
+        [
+            ("LINUX", "linux"),
+            ("WINDOWS", "windows"),
+            ("UNKNOWN", "unknown"),
+        ],
+    )
     def test_os_platform_value(self, name, value):
         """OSPlatform.{name}.value == {value}"""
         member = getattr(OSPlatform, name)
@@ -148,13 +164,17 @@ class TestOSPlatformEnum:
 # OutputFormat 枚举
 # =============================================================================
 
+
 class TestOutputFormatEnum:
     """OutputFormat 枚举值存在性"""
 
-    @pytest.mark.parametrize("name,value", [
-        ("MARKDOWN", "markdown"),
-        ("TEXT", "text"),
-    ])
+    @pytest.mark.parametrize(
+        "name,value",
+        [
+            ("MARKDOWN", "markdown"),
+            ("TEXT", "text"),
+        ],
+    )
     def test_output_format_value(self, name, value):
         """OutputFormat.{name}.value == {value}"""
         member = getattr(OutputFormat, name)
@@ -164,6 +184,7 @@ class TestOutputFormatEnum:
 # =============================================================================
 # MSF 白名单/黑名单不重叠（R5 合规）
 # =============================================================================
+
 
 class TestMsfWhitelistBlacklist:
     """MSF 白名单与黑名单必须完全无交集（双向检查）"""
@@ -180,43 +201,34 @@ class TestMsfWhitelistBlacklist:
         """黑名单条目不与任何白名单条目互为前缀（方向: blocked → allowed）"""
         for blocked in BLOCKED_MSF_PREFIXES:
             for allowed in ALLOWED_MSF_PREFIXES:
-                assert not blocked.startswith(allowed), (
-                    f"MSF 配置冲突：黑名单 [{blocked}] 以白名单 [{allowed}] 开头"
-                )
+                assert not blocked.startswith(allowed), f"MSF 配置冲突：黑名单 [{blocked}] 以白名单 [{allowed}] 开头"
 
     def test_no_allowed_starts_with_blocked(self):
         """白名单条目不与任何黑名单条目互为前缀（方向: allowed → blocked）"""
         for allowed in ALLOWED_MSF_PREFIXES:
             for blocked in BLOCKED_MSF_PREFIXES:
-                assert not allowed.startswith(blocked), (
-                    f"MSF 配置冲突：白名单 [{allowed}] 以黑名单 [{blocked}] 开头"
-                )
+                assert not allowed.startswith(blocked), f"MSF 配置冲突：白名单 [{allowed}] 以黑名单 [{blocked}] 开头"
 
     def test_exploit_not_in_whitelist(self):
         """'exploit/' 前缀不在白名单中（R5 合规）"""
         for allowed in ALLOWED_MSF_PREFIXES:
-            assert not allowed.startswith("exploit/"), (
-                f"exploit/ 路径出现在白名单中: {allowed}"
-            )
+            assert not allowed.startswith("exploit/"), f"exploit/ 路径出现在白名单中: {allowed}"
 
     def test_payload_not_in_whitelist(self):
         """'payload/' 前缀不在白名单中（R5 合规）"""
         for allowed in ALLOWED_MSF_PREFIXES:
-            assert not allowed.startswith("payload/"), (
-                f"payload/ 路径出现在白名单中: {allowed}"
-            )
+            assert not allowed.startswith("payload/"), f"payload/ 路径出现在白名单中: {allowed}"
 
     def test_all_whitelist_under_auxiliary_scanner(self):
         """所有白名单条目均在 auxiliary/scanner/ 下（R5 合规）"""
         for allowed in ALLOWED_MSF_PREFIXES:
-            assert allowed.startswith("auxiliary/scanner/"), (
-                f"白名单条目不在 auxiliary/scanner/ 下: {allowed}"
-            )
+            assert allowed.startswith("auxiliary/scanner/"), f"白名单条目不在 auxiliary/scanner/ 下: {allowed}"
 
 
 # =============================================================================
 # HIGH_RISK_PORTS 字典
 # =============================================================================
+
 
 class TestHighRiskPorts:
     """高危端口字典结构验证"""
@@ -246,6 +258,7 @@ class TestHighRiskPorts:
 # 合规约束常量
 # =============================================================================
 
+
 class TestComplianceConstants:
     """合规约束常量的精确值"""
 
@@ -273,6 +286,7 @@ class TestComplianceConstants:
 # =============================================================================
 # WEAK_PASSWORD_PATTERNS 列表
 # =============================================================================
+
 
 class TestWeakPasswordPatterns:
     """弱口令模式库验证"""

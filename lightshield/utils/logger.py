@@ -1,5 +1,4 @@
-"""
-LightShield 结构化日志系统
+"""LightShield 结构化日志系统
 
 支持：
   - 控制台 + 文件双输出
@@ -20,12 +19,11 @@ import re
 import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from typing import Optional
-
 
 # =============================================================================
 # 日志格式化
 # =============================================================================
+
 
 class LightShieldFormatter(logging.Formatter):
     """自定义日志格式：[时间] [级别] [模块] 消息"""
@@ -39,6 +37,7 @@ class LightShieldFormatter(logging.Formatter):
 
 class AuditFormatter(logging.Formatter):
     """审计日志专用格式，包含更多上下文"""
+
     def __init__(self):
         super().__init__(
             fmt="%(asctime)s [AUDIT] [%(name)s] %(message)s",
@@ -50,19 +49,20 @@ class AuditFormatter(logging.Formatter):
 # 敏感信息过滤器
 # =============================================================================
 
+
 class SensitiveDataFilter(logging.Filter):
     """过滤日志中的敏感信息（密码、Token、密钥等）"""
 
     _SENSITIVE_PATTERNS = [
-        (re.compile(r'password\s*[=:]\s*\S+', re.IGNORECASE), 'password=***REDACTED***'),
-        (re.compile(r'token\s*[=:]\s*\S+', re.IGNORECASE), 'token=***REDACTED***'),
-        (re.compile(r'secret\s*[=:]\s*\S+', re.IGNORECASE), 'secret=***REDACTED***'),
-        (re.compile(r'api_key\s*[=:]\s*\S+', re.IGNORECASE), 'api_key=***REDACTED***'),
-        (re.compile(r'key\s*[=:]\s*[\w-]{20,}', re.IGNORECASE), 'key=***REDACTED***'),
+        (re.compile(r"password\s*[=:]\s*\S+", re.IGNORECASE), "password=***REDACTED***"),
+        (re.compile(r"token\s*[=:]\s*\S+", re.IGNORECASE), "token=***REDACTED***"),
+        (re.compile(r"secret\s*[=:]\s*\S+", re.IGNORECASE), "secret=***REDACTED***"),
+        (re.compile(r"api_key\s*[=:]\s*\S+", re.IGNORECASE), "api_key=***REDACTED***"),
+        (re.compile(r"key\s*[=:]\s*[\w-]{20,}", re.IGNORECASE), "key=***REDACTED***"),
     ]
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if hasattr(record, 'msg') and isinstance(record.msg, str):
+        if hasattr(record, "msg") and isinstance(record.msg, str):
             for pattern, replacement in self._SENSITIVE_PATTERNS:
                 record.msg = pattern.sub(replacement, record.msg)
         return True
@@ -71,6 +71,7 @@ class SensitiveDataFilter(logging.Filter):
 # =============================================================================
 # 日志管理器
 # =============================================================================
+
 
 class LightShieldLogger:
     """LightShield 结构化日志系统
@@ -84,10 +85,11 @@ class LightShieldLogger:
     """
 
     def __init__(self, log_dir: str = "./logs", level: str = "INFO"):
-        """
+        """初始化日志管理器。
+
         Args:
-            log_dir: 日志文件目录
-            level: 日志级别（DEBUG / INFO / WARNING / ERROR）
+        log_dir: 日志文件目录
+        level: 日志级别（DEBUG / INFO / WARNING / ERROR）
         """
         self._log_dir = log_dir
         self._lock = threading.Lock()
@@ -151,7 +153,7 @@ class LightShieldLogger:
         """警告日志"""
         self._app_logger.warning(f"[{module}] {message}", extra=extra)
 
-    def error(self, module: str, message: str, exception: Optional[Exception] = None, **extra) -> None:
+    def error(self, module: str, message: str, exception: Exception | None = None, **extra) -> None:
         """错误日志
 
         Args:
@@ -179,6 +181,7 @@ class LightShieldLogger:
             唯一 scan_id 用于关联后续日志
         """
         import uuid
+
         scan_id = f"LS-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
         self._audit_logger.info(f"scan_start | id={scan_id} | target={target} | type={scan_type}")
         self.info("audit", f"扫描开始 scan_id={scan_id} target={target} type={scan_type}")
@@ -210,7 +213,9 @@ class LightShieldLogger:
             duration: 耗时
         """
         status = "success" if success else "failed"
-        self._audit_logger.info(f"msf_call | module={module_path} | target={target} | status={status} | duration={duration}s")
+        self._audit_logger.info(
+            f"msf_call | module={module_path} | target={target} | status={status} | duration={duration}s"
+        )
         self.info("audit", f"MSF调用 module={module_path} target={target} status={status} duration={duration}s")
 
     def audit_config_change(self, key: str, old_value: str, new_value: str) -> None:
@@ -231,7 +236,7 @@ class LightShieldLogger:
         log_file = os.path.join(self._log_dir, f"lightshield-{today}.log")
         if not os.path.exists(log_file):
             return []
-        with open(log_file, "r", encoding="utf-8") as f:
+        with open(log_file, encoding="utf-8") as f:
             lines = f.readlines()
         return [line.rstrip() for line in lines[-count:]]
 
@@ -240,7 +245,7 @@ class LightShieldLogger:
 # 单例
 # =============================================================================
 
-_logger_instance: Optional[LightShieldLogger] = None
+_logger_instance: LightShieldLogger | None = None
 _logger_lock = threading.Lock()
 
 
@@ -272,7 +277,6 @@ if __name__ == "__main__":
     import tempfile
 
     # 用临时目录测试，避免污染项目 logs/
-    import tempfile
     tmpdir = tempfile.mkdtemp(prefix="lightshield_test_")
     try:
         logger = LightShieldLogger(log_dir=tmpdir, level="DEBUG")
@@ -303,11 +307,12 @@ if __name__ == "__main__":
             handler.close()
             logger._audit_logger.removeHandler(handler)
 
-        print(f"[OK] Logger self-check done")
+        print("[OK] Logger self-check done")
         print(f"   log dir: {tmpdir}")
         print(f"   recent {len(recent)} lines")
         for line in recent[:2]:
             print(f"   {line[:100]}...")
     finally:
         import shutil
+
         shutil.rmtree(tmpdir, ignore_errors=True)

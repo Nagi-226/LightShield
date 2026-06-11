@@ -1,0 +1,41 @@
+# =============================================================================
+# LightShield v0.0.19 E2E — 扫描器容器
+# =============================================================================
+# 安装 Nmap + Python 3.12 + LightShield，挂载项目代码。
+# 对靶机容器执行 scan → harden → rescan 全链路测试。
+# =============================================================================
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ---- 安装运行时依赖 ----
+RUN apt update && apt install -y --no-install-recommends \
+    python3.12 \
+    python3.12-venv \
+    python3-pip \
+    nmap \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建符号链接（Ubuntu 22.04 的 python3 可能指向 3.10）
+RUN ln -sf /usr/bin/python3.12 /usr/local/bin/python3 && \
+    ln -sf /usr/bin/python3.12 /usr/local/bin/python
+
+# ---- 工作目录 ----
+WORKDIR /app
+
+# ---- 安装 Python 依赖 ----
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir pytest
+
+# ---- 复制项目代码（由 bind mount 提供，此处仅用于构建缓存） ----
+# 实际运行时通过 docker-compose volumes 挂载
+
+# ---- E2E 测试入口 ----
+COPY docker/run-e2e.sh /run-e2e.sh
+RUN chmod +x /run-e2e.sh
+
+CMD ["/run-e2e.sh"]

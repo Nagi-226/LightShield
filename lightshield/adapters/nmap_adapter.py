@@ -1,5 +1,4 @@
-"""
-LightShield Nmap 适配器
+"""LightShield Nmap 适配器
 
 封装 Nmap 端口扫描、服务识别、OS 探测能力。
 通过 python-nmap 库调用，输出标准化的 ScanResult。
@@ -12,12 +11,11 @@ LightShield Nmap 适配器
 
 import subprocess
 import xml.etree.ElementTree as ET
-from typing import Optional
 
 from lightshield.adapters.base import BaseAdapter, ScanResult, VulnFinding
-from lightshield.utils.constants import ScanStatus, RiskLevel, HIGH_RISK_PORTS
-from lightshield.utils.validator import TargetValidator
+from lightshield.utils.constants import HIGH_RISK_PORTS, RiskLevel, ScanStatus
 from lightshield.utils.logger import get_logger
+from lightshield.utils.validator import TargetValidator
 
 
 class NmapAdapter(BaseAdapter):
@@ -33,10 +31,11 @@ class NmapAdapter(BaseAdapter):
     """
 
     def __init__(self, nmap_path: str = "nmap", nmap_args: str = "-sV -O --top-ports 1000"):
-        """
+        """初始化 Nmap 适配器。
+
         Args:
-            nmap_path: Nmap 可执行文件路径
-            nmap_args: Nmap 默认参数
+        nmap_path: Nmap 可执行文件路径
+        nmap_args: Nmap 默认参数
         """
         super().__init__(name="NmapAdapter")
         self._nmap_path = nmap_path
@@ -133,15 +132,14 @@ class NmapAdapter(BaseAdapter):
 
         # 5. 解析 XML 输出
         try:
-            if result.returncode != 0:
-                # Nmap 可能返回非 0 但仍产生有效输出
-                if not result.stdout.strip():
-                    return ScanResult(
-                        status=ScanStatus.FAILED,
-                        target=target,
-                        error=f"Nmap 返回码 {result.returncode}: {result.stderr[:200]}",
-                        raw_output=result.stderr,
-                    )
+            # Nmap 可能返回非 0 但仍产生有效输出
+            if result.returncode != 0 and not result.stdout.strip():
+                return ScanResult(
+                    status=ScanStatus.FAILED,
+                    target=target,
+                    error=f"Nmap 返回码 {result.returncode}: {result.stderr[:200]}",
+                    raw_output=result.stderr,
+                )
 
             scan_result = self._parse_nmap_xml(result.stdout, target)
             scan_result.raw_output = result.stdout
@@ -181,7 +179,7 @@ class NmapAdapter(BaseAdapter):
         Returns:
             ScanResult
         """
-        root = ET.fromstring(xml_output)
+        root = ET.fromstring(xml_output)  # nosec B314 — Nmap 本地 XML 输出（可信本地工具），非外部不可信 XML
 
         ports = []
         services = []
@@ -212,25 +210,25 @@ class NmapAdapter(BaseAdapter):
                 service_version = ""
                 if service_elem is not None:
                     service_name = service_elem.get("name", "")
-                    service_version = (
-                        service_elem.get("product", "") +
-                        " " +
-                        service_elem.get("version", "")
-                    ).strip()
+                    service_version = (service_elem.get("product", "") + " " + service_elem.get("version", "")).strip()
 
-                ports.append({
-                    "port": port_id,
-                    "protocol": protocol,
-                    "state": state,
-                    "service": service_name,
-                })
+                ports.append(
+                    {
+                        "port": port_id,
+                        "protocol": protocol,
+                        "state": state,
+                        "service": service_name,
+                    }
+                )
 
                 if service_name:
-                    services.append({
-                        "name": service_name,
-                        "version": service_version,
-                        "port": port_id,
-                    })
+                    services.append(
+                        {
+                            "name": service_name,
+                            "version": service_version,
+                            "port": port_id,
+                        }
+                    )
 
         return ScanResult(
             status=ScanStatus.COMPLETED,
@@ -289,8 +287,8 @@ if __name__ == "__main__":
     print(f"能力: {adapter.capabilities()}")
 
     # 1. 目标校验
-    assert adapter.validate_target("127.0.0.1") == True
-    assert adapter.validate_target("192.168.1.0/24") == False
+    assert adapter.validate_target("127.0.0.1")
+    assert not adapter.validate_target("192.168.1.0/24")
     print("  目标校验通过")
 
     # 2. XML 解析（用模拟数据）

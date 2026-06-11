@@ -15,13 +15,12 @@
 """
 
 import os
-from unittest.mock import patch
 
 import pytest
 
-from lightshield.rules.engine import RuleEngine
 from lightshield.adapters.base import ScanResult, VulnFinding
-from lightshield.utils.constants import ScanStatus, RiskLevel
+from lightshield.rules.engine import RuleEngine
+from lightshield.utils.constants import RiskLevel, ScanStatus
 
 
 @pytest.fixture
@@ -66,20 +65,17 @@ def sample_scan_result():
 # load_rules — 规则计数
 # =============================================================================
 
+
 class TestLoadRules:
     """load_rules() 规则加载"""
 
     def test_vuln_rule_count_is_14(self, engine):
         """加载后 vuln_rule_count == 14"""
-        assert engine.vuln_rule_count == 14, (
-            f"期望 14 条漏洞规则，实际 {engine.vuln_rule_count}"
-        )
+        assert engine.vuln_rule_count == 14, f"期望 14 条漏洞规则，实际 {engine.vuln_rule_count}"
 
     def test_harden_rule_count_is_6(self, engine):
         """加载后 harden_rule_count == 6"""
-        assert engine.harden_rule_count == 6, (
-            f"期望 6 条加固规则，实际 {engine.harden_rule_count}"
-        )
+        assert engine.harden_rule_count == 6, f"期望 6 条加固规则，实际 {engine.harden_rule_count}"
 
     def test_counts_are_positive_integers(self, engine):
         """两个计数均为正整数"""
@@ -93,6 +89,7 @@ class TestLoadRules:
 # match — 四类匹配
 # =============================================================================
 
+
 class TestMatch:
     """match() 规则匹配"""
 
@@ -105,10 +102,7 @@ class TestMatch:
     def test_service_version_match(self, engine, sample_scan_result):
         """服务版本匹配（ssh 7.6 < 8.9）"""
         findings = engine.match(sample_scan_result)
-        svc_findings = [
-            f for f in findings
-            if f.vuln_type == "vulnerable_component"
-        ]
+        svc_findings = [f for f in findings if f.vuln_type == "vulnerable_component"]
         assert len(svc_findings) >= 1, "应至少命中一条 service_version 规则"
 
     def test_service_fingerprint_match(self, engine, sample_scan_result):
@@ -139,6 +133,7 @@ class TestMatch:
 # match 容错 — v0.0.15
 # =============================================================================
 
+
 class TestMatchFaultTolerance:
     """v0.0.15 修复：单条规则异常不中断整轮匹配"""
 
@@ -160,15 +155,13 @@ class TestMatchFaultTolerance:
             assert len(findings) >= 1
         finally:
             # 清理注入的规则
-            engine._vuln_rules = [
-                r for r in engine._vuln_rules
-                if r.get("rule_id") != "BROKEN-001"
-            ]
+            engine._vuln_rules = [r for r in engine._vuln_rules if r.get("rule_id") != "BROKEN-001"]
 
 
 # =============================================================================
 # recommend_hardening
 # =============================================================================
+
 
 class TestRecommendHardening:
     """recommend_hardening() 加固推荐"""
@@ -221,13 +214,14 @@ class TestRecommendHardening:
             order_a = severity_order.get(recs[i]["severity"], 99)
             order_b = severity_order.get(recs[i + 1]["severity"], 99)
             assert order_a <= order_b, (
-                f"排序错误: {recs[i]['severity']} ({order_a}) 应在 {recs[i+1]['severity']} ({order_b}) 之前"
+                f"排序错误: {recs[i]['severity']} ({order_a}) 应在 {recs[i + 1]['severity']} ({order_b}) 之前"
             )
 
 
 # =============================================================================
 # summarize_risks
 # =============================================================================
+
 
 class TestSummarizeRisks:
     """summarize_risks() 风险统计"""
@@ -267,6 +261,7 @@ class TestSummarizeRisks:
 # _deduplicate
 # =============================================================================
 
+
 class TestDeduplicate:
     """_deduplicate() 去重"""
 
@@ -297,21 +292,22 @@ class TestDeduplicate:
 # _parse_semver
 # =============================================================================
 
+
 class TestParseSemver:
     """_parse_semver() 语义版本解析"""
 
     def test_standard_version(self):
-        """"1.2.3" → (1, 2, 3)"""
+        """ "1.2.3" → (1, 2, 3)"""
         result = RuleEngine._parse_semver("1.2.3")
         assert result == (1, 2, 3)
 
     def test_two_part_version(self):
-        """"8.0" → (8, 0, 0)"""
+        """ "8.0" → (8, 0, 0)"""
         result = RuleEngine._parse_semver("8.0")
         assert result == (8, 0, 0)
 
     def test_openssh_format(self):
-        """"8.9p1" → (8, 9, 1) 降级处理"""
+        """ "8.9p1" → (8, 9, 1) 降级处理"""
         result = RuleEngine._parse_semver("8.9p1")
         assert result[:2] == (8, 9)
         assert len(result) == 3
@@ -331,6 +327,7 @@ class TestParseSemver:
 # =============================================================================
 # import_rules
 # =============================================================================
+
 
 class TestImportRules:
     """import_rules() 外部规则导入"""
@@ -357,9 +354,7 @@ class TestImportRules:
         assert engine.vuln_rule_count == original_count + 1
 
         # 清理
-        engine._vuln_rules = [
-            r for r in engine._vuln_rules if r.get("rule_id") != new_id
-        ]
+        engine._vuln_rules = [r for r in engine._vuln_rules if r.get("rule_id") != new_id]
 
     def test_import_harden_rules(self, engine):
         """import_rules(harden) 不覆盖已有加固规则"""
@@ -376,6 +371,7 @@ class TestImportRules:
 # _load_json — v0.0.15 不抛异常
 # =============================================================================
 
+
 class TestLoadJson:
     """_load_json() 文件加载 — v0.0.15 修复"""
 
@@ -387,11 +383,11 @@ class TestLoadJson:
 
     def test_dictionary_format_extracts_rules_key(self, engine):
         """{"rules": [...]} 格式正确提取"""
-        import json, tempfile
+        import json
+        import tempfile
+
         data = {"rules": [{"rule_id": "T1"}, {"rule_id": "T2"}]}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump(data, f)
             path = f.name
 
@@ -404,11 +400,11 @@ class TestLoadJson:
 
     def test_array_format_directly(self, engine):
         """直接 [...] 格式"""
-        import json, tempfile
+        import json
+        import tempfile
+
         data = [{"a": 1}, {"b": 2}]
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
             json.dump(data, f)
             path = f.name
 

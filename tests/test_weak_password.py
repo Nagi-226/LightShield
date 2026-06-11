@@ -12,14 +12,12 @@
   - scan() 返回 COMPLETED，findings 含弱口令发现
 """
 
-import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from lightshield.scanners.weak_password import WeakPasswordAdapter
-from lightshield.adapters.base import VulnFinding
-from lightshield.utils.constants import ScanStatus, RiskLevel
+from lightshield.utils.constants import ScanStatus
 
 
 @pytest.fixture
@@ -31,6 +29,7 @@ def adapter():
 # =============================================================================
 # capabilities
 # =============================================================================
+
 
 class TestCapabilities:
     """capabilities() 返回正确的能力列表"""
@@ -45,6 +44,7 @@ class TestCapabilities:
 # MAX_PASSWORD_ATTEMPTS 常量
 # =============================================================================
 
+
 class TestMaxAttempts:
     """MAX_PASSWORD_ATTEMPTS 合规常量"""
 
@@ -56,6 +56,7 @@ class TestMaxAttempts:
 # =============================================================================
 # _match_service_type
 # =============================================================================
+
 
 class TestMatchServiceType:
     """_match_service_type 端口→服务类型映射"""
@@ -98,6 +99,7 @@ class TestMatchServiceType:
 # _discover_services
 # =============================================================================
 
+
 class TestDiscoverServices:
     """_discover_services 从 kwargs 解析服务"""
 
@@ -114,7 +116,7 @@ class TestDiscoverServices:
         assert len(discovered) == 3
 
     def test_closed_ports_ignored(self, adapter):
-        """closed 状态的端口被忽略"""
+        """Closed 状态的端口被忽略"""
         ports_info = [
             {"port": 22, "protocol": "tcp", "state": "open", "service": "ssh"},
             {"port": 443, "protocol": "tcp", "state": "closed", "service": "https"},
@@ -138,11 +140,12 @@ class TestDiscoverServices:
 # _is_port_open
 # =============================================================================
 
+
 class TestIsPortOpen:
     """_is_port_open() 端口可达性探测（mock socket）"""
 
     def test_open_port_returns_true(self, adapter):
-        """mock socket 连接成功返回 True"""
+        """Mock socket 连接成功返回 True"""
         with patch("socket.create_connection", return_value=MagicMock()) as mock_sock:
             assert adapter._is_port_open("127.0.0.1", 22) is True
             mock_sock.assert_called_once()
@@ -159,7 +162,7 @@ class TestIsPortOpen:
         """连接超时返回 False"""
         with patch(
             "socket.create_connection",
-            side_effect=socket.timeout(),
+            side_effect=TimeoutError(),
         ):
             assert adapter._is_port_open("192.168.1.1", 80) is False
 
@@ -176,6 +179,7 @@ class TestIsPortOpen:
 # reset_attempts
 # =============================================================================
 
+
 class TestResetAttempts:
     """reset_attempts() 计数器清零"""
 
@@ -189,6 +193,7 @@ class TestResetAttempts:
 # =============================================================================
 # scan
 # =============================================================================
+
 
 class TestScan:
     """scan() 方法完整流程验证"""

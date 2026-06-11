@@ -40,7 +40,7 @@ class TargetValidator:
     def validate(target: str) -> tuple[bool, str]:
         """
         综合校验入口——所有对外操作的前置关口
-        
+
         校验规则：
         1. 拒绝空字符串
         2. 拒绝 CIDR 网段 (192.168.1.0/24)
@@ -48,7 +48,7 @@ class TargetValidator:
         4. 拒绝通配符域名 (*.example.com)
         5. 拒绝 URL 格式 (http://xxx)
         6. 仅接受：单 IPv4、单 IPv6、单域名、localhost
-        
+
         合法: "192.168.1.1", "example.com", "localhost", "::1"
         非法: "192.168.1.0/24", "*.example.com", "http://example.com"
         """

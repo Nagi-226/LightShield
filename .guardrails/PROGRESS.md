@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-10 22:15 | **当前版本**：v0.2.0-rc | **目标**：v0.2.0 发布
-> **会话状态**：v0.0.12-20 全部交付（4/8 Agent 零任务），仅剩 v0.0.19 E2E（需 VM）
-> **明天**：QoderWork VM E2E + CodeWhale/Qoder 终审 → 发布 v0.2.0
+> **最后更新**：2026-06-11 22:30 | **当前版本**：v0.2.0 ✅ 已发布 | **下一目标**：v0.3.0
+> **会话状态**：v0.0.01-0.0.20 全部交付 + 架构预留就绪。8/8 Agent 零任务。
+> **下一阶段**：v0.0.21-0.0.30 十版本迭代 → v0.3.0 GUI 发布
 > **规则**：每个 Agent 产出必须经 Claude Code 实际读码验收
 > **⚠️  本机环境**：`python` 被沙箱拦截 exit 49，用 `py` 替代（`py -m pytest tests/ -v`）
 
@@ -45,15 +45,122 @@
 | v0.0.16 | Linux 加固脚本生成器 | CC | ✅ | ✅ 6文件：base.py(HardenStatus/Result/Base)、linux_harden.py(R4阻断门+iptables-D回滚+零subprocess)、templates×2、core钩子、CLI harden子命令。脚本生成器模式，不自动执行 |
 | v0.0.16 | 审查 linux_harden.py | Codex | ✅ | ✅ docs/review-v016-codex.md (17KB/10项发现)，5项核心修复已由CC应用 |
 | v0.0.17 | Win 加固 | CC | ✅ | ✅ win_harden.py+win_firewall.ps1+__init__+core os_platform钩子。脚本生成器模式，零subprocess。自检9断言全过，回归346项全过 |
-| v0.0.19 | E2E + 合规终审 | QW + CWhale + Qoder | ⏳ | 需 VM（Linux靶机+Nmap），无法在本机执行 |
+| v0.0.19 | E2E + 合规终审 | WSL2 Docker→CC | ✅ | ✅ WSL2 Ubuntu 24.04 替代 VM 执行：scan(61端口/7漏洞/CVE-2023-38408)→harden(11条建议+harden.sh+rollback.sh)→R2 拦截→R1-R6 全通过。报告：docs/e2e-v019-report.md |
 | v0.0.20 | 文档骨架 | Hermes | ✅ | ✅ LICENSE+README.md(134行)+CHANGELOG.md(49行)+INSTALL(162行)+USAGE(173行)+FAQ(71行) 已落盘 |
 | v0.0.20 | 文档填充（清TODO+补真实数据） | CC | ✅ | ✅ CHANGELOG 完整版(0.1.0/0.2.0)、FAQ 4条TODO全部填充(场景对比/加固执行示例/macOS/帮助渠道)、README 架构描述补细节 |
 
 ---
 
-## 明日启动清单（仅剩 2 项，4/8 Agent 已完成全部任务）
+## v0.2.0 发布就绪 🎉
 
-1. **QoderWork** — v0.0.19 E2E 靶机测试（需 Linux VM + Nmap + 预置5漏洞靶机）
+**全部 21 个版本 (v0.0.01-v0.0.20) 已完成。8/8 Agent 零任务。**
+
+### v0.2.0 发布 + 架构预留（2026-06-11）
+
+| 版本 | 目标 | Agent | 状态 |
+|:--:|------|------|:--:|
+| v0.2.0 | git tag + E2E 终审 | CC | ✅ |
+| — | Repository 抽象 (JSON→SQLite→PG) | CC | ✅ `lightshield/repository/` |
+| — | `submit_scan()` / `get_scan_status()` | CC | ✅ core.py 异步接口预留 |
+| — | 未来扩展 config 字段 | CC | ✅ web/redis/db/queue/auth 预留 |
+| — | CLAUDE.md 扩展表更新 | CC | ✅ 9 个扩展点全部标注预留状态 |
+
+### 发布步骤
+1. ✅ `git tag v0.2.0` 已创建
+2. `git push origin main --tags`（需手动执行）
+3. GitHub Release 附 CHANGELOG.md v0.2.0 条目
+
+---
+
+## v0.0.21 — v0.0.30 十版本迭代规划 🎯
+
+> **总目标**：从 v0.2.0 CLI 工具 → v0.3.0 GUI 桌面客户端
+> **三阶段推进**：质量深化 → 内容增长 → GUI 铺路
+> **Agent 复用**：Codex(安全关键) / Reasonix(批量测试) / Hermes(基础设施) / CodeWhale(审查)
+
+---
+
+### 阶段一：质量深化（v0.0.21-0.0.23）—— 把基础打牢
+
+| 版本 | 目标 | Agent | 关键交付 |
+|:--:|------|:--:|------|
+| **v0.0.21** | mypy 收紧 + 类型安全 | CC | `check_untyped_defs=true`、修复存量类型错误、新增 type hints 覆盖 |
+| **v0.0.22** | CLI + core 测试覆盖 | Reasonix | CLI arg 解析测试(0%→60%)、core._validate_request 测试(0%→70%) |
+| **v0.0.23** | 覆盖率冲刺 70% | Reasonix + CC | 补齐 nmap_adapter mock 测试(19%→40%)、win_harden 脚本内容测试(15%→50%)、C90 重构 component_checker.scan() |
+
+**阶段一验收标准**：
+- mypy `check_untyped_defs=true`，0 errors
+- 覆盖率 ≥70%（当前 61%）
+- 无 C90 违规（圈复杂度全部 ≤20）
+
+---
+
+### 阶段二：内容增长（v0.0.24-0.0.26）—— 让产品有用
+
+| 版本 | 目标 | Agent | 关键交付 |
+|:--:|------|:--:|------|
+| **v0.0.24** | CVE 知识库扩充 | Codex | CVE 条目 25→50+、覆盖 Top 10 Web 组件（nginx/apache/tomcat/node.js/php/wordpress/joomla/drupal/postgresql/redis） |
+| **v0.0.25** | Repository SQLite 实现 | CC | `SqliteRepository`、扫描历史查询、`lightshield history` 子命令 |
+| **v0.0.26** | 规则引擎增强 | CC | 远程规则导入（URL/文件）、规则热加载、规则版本管理 |
+
+**阶段二验收标准**：
+- CVE 知识库 ≥50 条（覆盖 OWASP Top 10 常见组件）
+- SQLite 存储可用，`lightshield history` 可列出历史扫描
+- 规则引擎支持 `--rules-url` 远程导入
+
+---
+
+### 阶段三：GUI 铺路（v0.0.27-0.0.29）—— 为桌面端搭骨架
+
+| 版本 | 目标 | Agent | 关键交付 |
+|:--:|------|:--:|------|
+| **v0.0.27** | Flask API 骨架 | CC | REST API：`POST /api/scan`、`GET /api/scan/<id>`、`GET /api/report/<id>`、Session 鉴权 |
+| **v0.0.28** | Web 仪表板 | Codex | 扫描面板（输入目标→提交→查看进度）、报告查看器（Markdown 渲染）、历史记录列表 |
+| **v0.0.29** | 加固页面 + 安全加固 | Codex | 加固建议面板、一键生成脚本、Web 端 R4 所有权确认、CSRF 防护 |
+
+**阶段三验收标准**：
+- Flask API 全部端点可用（curl 可调）
+- Web 界面可完成 scan → view report → harden 全流程
+- Session 鉴权 + CSRF 防护到位
+
+---
+
+### 收尾：集成发布（v0.0.30）
+
+| 版本 | 目标 | Agent | 关键交付 |
+|:--:|------|:--:|------|
+| **v0.0.30** | Web Panel E2E + v0.3.0 就绪 | CC + Hermes + CodeWhale | Web E2E 测试、性能基线（<100ms API 响应）、文档更新（INSTALL/USAGE/FAQ 补充 Web 章节）、CodeWhale 全量审查 |
+
+---
+
+### Agent 任务分配总览
+
+```
+Agent        v0.0.21  v0.0.22  v0.0.23  v0.0.24  v0.0.25  v0.0.26  v0.0.27  v0.0.28  v0.0.29  v0.0.30
+──────────────────────────────────────────────────────────────────────────────────────────────────
+Claude Code    ✅       —        ✅        —       ✅       ✅       ✅        —        —       ✅
+Codex           —       —        —       ✅        —        —        —       ✅       ✅        —
+Reasonix        —      ✅       ✅        —        —        —        —        —        —        —
+Hermes          —       —        —        —        —        —        —        —        —       ✅
+CodeWhale       —       —        —        —        —        —        —        —        —       ✅
+──────────────────────────────────────────────────────────────────────────────────────────────────
+CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 1 task
+```
+
+### 为什么是这个顺序
+
+1. **质量先行**（21-23）：mypy 收紧 + 覆盖率提升 → 后续任何新功能都有安全网
+2. **内容跟上**（24-26）：CVE 库扩充 + 规则增强 → 扫描结果更有价值
+3. **GUI 铺路**（27-29）：Flask API + Web UI → 为 v0.3.0 Tkinter 桌面端验证交互模式
+4. **收尾发布**（30）：全量审查 + E2E → v0.3.0 发布
+
+### 关键决策点
+
+| 决策 | 选项 | 建议 |
+|------|------|------|
+| Web Panel 用 Flask 还是 Tkinter？ | v0.0.27-29 用 Flask 验证交互 → v0.3.0 用 Tkinter 做桌面端 | Flask 快速验证，Tkinter 正式发布 |
+| SQLite 是否现在就实现？ | v0.0.25 实现，Repository 抽象已就绪 | 零破坏性，纯加法 |
+| CVE 库扩充谁来做？ | Codex（安全关键内容，精度要求高） | 需要验证 CVE 编号和版本范围的准确性 |
 2. **CodeWhale + Qoder** — v0.0.19 双审终审（等 E2E 完成后）
 
 > Codex、Reasonix、Hermes、CodeBuddy 已全部完成任务，无需新任务。

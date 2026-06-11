@@ -1,0 +1,65 @@
+# =============================================================================
+# LightShield v0.0.19 E2E — Docker Compose 双容器编排
+# =============================================================================
+# 网络: lightshield-e2e (isolated bridge)
+# 靶机: target 容器（5 个漏洞服务）
+# 扫描器: scanner 容器（LightShield + Nmap）
+#
+# 执行: docker compose up --build --abort-on-container-exit
+# 清理: docker compose down -v
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # 靶机 — 预置漏洞的测试目标
+  # ===========================================================================
+  target:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.target
+    container_name: lightshield-target
+    hostname: target
+    networks:
+      - e2e-net
+    healthcheck:
+      test: ["CMD", "bash", "-c", "ss -tlnp | grep -q ':22 '"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 15s
+    cap_add:
+      - NET_ADMIN  # 允许 iptables（加固脚本需要）
+
+  # ===========================================================================
+  # 扫描器 — LightShield + Nmap
+  # ===========================================================================
+  scanner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.scanner
+    container_name: lightshield-scanner
+    hostname: scanner
+    networks:
+      - e2e-net
+    volumes:
+      # 挂载项目代码（实时同步，无需重建镜像）
+      - .:/app
+      # 报告输出目录
+      - ./reports:/app/reports
+    depends_on:
+      target:
+        condition: service_healthy
+    environment:
+      - LS_TARGET=target
+      - LS_REPORT_OUTPUT_DIR=/app/reports
+      - LS_LOG_DIR=/app/logs
+      - LS_SCAN_TIMEOUT=30
+      - PYTHONUNBUFFERED=1
+
+# =============================================================================
+# 网络
+# =============================================================================
+networks:
+  e2e-net:
+    name: lightshield-e2e
+    driver: bridge

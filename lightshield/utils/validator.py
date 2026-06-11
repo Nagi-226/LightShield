@@ -24,9 +24,7 @@ class TargetValidator:
     _DOMAIN_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
     _URL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
     _IP_RANGE_FULL_RE = re.compile(r"^\s*(?P<start>[^-\s]+)\s*-\s*(?P<end>[^-\s]+)\s*$")
-    _IP_RANGE_SHORT_RE = re.compile(
-        r"^\s*(?P<prefix>(?:\d{1,3}\.){3})(?P<start>\d{1,3})\s*-\s*(?P<end>\d{1,3})\s*$"
-    )
+    _IP_RANGE_SHORT_RE = re.compile(r"^\s*(?P<prefix>(?:\d{1,3}\.){3})(?P<start>\d{1,3})\s*-\s*(?P<end>\d{1,3})\s*$")
 
     @staticmethod
     def _normalize(target: object) -> str:
@@ -171,9 +169,7 @@ class TargetValidator:
             return True
 
         # IPv6 合法地址包含冒号，不能按端口格式误拦截。
-        if ":" in value and not TargetValidator.is_valid_ip(value):
-            return True
-        return False
+        return bool(":" in value and not TargetValidator.is_valid_ip(value))
 
     @staticmethod
     def _is_ip_range(target: str) -> bool:

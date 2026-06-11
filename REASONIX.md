@@ -103,7 +103,7 @@ graphify query "logger.py 的依赖" --graph graphify-out/graph.json
 
 > **当前阶段**：v0.2.0 开发中 | **你的角色**：批量测试生成，利用 DeepSeek-V4 高缓存命中率 + 低成本优势
 > **策略**：三批依次下发，每批验收后再微调下一批 prompt
-> **状态**：Batch 1 ✅ 已交付（121项，0.46s 全过） | Batch 2 ⏳ 待启动 | Batch 3 ⏳ 待启动
+> **状态**：Batch 1 ✅ (121项) | Batch 2 ✅ (96项) | Batch 3 ✅ (129项) | 全部 346 项通过，0 失败
 
 ### Batch 1 — v0.0.12：utils 层测试 ✅（3 文件，已交付）
 
@@ -117,7 +117,7 @@ graphify query "logger.py 的依赖" --graph graphify-out/graph.json
 
 ---
 
-### Batch 2 — v0.0.13：adapters + scanners 核心测试（3 文件）
+### Batch 2 — v0.0.13：adapters + scanners 核心测试 ✅（3 文件，已交付）
 
 | # | 测试文件 | 被测模块 | 关键测试点 |
 |---|---------|---------|---------|
@@ -129,7 +129,7 @@ graphify query "logger.py 的依赖" --graph graphify-out/graph.json
 
 ---
 
-### Batch 3 — v0.0.14：scanners + rules + report 测试（5 文件）
+### Batch 3 — v0.0.14：scanners + rules + report 测试 ✅（5 文件，已交付）
 
 | # | 测试文件 | 被测模块 | 关键测试点 |
 |---|---------|---------|---------|

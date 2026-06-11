@@ -4,9 +4,14 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-10 22:15 — v0.0.12-20 全部交付（346项通过），4/8 Agent 零任务，明日仅 v0.0.19 E2E（需VM）+ 发布 v0.2.0。
-> **进度追踪**：`.guardrails/PROGRESS.md` — 每次 Agent 完成后更新
-> **明日启动**：Reasonix 测试批量生成 > CC v0.0.15-16 > E2E 终审
+> **上次会话**：2026-06-11 22:45 — v0.2.0 发布 + v0.0.21-22 完成 + v0.0.23-30 十版本规划。
+>   - v0.2.0 已 tag，E2E 终审通过（WSL2 Ubuntu，7 漏洞检测 + CVE-2023-38408）
+>   - 质量体系成熟：pre-commit 9 组 hook / 覆盖率 71% / mypy check_untyped_defs=true 零错误
+>   - 架构预留就绪：Repository 抽象 / submit_scan 异步接口 / config 未来扩展字段
+>   - v0.0.21-22 已交付：mypy 收紧 + 41 个 CLI/Core 测试
+>   - 8/8 Agent 零任务，明日从 v0.0.23（C90 重构）或 v0.0.24（Codex CVE 扩充）继续
+> **进度追踪**：`.guardrails/PROGRESS.md`
+> **明日启动**：C90 重构 component_checker.scan() > Codex CVE 库扩充 > Reasonix 批量测试
 
 ---
 
@@ -436,14 +441,17 @@ Phase 10: 合规审计           → 全量代码审查
 
 ## 九、可扩展性（为"重盾"预留）
 
-| 扩展点 | 当前轻盾做法 | 未来重盾方向 | 切换机制 |
-|--------|-------------|-------------|:--:|
-| 扫描引擎 | Nmap + 自研脚本 | + OpenVAS / Nuclei / ZAP | 新增 Adapter 即可 |
-| MSF 集成度 | 仅 auxiliary/scanner | 可扩展至 auxiliary/server/ | 白名单配置文件控制 |
-| 规则引擎 | 本地 JSON | + 远程规则订阅 / STIX/TAXII | 数据源接口抽象 |
-| 报告格式 | Markdown/纯文本 | + PDF/HTML/JSON API | 报告渲染器可插拔 |
-| 用户界面 | CLI（v0.1.0） | Web → 桌面 → SaaS 多租户 | 前后端分离架构预留 |
-| 数据存储 | 本地日志 | + SQLite → PostgreSQL | Repository 模式抽象 |
+| 扩展点 | 当前轻盾做法 (v0.2.0) | 未来重盾方向 | 切换机制 | 预留状态 |
+|--------|------------------------|-------------|:--:|:--:|
+| 扫描引擎 | Nmap + 自研脚本 | + OpenVAS / Nuclei / ZAP | 新增 Adapter 即可 | ✅ BaseAdapter 抽象 |
+| MSF 集成度 | 仅 auxiliary/scanner | 可扩展至 auxiliary/server/ | 白名单配置文件控制 | ✅ 常量定义已就绪 |
+| 规则引擎 | 本地 JSON | + 远程规则订阅 / STIX/TAXII | 数据源接口抽象 | ✅ engine.py 可插拔 |
+| 报告格式 | Markdown/纯文本 | + PDF/HTML/JSON API | 报告渲染器可插拔 | ✅ reporter 可扩展 |
+| 用户界面 | CLI | Web → 桌面 → SaaS 多租户 | 前后端分离 | ✅ CLI 与 core 解耦 |
+| 数据存储 | JSON 文件 | + SQLite → PostgreSQL | Repository 模式 | ✅ `lightshield/repository/` |
+| 任务调度 | 同步 `run_scan()` | + 线程池 → Celery 队列 | `submit_scan()` 接口 | ✅ `core.submit_scan()` |
+| 缓存 & 限流 | R6 本地常量 | + Redis 缓存 + API 限流 | config 扩展字段 | ✅ config 预留字段 |
+| 鉴权 | 无（单用户） | Session → JWT + OAuth2 | config.auth_enabled | ✅ config 预留字段 |
 
 ---
 

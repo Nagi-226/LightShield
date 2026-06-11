@@ -24,7 +24,6 @@ from lightshield.utils.constants import ScanStatus
 from lightshield.utils.logger import get_logger
 from lightshield.utils.validator import TargetValidator
 
-
 DEFAULT_OUTPUT_DIR = "./reports"
 DEFAULT_SCAN_TYPES = "port_scan,service_detect"
 
@@ -208,12 +207,12 @@ def run_harden_command(args: argparse.Namespace) -> int:
             reason = rec.get("reason", "")
             print(f"  {i}. [{sev}] {action} → {tgt}（{reason}）")
 
-        print(f"")
+        print("")
         print(f" 加固脚本：{harden_result.script_path}")
         print(f" 回滚脚本：{harden_result.rollback_path}")
         print(f" 安全报告：{report_path}")
-        print(f"")
-        print(f" ⚠️  请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
+        print("")
+        print(" ⚠️  请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
         return 0
 
     except KeyboardInterrupt:

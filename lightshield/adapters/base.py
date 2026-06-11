@@ -1,19 +1,17 @@
-"""
-LightShield 适配器抽象基类
+"""LightShield 适配器抽象基类
 
 定义所有扫描适配器的统一接口。新增任何扫描能力只需实现此基类。
 """
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
 
 from lightshield.utils.constants import RiskLevel, ScanStatus
-
 
 # =============================================================================
 # 数据结构
 # =============================================================================
+
 
 @dataclass
 class ScanResult:
@@ -30,14 +28,15 @@ class ScanResult:
         error: 错误信息（status=failed 时填充）
         duration_seconds: 扫描耗时
     """
+
     status: ScanStatus
     target: str
     ports: list[dict] = field(default_factory=list)
     services: list[dict] = field(default_factory=list)
-    os_info: Optional[str] = None
+    os_info: str | None = None
     findings: list["VulnFinding"] = field(default_factory=list)
-    raw_output: Optional[str] = None
-    error: Optional[str] = None
+    raw_output: str | None = None
+    error: str | None = None
     duration_seconds: float = 0.0
 
     def to_dict(self) -> dict:
@@ -72,17 +71,18 @@ class VulnFinding:
         cve_id: 关联 CVE 编号（如有）
         cvss_score: CVSS 评分（如有）
     """
+
     vuln_type: str
     severity: RiskLevel
     title: str
     description: str
     remediation: str
-    url: Optional[str] = None
-    parameter: Optional[str] = None
-    port: Optional[int] = None
-    cve_id: Optional[str] = None
-    cvss_score: Optional[float] = None
-    evidence: Optional[str] = None
+    url: str | None = None
+    parameter: str | None = None
+    port: int | None = None
+    cve_id: str | None = None
+    cvss_score: float | None = None
+    evidence: str | None = None
 
     def to_dict(self) -> dict:
         """导出为字典"""
@@ -105,6 +105,7 @@ class VulnFinding:
 # 抽象基类
 # =============================================================================
 
+
 class BaseAdapter(ABC):
     """所有扫描适配器的抽象基类
 
@@ -117,12 +118,13 @@ class BaseAdapter(ABC):
     """
 
     def __init__(self, name: str = ""):
-        """
+        """初始化适配器。
+
         Args:
-            name: 适配器名称（用于日志和审计）
+        name: 适配器名称（用于日志和审计）
         """
         self.name = name or self.__class__.__name__
-        self._last_result: Optional[ScanResult] = None
+        self._last_result: ScanResult | None = None
 
     @abstractmethod
     def validate_target(self, target: str) -> bool:
@@ -170,7 +172,7 @@ class BaseAdapter(ABC):
 
     # ---- 公共方法 ----
 
-    def get_last_result(self) -> Optional[ScanResult]:
+    def get_last_result(self) -> ScanResult | None:
         """获取最近一次扫描结果"""
         return self._last_result
 
@@ -182,8 +184,9 @@ class BaseAdapter(ABC):
         Returns:
             scan_id 用于关联本次扫描的审计日志
         """
-        import uuid
         import time
+        import uuid
+
         from lightshield.utils.logger import get_logger
 
         scan_id = f"LS-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
@@ -209,11 +212,11 @@ class BaseAdapter(ABC):
             summary += f", error={result.error[:100]}"
         logger.audit_scan_end(scan_id, summary)
 
-    def cancel(self) -> None:
+    def cancel(self) -> None:  # noqa: B027
         """取消当前扫描（子类可重写以支持中断）
 
         默认实现为空操作。支持长扫描取消的适配器应重写此方法，
         设置内部标志位并在 scan() 中定期检查。
         调用后 get_last_result() 应返回 status=CANCELLED。
         """
-        pass
+        return  # 有意留空——子类按需重写，非抽象方法

@@ -1,9 +1,9 @@
 ﻿# LightShield v0.0.16 加固生成器安全审查 — Codex
 
-> 审查人：Codex（GPT-5.5 角色）  
-> 审查日期：2026-06-10  
-> 审查范围：`lightshield/harden/base.py`、`lightshield/harden/linux_harden.py`、`lightshield/core.py::generate_hardening()`、`lightshield/cli.py::run_harden_command()`  
-> 审查定位：安全正确性、R1-R6 合规、接口可扩展性、异常安全、代码质量  
+> 审查人：Codex（GPT-5.5 角色）
+> 审查日期：2026-06-10
+> 审查范围：`lightshield/harden/base.py`、`lightshield/harden/linux_harden.py`、`lightshield/core.py::generate_hardening()`、`lightshield/cli.py::run_harden_command()`
+> 审查定位：安全正确性、R1-R6 合规、接口可扩展性、异常安全、代码质量
 > Graphify：`graphify-out/graph.json` 不存在，按项目规则跳过 graphify query。
 
 ---

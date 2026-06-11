@@ -1,5 +1,4 @@
-"""
-LightShield 弱口令检测适配器
+"""LightShield 弱口令检测适配器
 
 检测目标主机上 SSH、MySQL、HTTP 等服务的弱口令风险。
 继承 BaseAdapter，通过内置 WEAK_PASSWORD_PATTERNS 字典逐一验证。
@@ -15,27 +14,25 @@ LightShield 弱口令检测适配器
     result = adapter.scan("192.168.1.1", ports=[...])
 """
 
-import time
 import socket
-from typing import Optional
+import time
 
 import requests
 from requests.auth import HTTPBasicAuth
 
 from lightshield.adapters.base import BaseAdapter, ScanResult, VulnFinding
 from lightshield.utils.constants import (
+    WEAK_PASSWORD_PATTERNS,
     RiskLevel,
     ScanStatus,
-    WEAK_PASSWORD_PATTERNS,
-    HIGH_RISK_PORTS,
 )
-from lightshield.utils.validator import TargetValidator
 from lightshield.utils.logger import get_logger
-
+from lightshield.utils.validator import TargetValidator
 
 # =============================================================================
 # 弱口令检测适配器
 # =============================================================================
+
 
 class WeakPasswordAdapter(BaseAdapter):
     """弱口令检测适配器 — SSH / MySQL / HTTP 弱口令自查
@@ -54,9 +51,9 @@ class WeakPasswordAdapter(BaseAdapter):
 
     # ── 服务端口映射 ──
     SERVICE_PORTS: dict[str, list[int]] = {
-        "ssh":   [22],
+        "ssh": [22],
         "mysql": [3306],
-        "http":  [80, 443, 8080, 8443, 8000, 9090],
+        "http": [80, 443, 8080, 8443, 8000, 9090],
     }
 
     # ── HTTP 登录端点（按顺序探测，找到第一个即停止） ──
@@ -71,7 +68,11 @@ class WeakPasswordAdapter(BaseAdapter):
 
     # ── HTTP 常用用户名字典 ──
     HTTP_COMMON_USERS: list[str] = [
-        "admin", "root", "administrator", "user", "test",
+        "admin",
+        "root",
+        "administrator",
+        "user",
+        "test",
     ]
 
     # ── 尝试上限 ──
@@ -90,7 +91,7 @@ class WeakPasswordAdapter(BaseAdapter):
         super().__init__(name="WeakPasswordAdapter")
         self._logger = get_logger()
         self._attempt_count: int = 0
-        self._session: Optional[requests.Session] = None
+        self._session: requests.Session | None = None
 
     # =========================================================================
     # BaseAdapter 抽象方法
@@ -132,6 +133,7 @@ class WeakPasswordAdapter(BaseAdapter):
             ScanResult
         """
         import time as time_module
+
         start_time = time_module.time()
 
         # ── Step 1: 前置校验 ──
@@ -146,12 +148,8 @@ class WeakPasswordAdapter(BaseAdapter):
         self._attempt_count = 0
 
         # ── Step 2: 解析密码列表 ──
-        passwords: list[str] = list(
-            kwargs.get("passwords", WEAK_PASSWORD_PATTERNS)
-        )
-        max_attempts: int = int(
-            kwargs.get("max_attempts", self.MAX_PASSWORD_ATTEMPTS)
-        )
+        passwords: list[str] = list(kwargs.get("passwords", WEAK_PASSWORD_PATTERNS))
+        max_attempts: int = int(kwargs.get("max_attempts", self.MAX_PASSWORD_ATTEMPTS))
 
         # ── Step 3: 发现目标上开放的服务 ──
         discovered = self._discover_services(target, **kwargs)
@@ -181,17 +179,11 @@ class WeakPasswordAdapter(BaseAdapter):
             svc_port = svc["port"]
 
             if svc_type == "ssh":
-                findings = self._check_ssh_weak_password(
-                    target, svc_port, passwords, max_attempts
-                )
+                findings = self._check_ssh_weak_password(target, svc_port, passwords, max_attempts)
             elif svc_type == "mysql":
-                findings = self._check_mysql_weak_password(
-                    target, svc_port, passwords, max_attempts
-                )
+                findings = self._check_mysql_weak_password(target, svc_port, passwords, max_attempts)
             elif svc_type == "http":
-                findings = self._check_http_weak_password(
-                    target, svc_port, passwords, max_attempts
-                )
+                findings = self._check_http_weak_password(target, svc_port, passwords, max_attempts)
             else:
                 findings = []
 
@@ -203,13 +195,8 @@ class WeakPasswordAdapter(BaseAdapter):
             status=ScanStatus.COMPLETED,
             target=target,
             findings=all_findings,
-            ports=[
-                {"port": s["port"], "service": s["type"], "state": "open"}
-                for s in discovered
-            ],
-            services=[
-                {"name": s["type"], "port": s["port"]} for s in discovered
-            ],
+            ports=[{"port": s["port"], "service": s["type"], "state": "open"} for s in discovered],
+            services=[{"name": s["type"], "port": s["port"]} for s in discovered],
             duration_seconds=round(duration, 2),
             raw_output=(
                 f"检测服务 {len(discovered)} 个，"
@@ -270,13 +257,9 @@ class WeakPasswordAdapter(BaseAdapter):
                 svc_name = svc_entry.get("name", "")
 
                 matched = self._match_service_type(port_num, svc_name)
-                if matched:
-                    # 去重
-                    if not any(
-                        d["type"] == matched and d["port"] == port_num
-                        for d in discovered
-                    ):
-                        discovered.append({"type": matched, "port": port_num})
+                # 去重
+                if matched and not any(d["type"] == matched and d["port"] == port_num for d in discovered):
+                    discovered.append({"type": matched, "port": port_num})
             if discovered:
                 return discovered
 
@@ -295,7 +278,7 @@ class WeakPasswordAdapter(BaseAdapter):
         self,
         port: int,
         service_name: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """根据端口号和服务名匹配服务类型
 
         Returns:
@@ -308,12 +291,11 @@ class WeakPasswordAdapter(BaseAdapter):
             return "ssh"
         if "mysql" in service_lower and port in self.SERVICE_PORTS["mysql"]:
             return "mysql"
-        if any(
-            kw in service_lower
-            for kw in ("http", "www", "nginx", "apache", "tomcat", "iis")
+        if (
+            any(kw in service_lower for kw in ("http", "www", "nginx", "apache", "tomcat", "iis"))
+            and port in self.SERVICE_PORTS["http"]
         ):
-            if port in self.SERVICE_PORTS["http"]:
-                return "http"
+            return "http"
 
         # 纯端口匹配
         if port in self.SERVICE_PORTS["ssh"]:
@@ -342,13 +324,14 @@ class WeakPasswordAdapter(BaseAdapter):
             )
             sock.close()
             return True
-        except (socket.timeout, ConnectionRefusedError, OSError):
+        except (TimeoutError, ConnectionRefusedError, OSError):
             return False
 
     def _resolve_target(self, target: str) -> str:
         """解析目标为 IP 地址"""
         try:
             import ipaddress
+
             ipaddress.ip_address(target)
             return target
         except ValueError:
@@ -408,9 +391,7 @@ class WeakPasswordAdapter(BaseAdapter):
             severity=RiskLevel.HIGH,
             title=f"SSH 服务存在弱口令风险 (端口 {port})",
             description=(
-                f"目标 {target}:{port} 上检测到 SSH 服务"
-                + (f"（{version_info}）" if version_info else "")
-                + "。\n"
+                f"目标 {target}:{port} 上检测到 SSH 服务" + (f"（{version_info}）" if version_info else "") + "。\n"
                 f"SSH 服务若使用弱口令，攻击者可通过暴力破解获取系统 shell。\n"
                 f"以下常见弱口令需逐一自查："
                 f"{', '.join(audit_passwords)}"
@@ -466,9 +447,7 @@ class WeakPasswordAdapter(BaseAdapter):
             severity=RiskLevel.CRITICAL,
             title=f"MySQL 数据库存在弱口令风险 (端口 {port})",
             description=(
-                f"目标 {target}:{port} 上检测到 MySQL 服务"
-                + (f"（{version_info}）" if version_info else "")
-                + "。\n"
+                f"目标 {target}:{port} 上检测到 MySQL 服务" + (f"（{version_info}）" if version_info else "") + "。\n"
                 f"MySQL root 账户若使用弱口令或空密码，攻击者可直接获取数据库"
                 f"全部权限，导致数据泄露或篡改。\n"
                 f"需自查以下口令：{audit_text}"
@@ -518,9 +497,11 @@ class WeakPasswordAdapter(BaseAdapter):
         base_url = f"{scheme}://{target}:{port}"
 
         self._session = requests.Session()
-        self._session.headers.update({
-            "User-Agent": "LightShield/0.1 (Security Self-Audit Tool)",
-        })
+        self._session.headers.update(
+            {
+                "User-Agent": "LightShield/0.1 (Security Self-Audit Tool)",
+            }
+        )
 
         try:
             # ── Step 1: 探测登录端点 ──
@@ -538,9 +519,7 @@ class WeakPasswordAdapter(BaseAdapter):
                 if self._attempt_count >= max_attempts:
                     break
 
-                result = self._try_http_login(
-                    base_url, endpoint, passwords, max_attempts
-                )
+                result = self._try_http_login(base_url, endpoint, passwords, max_attempts)
                 if result:
                     findings.append(result)
                     # 找到一个弱口令后不再对此端点继续尝试
@@ -559,7 +538,7 @@ class WeakPasswordAdapter(BaseAdapter):
         except Exception as e:
             self._logger.error(
                 "weak_password",
-                f"HTTP 检测异常",
+                "HTTP 检测异常",
                 exception=e,
             )
         finally:
@@ -569,18 +548,20 @@ class WeakPasswordAdapter(BaseAdapter):
 
         # 如果所有端点都尝试了但没发现弱口令，仍生成信息级报告
         if not findings and login_endpoints:
-            findings.append(VulnFinding(
-                vuln_type="weak_password",
-                severity=RiskLevel.INFO,
-                title=f"HTTP 弱口令检测完成 (端口 {port})",
-                description=(
-                    f"已对 {base_url} 的 {len(login_endpoints)} 个登录端点"
-                    f"尝试了 {self._attempt_count} 个常见弱口令，未发现可登录凭据。"
-                ),
-                remediation="保持当前强密码策略，定期更新。",
-                port=port,
-                evidence=f"检测端点: {', '.join(login_endpoints)}",
-            ))
+            findings.append(
+                VulnFinding(
+                    vuln_type="weak_password",
+                    severity=RiskLevel.INFO,
+                    title=f"HTTP 弱口令检测完成 (端口 {port})",
+                    description=(
+                        f"已对 {base_url} 的 {len(login_endpoints)} 个登录端点"
+                        f"尝试了 {self._attempt_count} 个常见弱口令，未发现可登录凭据。"
+                    ),
+                    remediation="保持当前强密码策略，定期更新。",
+                    port=port,
+                    evidence=f"检测端点: {', '.join(login_endpoints)}",
+                )
+            )
 
         return findings
 
@@ -593,7 +574,7 @@ class WeakPasswordAdapter(BaseAdapter):
         reachable: list[str] = []
         for path in self.HTTP_LOGIN_PATHS:
             try:
-                resp = self._session.get(
+                resp = self._session.get(  # type: ignore[union-attr]  # _ensure_session 保证非 None
                     f"{base_url}{path}",
                     timeout=self.HTTP_TIMEOUT,
                     allow_redirects=True,
@@ -612,7 +593,7 @@ class WeakPasswordAdapter(BaseAdapter):
         endpoint: str,
         passwords: list[str],
         max_attempts: int,
-    ) -> Optional[VulnFinding]:
+    ) -> VulnFinding | None:
         """尝试通过 Basic Auth 和表单 POST 方式登录 HTTP 端点
 
         Returns:
@@ -633,7 +614,7 @@ class WeakPasswordAdapter(BaseAdapter):
                 )
 
                 try:
-                    resp = self._session.get(
+                    resp = self._session.get(  # type: ignore[union-attr]  # _ensure_session 保证非 None
                         url,
                         auth=HTTPBasicAuth(username, password),
                         timeout=self.HTTP_TIMEOUT,
@@ -652,7 +633,7 @@ class WeakPasswordAdapter(BaseAdapter):
                     return VulnFinding(
                         vuln_type="weak_password",
                         severity=RiskLevel.CRITICAL,
-                        title=f"HTTP Basic Auth 存在弱口令 (端口检测)",
+                        title="HTTP Basic Auth 存在弱口令 (端口检测)",
                         description=(
                             f"目标 {url} 使用 HTTP Basic Auth，"
                             f"凭据 {username}:{password} 可成功登录。\n"
@@ -686,7 +667,7 @@ class WeakPasswordAdapter(BaseAdapter):
         url: str,
         passwords: list[str],
         max_attempts: int,
-    ) -> Optional[VulnFinding]:
+    ) -> VulnFinding | None:
         """尝试 WordPress 表单登录
 
         Returns:
@@ -704,7 +685,7 @@ class WeakPasswordAdapter(BaseAdapter):
                 )
 
                 try:
-                    resp = self._session.post(
+                    resp = self._session.post(  # type: ignore[union-attr]  # _ensure_session 保证非 None
                         url,
                         data={
                             "log": username,
@@ -721,36 +702,32 @@ class WeakPasswordAdapter(BaseAdapter):
                 time.sleep(self.ATTEMPT_INTERVAL)
 
                 # WordPress 登录成功后重定向到 /wp-admin/
-                if resp.status_code in (302, 200):
-                    if "/wp-admin" in resp.url or "wordpress_logged_in" in str(
-                        resp.cookies
-                    ):
-                        self._logger.warning(
-                            "weak_password",
-                            f"发现 WordPress 弱口令: {username}:{password}",
-                        )
-                        return VulnFinding(
-                            vuln_type="weak_password",
-                            severity=RiskLevel.CRITICAL,
-                            title="WordPress 管理员存在弱口令",
-                            description=(
-                                f"WordPress 站点 {url} 的管理员账户 "
-                                f"'{username}' 使用弱口令 '{password}'。\n"
-                                f"攻击者可通过此凭据完全控制网站。"
-                            ),
-                            remediation=(
-                                "1. 立即修改 WordPress 管理员密码\n"
-                                "2. 安装 Wordfence 等安全插件启用登录保护\n"
-                                "3. 开启双因素认证 (2FA)\n"
-                                "4. 限制 wp-login.php 的访问 IP"
-                            ),
-                            url=url,
-                            parameter="username",
-                            evidence=(
-                                f"POST {url} 使用 {username}:{password} 后"
-                                f"重定向至管理后台"
-                            ),
-                        )
+                if resp.status_code in (302, 200) and (
+                    "/wp-admin" in resp.url or "wordpress_logged_in" in str(resp.cookies)
+                ):
+                    self._logger.warning(
+                        "weak_password",
+                        f"发现 WordPress 弱口令: {username}:{password}",
+                    )
+                    return VulnFinding(
+                        vuln_type="weak_password",
+                        severity=RiskLevel.CRITICAL,
+                        title="WordPress 管理员存在弱口令",
+                        description=(
+                            f"WordPress 站点 {url} 的管理员账户 "
+                            f"'{username}' 使用弱口令 '{password}'。\n"
+                            f"攻击者可通过此凭据完全控制网站。"
+                        ),
+                        remediation=(
+                            "1. 立即修改 WordPress 管理员密码\n"
+                            "2. 安装 Wordfence 等安全插件启用登录保护\n"
+                            "3. 开启双因素认证 (2FA)\n"
+                            "4. 限制 wp-login.php 的访问 IP"
+                        ),
+                        url=url,
+                        parameter="username",
+                        evidence=(f"POST {url} 使用 {username}:{password} 后重定向至管理后台"),
+                    )
 
         return None
 
@@ -779,7 +756,7 @@ class WeakPasswordAdapter(BaseAdapter):
                 banner = sock.recv(256)
                 if banner:
                     return banner.decode("utf-8", errors="replace").strip()
-            except socket.timeout:
+            except TimeoutError:
                 pass
             sock.close()
         except Exception:
@@ -848,13 +825,13 @@ if __name__ == "__main__":
     # 6. 端口开放探测（本地回环）
     # import socket
     # 在 127.0.0.1 上临时开一个监听端口验证
-    import threading
     import socket as _socket_mod
+    import threading
 
     test_port = 19999
     test_ready = threading.Event()
 
-    def dummy_server():
+    def dummy_server():  # noqa: D103  # __main__ 自检块内的本地测试辅助函数
         srv = _socket_mod.socket(_socket_mod.AF_INET, _socket_mod.SOCK_STREAM)
         srv.setsockopt(_socket_mod.SOL_SOCKET, _socket_mod.SO_REUSEADDR, 1)
         srv.bind(("127.0.0.1", test_port))

@@ -131,16 +131,31 @@ v0.0.08  msf_adapter.py         ✅  R5 防线
 v0.0.11  cli.py + setup.py      ✅  R4 防线
 v0.0.12  test_validator.py      ✅  225行/12函数
 v0.0.13  test_msf_adapter.py    ✅  185行/全覆盖
-v0.0.16  审查 linux_harden.py   ⏳  等待开始
+v0.0.16  审查 linux_harden.py   ✅  10 issues / 5 fixed (B1/B2/H3/M1/L1)
 ──────────────────────────────────────
-         7/8 完成，1 个待执行
+         7/7 完成，0 个待执行 ✅
 ```
 
-> 当前任务：v0.0.16 审查 linux_harden.py（安全审查，非代码实现）
+> 当前状态：**全部任务完成，零剩余。** 等待 v0.3.0 新任务分配。
+> 审查报告：`docs/review-v016-codex.md`
 
 ---
 
-## 九、v0.0.16 审查任务 + 启动提示词 🟢 当前任务
+## 九、v0.0.16 审查任务 ✅ 已完成
+
+### 审查结果
+
+v0.0.16 审查已于 2026-06-10 完成。Codex 审查了 4 个核心文件（harden/base.py、harden/linux_harden.py、core.py generate_hardening()、cli.py run_harden_command()），发现 10 个问题：
+
+| 级别 | 数量 | 处理 |
+|------|:--:|------|
+| BLOCKER | 1 | ✅ 已修复（B1: placeholder exec 路径） |
+| HIGH | 2 | ✅ 已修复（B2: SSH 备份路径；H3: SSH sed 模式） |
+| MEDIUM | 1 | ✅ 已修复（M1: 重复计算逻辑） |
+| LOW | 1 | ✅ 已修复（L1: 死代码 import） |
+| 误报/风格 | 5 | ✅ 已确认不需修复 |
+
+详见审查报告：`docs/review-v016-codex.md`
 
 ### 任务背景
 
@@ -390,7 +405,7 @@ class TargetValidator:
     def validate(target: str) -> tuple[bool, str]:
         """
         综合校验入口——所有对外操作的前置关口
-        
+
         校验规则：
         1. 拒绝空字符串
         2. 拒绝 CIDR 网段 (192.168.1.0/24)
@@ -398,7 +413,7 @@ class TargetValidator:
         4. 拒绝通配符域名 (*.example.com)
         5. 拒绝 URL 格式 (http://xxx)
         6. 仅接受：单 IPv4、单 IPv6、单域名、localhost
-        
+
         合法: "192.168.1.1", "example.com", "localhost", "::1"
         非法: "192.168.1.0/24", "*.example.com", "http://example.com"
         """
@@ -622,7 +637,7 @@ class MsfScannerAdapter(BaseAdapter):
     def is_module_allowed(self, module_path: str) -> bool:
         """
         R5 白名单校验——任何模块调用前的强制检查。
-        
+
         规则：
         1. module_path 必须以 ALLOWED_MSF_PREFIXES 中某一项为前缀
         2. module_path 不得以 BLOCKED_MSF_PREFIXES 中任一项为前缀
@@ -636,7 +651,7 @@ class MsfScannerAdapter(BaseAdapter):
                         options: dict = None) -> dict:
         """
         安全执行 MSF 模块——带完整审计日志。
-        
+
         流程：
         1. is_module_allowed() → 不通过则抛 SecurityViolationError
         2. TargetValidator.validate() → 不通过则抛 InvalidTargetError

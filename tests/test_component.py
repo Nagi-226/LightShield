@@ -14,18 +14,15 @@
       _match_cves 是 ComponentCheckerAdapter 的实例方法。
 """
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from lightshield.scanners.component_checker import (
     ComponentCheckerAdapter,
+    CveEntry,
     _parse_version,
     _version_matches,
-    CveEntry,
 )
-from lightshield.adapters.base import VulnFinding
-from lightshield.utils.constants import ScanStatus, RiskLevel
+from lightshield.utils.constants import ScanStatus
 
 
 @pytest.fixture
@@ -37,6 +34,7 @@ def checker():
 # =============================================================================
 # _parse_version（模块级函数）
 # =============================================================================
+
 
 class TestParseVersion:
     """_parse_version() 版本号解析"""
@@ -87,6 +85,7 @@ class TestParseVersion:
 # =============================================================================
 # _version_matches（模块级函数，[min, max) 半开区间）
 # =============================================================================
+
 
 class TestVersionMatches:
     """_version_matches() 区间判断"""
@@ -143,6 +142,7 @@ class TestVersionMatches:
 # _match_cves（实例方法，返回 list[CveEntry]）
 # =============================================================================
 
+
 class TestMatchCves:
     """_match_cves() CVE 匹配"""
 
@@ -155,7 +155,7 @@ class TestMatchCves:
             assert cve.cvss_score > 0
 
     def test_nginx_1_26_0_no_match(self, checker):
-        """nginx 1.26.0 不匹配任何 CVE（超出所有 max_affected）"""
+        """Nginx 1.26.0 不匹配任何 CVE（超出所有 max_affected）"""
         cves = checker._match_cves("nginx", "1.26.0")
         assert len(cves) == 0, f"期望 nginx 1.26.0 无 CVE 匹配，实际 {len(cves)} 个"
 
@@ -188,6 +188,7 @@ class TestMatchCves:
 # capabilities
 # =============================================================================
 
+
 class TestCapabilities:
     """capabilities() 返回正确的能力列表"""
 
@@ -201,12 +202,14 @@ class TestCapabilities:
 # get_cve_summary
 # =============================================================================
 
+
 class TestGetCveSummary:
     """get_cve_summary() 生成摘要"""
 
     def test_returns_non_empty_string(self, checker):
         """返回非空字符串"""
         from lightshield.adapters.base import ScanResult
+
         result = ScanResult(
             status=ScanStatus.COMPLETED,
             target="example.com",
@@ -221,6 +224,7 @@ class TestGetCveSummary:
     def test_empty_services_summary(self, checker):
         """无服务时仍返回非空摘要"""
         from lightshield.adapters.base import ScanResult
+
         result = ScanResult(
             status=ScanStatus.COMPLETED,
             target="example.com",
@@ -233,6 +237,7 @@ class TestGetCveSummary:
 # =============================================================================
 # scan
 # =============================================================================
+
 
 class TestScan:
     """scan() 方法验证（mock HTTP）"""
@@ -268,5 +273,5 @@ class TestScan:
 
     @pytest.mark.skip(reason="scan() 内部自建 Session，requests.Session.get patch 不覆盖 DNS 解析")
     def test_scan_mocked_http_full(self, checker):
-        """mock HTTP 请求后 scan() 返回 COMPLETED（完整 mock 链复杂，跳过）"""
+        """Mock HTTP 请求后 scan() 返回 COMPLETED（完整 mock 链复杂，跳过）"""
         pass

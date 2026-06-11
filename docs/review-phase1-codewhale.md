@@ -1,8 +1,8 @@
 # 📋 M8 Quality Audit Report — Phase 1 (v0.0.01–v0.0.05)
 
-**审计日期**：2026-06-09  
-**审计范围**：Phase 1 全量代码（8 个源文件）  
-**审计员**：CodeWhale（集群审查专员）  
+**审计日期**：2026-06-09
+**审计范围**：Phase 1 全量代码（8 个源文件）
+**审计员**：CodeWhale（集群审查专员）
 **参考模板**：`.guardrails/QUALITY_GATES.md` M8 审计报告模板
 
 ---

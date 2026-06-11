@@ -99,19 +99,48 @@ QoderWork VM
 4. **VM 快照回滚**：测试完成后恢复干净状态
 5. **Claude Code 审查结果**：确认测试通过后合入
 
-## 八、版本任务总览（v0.0.01 — v0.0.10）
+## 八、版本任务总览（v0.0.01 — v0.2.0）
 
-> 你是集群唯一的 VM 隔离执行者 + Gate E（回归验证）唯一责任人。10 个版本中 7 个有你的任务。
+> 你是集群唯一的 VM 隔离执行者 + Gate E（回归验证）唯一责任人。
 
-| 版本 | 任务 | 隔离原因 | Qwen-3.7-max 优势 |
+### v0.0.01-10（已完成 ✅）
+
+| 版本 | 任务 | 状态 |
+|:--:|------|:--:|
+| v0.0.03 | validator.py smoke test | ✅ |
+| v0.0.05 | Nmap 适配器沙箱测试 | ✅ |
+| v0.0.06 | web_vuln_scanner 沙箱验证 | ✅ |
+| v0.0.07 | 弱口令检测 VM 测试 | ✅ |
+| v0.0.08 | MSF 适配器沙箱测试 | ✅ |
+| v0.0.09 | 规则引擎批量测试 | ✅ |
+| v0.0.10 | MVP 端到端回归测试 | ✅ |
+
+### v0.0.19 — v0.2.0 发布前 E2E 终审 ✅（Docker 替代执行）
+
+> **2026-06-11 更新**：发现本机 Docker Desktop 可用（Server 29.3.1），直接通过双容器（靶机+扫描器）执行了 E2E。
+> QoderWork VM 方案保留为备选——当需要真正的硬件级隔离（MSF 调用、GPU、特定内核版本）时仍走 VM。
+
+| 版本 | 任务 | 状态 | 执行方式 |
 |:--:|------|:--:|------|
-| **v0.0.03** | validator.py smoke test | 无风险，本地即可 | 轻量验证 |
-| **v0.0.05** | Nmap 适配器沙箱测试 | 扫描流量隔离 | 解析 nmap XML 输出 |
-| **v0.0.06** | web_vuln_scanner 沙箱验证 | HTTP 请求隔离 | 验证检测准确性 |
-| **v0.0.07** | 弱口令检测 VM 测试 | SSH/MySQL 靶机在 VM 内 | 搭建测试环境 |
-| **v0.0.08** | 🔴 MSF 适配器沙箱测试 | MSF 调用必须隔离 | 验证白名单机制 |
-| **v0.0.09** | 规则引擎批量测试 | 大数据量导入 | 性能 + 准确性验证 |
-| **v0.0.10** | 🔴 MVP 端到端回归测试 | 全模块联调 | Gate E 最终验证 |
+| **v0.0.19** | E2E 终审 + 靶机验证 | ✅ 已迁移 | Docker 替代 VM |
+
+### 全任务完成统计
+
+```
+v0.0.03  validator smoke test        ✅
+v0.0.05  Nmap adapter sandbox        ✅
+v0.0.06  web_vuln_scanner sandbox    ✅
+v0.0.07  weak_password VM test       ✅
+v0.0.08  MSF adapter whitelist       ✅
+v0.0.09  rule engine bulk test       ✅
+v0.0.10  MVP E2E regression          ✅
+v0.0.19  v0.2.0 E2E final review     ✅ Docker 替代执行
+────────────────────────────────────────
+         8/8 完成，0 个待执行 ✅
+```
+
+> 当前状态：**全部任务完成，零剩余。** 等待 v0.3.0 新任务分配。
+> v0.0.19 由 Docker 双容器方案替代 VM 执行，详情见下方任务记录。
 
 ### 任务详解 + 启动提示词
 
@@ -428,7 +457,7 @@ echo "--- 4/5 合规自查 ---"
 python3 -c "
 # R1: 无攻击代码
 import os, subprocess
-result = subprocess.run(['grep', '-rE', 'exploit|payload_creator|backdoor|trojan', 'lightshield/'], 
+result = subprocess.run(['grep', '-rE', 'exploit|payload_creator|backdoor|trojan', 'lightshield/'],
                        capture_output=True, text=True)
 if result.returncode == 0:
     print(f'❌ R1 违规: {result.stdout[:200]}')
@@ -456,6 +485,205 @@ echo ""
 echo "============================================"
 echo " ✅ Gate E — MVP 端到端回归测试全部通过"
 echo "============================================"
+```
+
+---
+
+### v0.0.19 — 🔴 v0.2.0 发布前 E2E 终审（当前任务 🟢）
+
+#### 任务背景
+
+v0.2.0 所有模块已交付：
+- 14 个核心模块（扫描/检测/加固/报告）
+- 355 个测试用例，0 失败
+- 5 层质量门禁全部自动化
+- CLI 支持 scan / quick-scan / harden / version 四个子命令
+- 加固脚本生成器（Linux .sh + Windows .ps1）
+
+**这是 v0.2.0 发布前的最后一道关口**：在真实 Linux 环境中搭建带漏洞的靶机，完整验证 LightShield 的扫描→检测→加固→复扫全链路。
+
+#### VM 环境要求
+
+| 要求 | 说明 |
+|------|------|
+| 操作系统 | Ubuntu 20.04 或 22.04（干净安装） |
+| Python | 3.10+ |
+| Nmap | 7.x（`apt install nmap`） |
+| 网络 | VM 内网隔离，靶机和服务全部在 VM localhost 上 |
+| 快照 | ⚠️ 搭建靶机前创建快照，测试完成后回滚 |
+
+#### 靶机搭建：5 个预置漏洞
+
+在 VM 中搭建以下漏洞场景（全部在 localhost）：
+
+| # | 漏洞类型 | 搭建方式 | 预期检测 |
+|---|---------|---------|---------|
+| 1 | **Telnet 明文** | `apt install telnetd` + 启动服务 | 高危端口 23 |
+| 2 | **MySQL 弱口令** | `apt install mysql-server`，设置 root/root | weak_password 检测 |
+| 3 | **老旧 OpenSSH** | 使用 VM 自带的低版本 SSH（Ubuntu 20.04 → OpenSSH 7.x） | component_checker + CVE |
+| 4 | **Redis 无密码** | `apt install redis-server`，不设密码 | 敏感服务检测 |
+| 5 | **敏感目录暴露** | 创建 `/.git/HEAD`、`/.env` 文件在 HTTP 服务目录 | directory_enum |
+
+```bash
+# === 靶机快速搭建脚本（在 VM 中执行）===
+set -e
+echo "=== LightShield v0.0.19 靶机搭建 ==="
+
+# 1. Telnet
+sudo apt update
+sudo apt install -y telnetd xinetd
+sudo systemctl start xinetd 2>/dev/null || sudo service xinetd start 2>/dev/null || true
+
+# 2. MySQL + 弱口令
+sudo DEBIAN_FRONTEND=noninteractive apt install -y mysql-server
+sudo systemctl start mysql 2>/dev/null || sudo service mysql start 2>/dev/null || true
+sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;" 2>/dev/null || true
+
+# 3. Redis 无密码
+sudo apt install -y redis-server
+sudo sed -i 's/^requirepass.*/# requirepass (disabled for test)/' /etc/redis/redis.conf 2>/dev/null || true
+sudo systemctl start redis-server 2>/dev/null || sudo service redis-server start 2>/dev/null || true
+
+# 4. 敏感目录（启动简单 HTTP 服务）
+mkdir -p /tmp/test_www/.git
+echo "ref: refs/heads/main" > /tmp/test_www/.git/HEAD
+echo "DB_PASSWORD=lightshield_test_secret" > /tmp/test_www/.env
+echo "<html><body>Test Page</body></html>" > /tmp/test_www/index.html
+cd /tmp/test_www && python3 -m http.server 8080 &
+HTTP_PID=$!
+echo "HTTP 测试服务 PID: $HTTP_PID"
+
+# 5. 确认服务状态
+echo ""
+echo "=== 靶机服务状态 ==="
+echo "Telnet (23): $(ss -tlnp | grep ':23 ' && echo 'OPEN' || echo '未启动')"
+echo "MySQL (3306): $(ss -tlnp | grep ':3306 ' && echo 'OPEN' || echo '未启动')"
+echo "Redis (6379): $(ss -tlnp | grep ':6379 ' && echo 'OPEN' || echo '未启动')"
+echo "HTTP (8080): $(ss -tlnp | grep ':8080 ' && echo 'OPEN' || echo '未启动')"
+echo "SSH (22): $(ss -tlnp | grep ':22 ' && echo 'OPEN' || echo '未启动')"
+echo ""
+echo "✅ 靶机搭建完成"
+```
+
+#### E2E 测试流程（5 步）
+
+```
+Step 1: 资产扫描   → lightshield scan 127.0.0.1
+                     预期：发现端口 22/23/3306/6379/8080
+Step 2: 漏洞检测   → Web 漏洞 + 弱口令 + 组件 CVE
+                     预期：≥5 个发现（高危端口 + MySQL弱口令 + OpenSSH CVE + Redis无密码 + 敏感目录）
+Step 3: 规则匹配   → RuleEngine 匹配漏洞规则
+                     预期：每个 finding 有明确的规则 ID + severity
+Step 4: 加固生成   → lightshield harden 127.0.0.1 --confirm-ownership
+                     预期：生成 harden.sh + rollback.sh，含 iptables 规则 + 服务加固命令
+Step 5: 复扫验证   → 手动执行 harden.sh 中的部分加固命令 → 重新 scan
+                     预期：已加固的漏洞不再出现在报告中
+```
+
+#### 合规验证清单
+
+| 红线 | 验证方式 | 预期 |
+|:--:|------|:--:|
+| R1 | grep 扫描/加固脚本不含攻击关键字 | ✅ 零命中 |
+| R2 | scan 拒绝 CIDR 输入（`lightshield scan 127.0.0.0/24`） | ✅ 拦截 |
+| R4 | `--confirm-ownership` 缺失时 CLI 要求交互确认 | ✅ 确认门 |
+| R5 | MSF 适配器拒绝 exploit/payload 模块 | ✅ SecurityViolationError |
+| R6 | 扫描日志中并发数 ≤20 | ✅ 符合 |
+
+#### 输出要求
+
+测试完成后生成 `docs/e2e-v019-report.md`：
+
+```markdown
+# LightShield v0.0.19 E2E 终审报告
+
+## 测试环境
+- VM: Ubuntu 22.04
+- Python: 3.12
+- Nmap: 7.94
+
+## Step 1: 资产扫描
+- 命令: lightshield scan 127.0.0.1 --confirm-ownership
+- 结果: ✅/❌
+- 发现端口: [22, 23, 3306, 6379, 8080]
+
+## Step 2: 漏洞检测
+- 发现数: N 个
+- 详情: [表格列出每个 finding 的 vuln_type + severity + title]
+
+## Step 3: 规则匹配
+- 匹配规则数: N
+- 详情: [表格列出 rule_id + severity]
+
+## Step 4: 加固生成
+- 生成文件: harden.sh (N 条命令), rollback.sh (N 条回滚)
+- 加固覆盖: [列出哪些漏洞被覆盖]
+
+## Step 5: 复扫验证
+- 复扫结果: ✅/❌
+- 剩余漏洞: [如果 >0，列出未修复的]
+
+## 合规验证
+- [ ] R1 零攻击关键字
+- [ ] R2 CIDR 拦截
+- [ ] R4 所有权确认
+- [ ] R5 MSF 白名单
+- [ ] R6 并发限制
+
+## 结论
+- E2E 结果: ✅ PASS / ❌ FAIL
+- 是否可以发布 v0.2.0: YES / NO（附原因）
+```
+
+#### 启动提示词（直接复制到 QoderWork）
+
+```
+你是 LightShield 项目 QoderWork Agent，在 Linux VM 沙箱中执行 v0.2.0 发布前的最终 E2E 终审。
+
+## 项目背景
+
+LightShield（轻盾）是面向初创企业的开源安全自检工具，Python 3.10+。
+项目路径：E:/Github Project/LightShield/
+
+v0.2.0 所有模块已交付（14 个核心模块 + 355 测试 + 5 层质量门禁）。
+这是发布前的最后一步——在真实 Linux 靶机环境中验证全链路。
+
+## 合规红线（VM 中也必须遵守）
+
+R1: 禁攻击 | R2: 禁批量扫描（只扫 127.0.0.1）| R3: 禁远控/后门 | R4: 仅自查 | R6: 并发≤20
+
+## 你的任务
+
+### 1. 环境准备
+- 确认 Ubuntu 20.04/22.04 VM 干净状态
+- 安装依赖：apt install nmap telnetd mysql-server redis-server
+- pip install -r requirements.txt
+- 创建 VM 快照（测试后回滚）
+
+### 2. 搭建靶机
+运行上述靶机搭建脚本，确认 5 个漏洞就绪：
+- Telnet (23) / MySQL弱口令 (3306) / Redis无密码 (6379) / SSH (22) / HTTP敏感目录 (8080)
+
+### 3. E2E 测试（5 步）
+Step 1: lightshield scan 127.0.0.1 --confirm-ownership
+Step 2: 检查报告中是否检测到 ≥5 个漏洞（高危端口 + MySQL弱口令 + OpenSSH CVE + Redis + 敏感目录）
+Step 3: 验证每个 finding 有规则 ID 和 severity
+Step 4: lightshield harden 127.0.0.1 --confirm-ownership → 生成 harden.sh + rollback.sh
+Step 5: 手动执行 harden.sh（iptables 封禁 23/3306/6379），重新 scan → 验证漏洞减少
+
+### 4. 合规验证
+- lightshield scan 127.0.0.0/24 → 应拒绝（R2）
+- 检查生成的 harden.sh 不含 exploit/payload/attack 关键字（R1）
+- 检查审计日志中有所有权确认记录（R4）
+
+### 5. 输出报告
+生成 docs/e2e-v019-report.md（使用上述报告模板）
+
+## 注意事项
+- 所有扫描只针对 127.0.0.1
+- 硬编码密钥 SEC 扫描在 logger.py 中的 "Secret123!" 是测试数据，可以忽略
+- 使用 `py` 不是 `python`（Windows）——Linux VM 中用 `python3`
+- 测试完成后回滚 VM 快照
 ```
 
 ---

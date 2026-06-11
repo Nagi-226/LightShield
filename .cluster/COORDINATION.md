@@ -64,7 +64,7 @@ class LightShieldConfig:
 ```
 Phase 1 可并行任务：
 ├── LS-003 config.py (Reasonix)
-├── LS-004 validator.py (Codex)  
+├── LS-004 validator.py (Codex)
 ├── LS-005 logger.py (Reasonix)   ← 与 LS-003 同 Agent，串行
 ├── LS-006 constants.py (Hermes)
 └── LS-007 infra (Hermes)         ← 与 LS-006 同 Agent，串行

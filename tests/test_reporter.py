@@ -13,15 +13,15 @@
 """
 
 import os
-import tempfile
 import shutil
-from unittest.mock import patch, mock_open, MagicMock
+import tempfile
+from unittest.mock import patch
 
 import pytest
 
-from lightshield.report.reporter import ReportGenerator
 from lightshield.adapters.base import ScanResult, VulnFinding
-from lightshield.utils.constants import ScanStatus, RiskLevel
+from lightshield.report.reporter import ReportGenerator
+from lightshield.utils.constants import RiskLevel, ScanStatus
 
 
 @pytest.fixture
@@ -112,6 +112,7 @@ def sample_harden():
 # generate — Markdown
 # =============================================================================
 
+
 class TestGenerateMarkdown:
     """generate(..., fmt="markdown")"""
 
@@ -126,37 +127,27 @@ class TestGenerateMarkdown:
     @pytest.mark.parametrize("section", REQUIRED_SECTIONS)
     def test_contains_key_section(self, reporter, sample_scan_result, sample_findings, sample_harden, section):
         """Markdown 报告含关键章节"""
-        report = reporter.generate(
-            sample_scan_result, sample_findings, sample_harden, fmt="markdown"
-        )
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="markdown")
         assert section in report, f"报告缺少章节: {section}"
 
     def test_contains_lighthield_title(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """报告含 LightShield 标题"""
-        report = reporter.generate(
-            sample_scan_result, sample_findings, sample_harden, fmt="markdown"
-        )
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="markdown")
         assert "LightShield" in report
 
     def test_contains_target_info(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """报告含目标 IP"""
-        report = reporter.generate(
-            sample_scan_result, sample_findings, sample_harden, fmt="markdown"
-        )
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="markdown")
         assert sample_scan_result.target in report
 
     def test_contains_cve_id(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """报告含 CVE 编号"""
-        report = reporter.generate(
-            sample_scan_result, sample_findings, sample_harden, fmt="markdown"
-        )
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="markdown")
         assert "CVE-2023-38408" in report
 
     def test_empty_findings_structure_complete(self, reporter, sample_scan_result, sample_harden):
         """空 findings 时报告结构完整"""
-        report = reporter.generate(
-            sample_scan_result, [], sample_harden, fmt="markdown"
-        )
+        report = reporter.generate(sample_scan_result, [], sample_harden, fmt="markdown")
         # 基本结构仍存在
         assert "LightShield" in report
         assert "风险总览" in report
@@ -166,34 +157,30 @@ class TestGenerateMarkdown:
 # generate — Text
 # =============================================================================
 
+
 class TestGenerateText:
     """generate(..., fmt="text")"""
 
     def test_contains_lighthield(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """纯文本报告含 LightShield"""
-        report = reporter.generate(
-            sample_scan_result, sample_findings, sample_harden, fmt="text"
-        )
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="text")
         assert "LightShield" in report
 
     def test_contains_target(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """纯文本报告含目标地址"""
-        report = reporter.generate(
-            sample_scan_result, sample_findings, sample_harden, fmt="text"
-        )
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="text")
         assert sample_scan_result.target in report
 
     def test_contains_port_info(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """纯文本报告含端口信息"""
-        report = reporter.generate(
-            sample_scan_result, sample_findings, sample_harden, fmt="text"
-        )
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="text")
         assert "22" in report
 
 
 # =============================================================================
 # save
 # =============================================================================
+
 
 class TestSave:
     """save() 方法验证"""
@@ -209,7 +196,7 @@ class TestSave:
         path = reporter.save(content, "readable_test.md")
         assert os.path.exists(path), f"文件不存在: {path}"
 
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             saved_content = f.read()
         assert saved_content == content
 
@@ -220,44 +207,42 @@ class TestSave:
 
     def test_save_oserror_raises_io_error(self, reporter):
         """v0.0.15 修复：OSError → IOError"""
-        with patch("builtins.open", side_effect=OSError("Permission denied")):
-            with pytest.raises(IOError, match="报告保存失败"):
-                reporter.save("test content", "will_fail.md")
+        with (
+            patch("builtins.open", side_effect=OSError("Permission denied")),
+            pytest.raises(IOError, match="报告保存失败"),
+        ):
+            reporter.save("test content", "will_fail.md")
 
 
 # =============================================================================
 # generate_and_save
 # =============================================================================
 
+
 class TestGenerateAndSave:
     """generate_and_save() 一步完成"""
 
     def test_returns_path(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """返回文件路径"""
-        path = reporter.generate_and_save(
-            sample_scan_result, sample_findings, sample_harden, fmt="markdown"
-        )
+        path = reporter.generate_and_save(sample_scan_result, sample_findings, sample_harden, fmt="markdown")
         assert isinstance(path, str)
         assert len(path) > 0
 
     def test_file_exists(self, reporter, sample_scan_result, sample_findings, sample_harden):
         """文件确实存在"""
-        path = reporter.generate_and_save(
-            sample_scan_result, sample_findings, sample_harden, fmt="markdown"
-        )
+        path = reporter.generate_and_save(sample_scan_result, sample_findings, sample_harden, fmt="markdown")
         assert os.path.exists(path)
 
     def test_text_format_generates_txt(self, reporter, sample_scan_result, sample_findings, sample_harden):
-        """text 格式生成 .txt 文件"""
-        path = reporter.generate_and_save(
-            sample_scan_result, sample_findings, sample_harden, fmt="text"
-        )
+        """Text 格式生成 .txt 文件"""
+        path = reporter.generate_and_save(sample_scan_result, sample_findings, sample_harden, fmt="text")
         assert path.endswith(".txt")
 
 
 # =============================================================================
 # _risk_summary
 # =============================================================================
+
 
 class TestRiskSummary:
     """_risk_summary() 统计"""

@@ -12,16 +12,16 @@
   - payload 仅检测不利用（无 write/delete/exec 关键词）
 """
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lightshield.scanners.web_vuln_scanner import WebVulnScanner, SENSITIVE_DIRS
-from lightshield.adapters.base import VulnFinding, ScanResult
+from lightshield.adapters.base import VulnFinding
+from lightshield.scanners.web_vuln_scanner import SENSITIVE_DIRS, WebVulnScanner
 from lightshield.utils.constants import RiskLevel, ScanStatus
 
-
 # ── 辅助：构造假 Response ─────────────────────────────────────────────
+
 
 class _FakeElapsed:
     def __init__(self, seconds: float = 0.1) -> None:
@@ -47,6 +47,7 @@ def _fake_response(
 
 # ── 扫描器构造 ──────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def scanner():
     """返回 request_interval=0 的 WebVulnScanner，避免限速等待"""
@@ -56,6 +57,7 @@ def scanner():
 # =============================================================================
 # capabilities
 # =============================================================================
+
 
 class TestCapabilities:
     """capabilities() 返回正确的能力列表"""
@@ -71,6 +73,7 @@ class TestCapabilities:
 # =============================================================================
 # validate_target
 # =============================================================================
+
 
 class TestValidateTarget:
     """validate_target 委托 TargetValidator"""
@@ -101,11 +104,12 @@ class TestValidateTarget:
 # scan
 # =============================================================================
 
+
 class TestScan:
     """scan() 方法验证（mock HTTP）"""
 
     def test_scan_mocked_http_returns_completed(self, scanner):
-        """mock HTTP 请求后 scan() 返回 COMPLETED 状态"""
+        """Mock HTTP 请求后 scan() 返回 COMPLETED 状态"""
         with patch.object(scanner, "_safe_get", return_value=_fake_response()):
             result = scanner.scan("example.com")
             assert result.status == ScanStatus.COMPLETED
@@ -117,7 +121,7 @@ class TestScan:
         assert result.status == ScanStatus.FAILED
 
     def test_scan_respects_check_flags(self, scanner):
-        """kwargs check_sqli/check_xss/check_dirs 控制子检测"""
+        """Kwargs check_sqli/check_xss/check_dirs 控制子检测"""
         with patch.object(scanner, "_safe_get", return_value=_fake_response()):
             # 全部关闭
             result = scanner.scan(
@@ -151,13 +155,15 @@ class TestScan:
 # detect_sqli
 # =============================================================================
 
+
 class TestDetectSqli:
     """detect_sqli() SQL 注入检测"""
 
     def test_returns_list_of_vuln_findings(self, scanner):
         """返回 list[VulnFinding]"""
         with patch.object(
-            scanner, "_safe_get",
+            scanner,
+            "_safe_get",
             return_value=_fake_response("You have an error in your SQL syntax"),
         ):
             result = scanner.detect_sqli("http://example.com/search", {"q": "test"})
@@ -168,7 +174,8 @@ class TestDetectSqli:
     def test_finding_has_severity(self, scanner):
         """发现的 VulnFinding 有非 None 的 severity"""
         with patch.object(
-            scanner, "_safe_get",
+            scanner,
+            "_safe_get",
             return_value=_fake_response("You have an error in your SQL syntax"),
         ):
             result = scanner.detect_sqli("http://example.com/search", {"q": "test"})
@@ -179,7 +186,8 @@ class TestDetectSqli:
     def test_vuln_type_is_sqli(self, scanner):
         """vuln_type 为 'sqli'"""
         with patch.object(
-            scanner, "_safe_get",
+            scanner,
+            "_safe_get",
             return_value=_fake_response("You have an error in your SQL syntax"),
         ):
             result = scanner.detect_sqli("http://example.com/search", {"q": "test"})
@@ -194,25 +202,24 @@ class TestDetectSqli:
     def test_no_payloads_contain_write_delete_exec(self, scanner):
         """SQL 注入测试 payload 不含 write/delete/exec 等利用关键词"""
         from lightshield.scanners.web_vuln_scanner import SQLI_TEST_PAYLOADS
+
         dangerous = {"write", "delete", "exec", "drop", "shutdown"}
         for payload, _ in SQLI_TEST_PAYLOADS:
             payload_lower = payload.lower()
             for keyword in dangerous:
-                assert keyword not in payload_lower, (
-                    f"payload {payload!r} 含利用关键词 '{keyword}'"
-                )
+                assert keyword not in payload_lower, f"payload {payload!r} 含利用关键词 '{keyword}'"
 
 
 # =============================================================================
 # detect_xss
 # =============================================================================
 
+
 class TestDetectXss:
     """detect_xss() XSS 检测"""
 
     def test_returns_list_of_vuln_findings(self, scanner):
         """返回 list[VulnFinding]"""
-        payload = '<script>alert(1)</script>'
 
         def fake_get(url, params=None):
             if params:
@@ -226,7 +233,6 @@ class TestDetectXss:
 
     def test_xss_finding_has_evidence(self, scanner):
         """XSS 发现的 evidence 包含注入上下文"""
-        payload = '<script>alert(1)</script>'
 
         def fake_get(url, params=None):
             if params and any(v and "<script>" in str(v) for v in params.values()):
@@ -245,18 +251,18 @@ class TestDetectXss:
     def test_no_payloads_contain_write_exec(self, scanner):
         """XSS 测试 payload 不含利用关键词"""
         from lightshield.scanners.web_vuln_scanner import XSS_TEST_PAYLOADS
+
         dangerous = {"write", "delete", "exec", "drop"}
         for payload, _ in XSS_TEST_PAYLOADS:
             payload_lower = payload.lower()
             for keyword in dangerous:
-                assert keyword not in payload_lower, (
-                    f"payload {payload!r} 含利用关键词 '{keyword}'"
-                )
+                assert keyword not in payload_lower, f"payload {payload!r} 含利用关键词 '{keyword}'"
 
 
 # =============================================================================
 # enumerate_directories
 # =============================================================================
+
 
 class TestEnumerateDirectories:
     """enumerate_directories() 敏感目录枚举"""

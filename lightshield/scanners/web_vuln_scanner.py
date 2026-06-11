@@ -12,7 +12,7 @@ import re
 import sys
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
@@ -28,7 +28,7 @@ from lightshield.utils.validator import TargetValidator
 try:
     from bs4 import BeautifulSoup
 except ImportError:  # 运行环境未安装 bs4 时仍保持核心检测可用。
-    BeautifulSoup = None
+    BeautifulSoup = None  # type: ignore[assignment,misc]  # bs4 未安装时的回退
 
 
 SQLI_TEST_PAYLOADS: list[tuple[str, str]] = [
@@ -98,7 +98,7 @@ class WebVulnScanner(BaseAdapter):
         self,
         timeout: float = 10.0,
         request_interval: float = 1.0,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
     ) -> None:
         """初始化 Web 检测器。
 
@@ -269,8 +269,7 @@ class WebVulnScanner(BaseAdapter):
                             title="疑似反射型 XSS 风险",
                             description="测试字符串被页面未转义回显，可能存在反射型 XSS 风险。",
                             remediation=(
-                                "对所有用户输入进行上下文相关输出编码；"
-                                "启用内容安全策略 CSP；避免直接拼接 HTML。"
+                                "对所有用户输入进行上下文相关输出编码；启用内容安全策略 CSP；避免直接拼接 HTML。"
                             ),
                             url=url,
                             parameter=param_name,
@@ -287,10 +286,7 @@ class WebVulnScanner(BaseAdapter):
                             severity=RiskLevel.HIGH,
                             title="疑似存储型 XSS 风险",
                             description="测试字符串在后续页面响应中出现，可能存在存储型 XSS 风险。",
-                            remediation=(
-                                "保存前校验输入，输出时做上下文编码；"
-                                "对富文本内容使用安全白名单清洗。"
-                            ),
+                            remediation=("保存前校验输入，输出时做上下文编码；对富文本内容使用安全白名单清洗。"),
                             url=url,
                             parameter=param_name,
                             evidence=f"{label} 测试字符串在后续响应中出现",
@@ -319,10 +315,7 @@ class WebVulnScanner(BaseAdapter):
                     severity=severity,
                     title="发现敏感路径或管理入口",
                     description=f"目标存在常见敏感路径 {path}，建议确认是否需要公开访问。",
-                    remediation=(
-                        "移除不必要的公开文件；为管理入口配置访问控制；"
-                        "禁止公开配置、备份、版本控制目录。"
-                    ),
+                    remediation=("移除不必要的公开文件；为管理入口配置访问控制；禁止公开配置、备份、版本控制目录。"),
                     url=target_url,
                     evidence=evidence,
                 )
@@ -330,7 +323,7 @@ class WebVulnScanner(BaseAdapter):
 
         return findings
 
-    def _safe_get(self, url: str, params: Optional[dict] = None) -> Optional[requests.Response]:
+    def _safe_get(self, url: str, params: dict | None = None) -> requests.Response | None:
         """统一 HTTP GET：限速、超时、异常捕获。"""
         self._rate_limit()
         try:
@@ -370,7 +363,7 @@ class WebVulnScanner(BaseAdapter):
         snapshot: _ResponseSnapshot,
         payload: str,
         label: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """根据错误信息、状态码和延迟生成 SQL 注入证据。"""
         lowered_text = snapshot.text.lower()
         for pattern in self._SQL_ERROR_PATTERNS:
@@ -381,10 +374,7 @@ class WebVulnScanner(BaseAdapter):
             return f"{label}: 状态码从 {baseline.status_code} 变为 {snapshot.status_code}"
 
         if "时间盲注" in label and snapshot.elapsed_seconds - baseline.elapsed_seconds >= 2.5:
-            return (
-                f"{label}: 响应耗时增加 "
-                f"{snapshot.elapsed_seconds - baseline.elapsed_seconds:.2f} 秒"
-            )
+            return f"{label}: 响应耗时增加 {snapshot.elapsed_seconds - baseline.elapsed_seconds:.2f} 秒"
 
         return None
 
@@ -392,7 +382,7 @@ class WebVulnScanner(BaseAdapter):
         self,
         baseline: _ResponseSnapshot,
         snapshots: dict[str, _ResponseSnapshot],
-    ) -> Optional[str]:
+    ) -> str | None:
         """比较永真/永假响应差异，降低单一响应误报。"""
         true_snapshot = next((value for key, value in snapshots.items() if key.startswith("OR 永真")), None)
         false_snapshot = next((value for key, value in snapshots.items() if key.startswith("AND 永假")), None)
@@ -448,7 +438,7 @@ class WebVulnScanner(BaseAdapter):
             return RiskLevel.MEDIUM
         return RiskLevel.LOW
 
-    def _html_title(self, text: str) -> Optional[str]:
+    def _html_title(self, text: str) -> str | None:
         """提取页面标题；bs4 不可用时使用轻量正则兜底。"""
         if not text:
             return None
@@ -476,7 +466,7 @@ class WebVulnScanner(BaseAdapter):
         parsed = urlparse(normalized)
         return f"{parsed.scheme}://{parsed.netloc}/"
 
-    def _extract_host(self, target: str) -> Optional[str]:
+    def _extract_host(self, target: str) -> str | None:
         """从 URL 中提取主机名；普通域名/IP 返回 None 交给 TargetValidator。"""
         parsed = urlparse(target)
         if parsed.scheme in {"http", "https"} and parsed.hostname:
@@ -485,6 +475,7 @@ class WebVulnScanner(BaseAdapter):
 
 
 if __name__ == "__main__":
+
     class _FakeElapsed:
         def __init__(self, seconds: float = 0.1) -> None:
             self._seconds = seconds
@@ -502,7 +493,7 @@ if __name__ == "__main__":
         def __init__(self) -> None:
             super().__init__(request_interval=0.0)
 
-        def _safe_get(self, url: str, params: Optional[dict] = None) -> Optional[_FakeResponse]:
+        def _safe_get(self, url: str, params: dict | None = None) -> _FakeResponse | None:  # type: ignore[override]
             if url.endswith("/.env"):
                 return _FakeResponse("<title>env</title>DB_PASSWORD=redacted")
             if params and any("'" in str(value) for value in params.values()):

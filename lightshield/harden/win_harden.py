@@ -1,5 +1,4 @@
-"""
-LightShield Windows 加固脚本生成器
+"""LightShield Windows 加固脚本生成器
 
 与 linux_harden.py 对称——消费规则引擎的加固建议，生成可审阅的
 PowerShell 加固脚本 + 回滚脚本。绝不自动执行任何系统命令。
@@ -23,17 +22,17 @@ PowerShell 加固脚本 + 回滚脚本。绝不自动执行任何系统命令。
 import os
 import sys as _sys
 from datetime import datetime
-from typing import Optional
 
 # Allow direct script execution (python lightshield/harden/win_harden.py)
-if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))):
+if __name__ == "__main__" and _sys.path[0] != os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+):
     _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from lightshield.config import get_config
 from lightshield.harden.base import HardenBase, HardenResult, HardenStatus
 from lightshield.utils.constants import OSPlatform
 from lightshield.utils.logger import get_logger
-
 
 # =============================================================================
 # 命令回滚映射（PowerShell 版）
@@ -99,6 +98,7 @@ def _script_filename(target: str, kind: str, ts: str) -> str:
 # WinHardener
 # =============================================================================
 
+
 class WinHardener(HardenBase):
     """Windows 加固脚本生成器
 
@@ -117,7 +117,7 @@ class WinHardener(HardenBase):
         self,
         target: str,
         recommendations: list[dict],
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> HardenResult:
         """根据加固建议生成 PowerShell 加固脚本与回滚脚本
 
@@ -202,9 +202,7 @@ class WinHardener(HardenBase):
     # 脚本组装
     # =========================================================================
 
-    def _build_harden_script(
-        self, target: str, recommendations: list[dict], ts: str
-    ) -> str:
+    def _build_harden_script(self, target: str, recommendations: list[dict], ts: str) -> str:
         """组装 PowerShell 加固脚本全文"""
         lines = [
             "<#",
@@ -240,9 +238,9 @@ class WinHardener(HardenBase):
             "# ══════ 自动备份（回滚用）══════",
             'Write-Host ""',
             'Write-Host "[备份] 导出当前防火墙规则..."',
-            "$firewallBackup = Join-Path $env:TEMP \"firewall-backup-$(Get-Date -Format yyyyMMdd-HHmmss).wfw\"",
-            "netsh advfirewall export `\"$firewallBackup`\" 2>$null",
-            'if ($LASTEXITCODE -eq 0) {',
+            '$firewallBackup = Join-Path $env:TEMP "firewall-backup-$(Get-Date -Format yyyyMMdd-HHmmss).wfw"',
+            'netsh advfirewall export `"$firewallBackup`" 2>$null',
+            "if ($LASTEXITCODE -eq 0) {",
             '    Write-Host "[备份] $firewallBackup"',
             "} else {",
             '    Write-Host "[提示] 防火墙规则导出失败，继续执行"',
@@ -266,7 +264,7 @@ class WinHardener(HardenBase):
             port = str(rec.get("target", ""))
 
             lines += [
-                f'Write-Host ""',
+                'Write-Host ""',
                 f"Write-Host '### [{i}/{len(recommendations)}] {action}'",
             ]
             if reason:
@@ -274,7 +272,7 @@ class WinHardener(HardenBase):
 
             if not commands:
                 # 无 Windows 命令——引导操作员
-                lines.append(f"# [提示] 此操作暂无 Windows 自动化命令，请操作员手动处理。")
+                lines.append("# [提示] 此操作暂无 Windows 自动化命令，请操作员手动处理。")
                 lines.append(f"#        建议操作：{action}（{reason}）")
                 continue
 
@@ -285,11 +283,11 @@ class WinHardener(HardenBase):
                     lines.append(substituted)
                 elif "<service>" in substituted or "<Service>" in substituted:
                     # 占位符——引导操作员替换
-                    lines.append(f"# [引导] 以下命令需要操作员指定具体服务名：")
+                    lines.append("# [引导] 以下命令需要操作员指定具体服务名：")
                     lines.append(f"# {substituted}")
                 elif any(kw in substituted for kw in ("systemctl", "apt ", "yum ", "iptables", "sed ", "cp /etc")):
                     # Linux-only 命令——Windows 下引导
-                    lines.append(f"# [跳过] 此命令仅适用于 Linux，Windows 下请手动处理：")
+                    lines.append("# [跳过] 此命令仅适用于 Linux，Windows 下请手动处理：")
                     lines.append(f"#        {substituted[:80]}")
                 else:
                     lines.append(f'Write-Host "  + {substituted[:80]}"')
@@ -303,9 +301,7 @@ class WinHardener(HardenBase):
         ]
         return "\r\n".join(lines) + "\r\n"
 
-    def _build_rollback_script(
-        self, target: str, recommendations: list[dict], ts: str
-    ) -> str:
+    def _build_rollback_script(self, target: str, recommendations: list[dict], ts: str) -> str:
         """组装回滚脚本全文"""
         lines = [
             "<#",
@@ -317,7 +313,7 @@ class WinHardener(HardenBase):
             "═══════════════════════════════════════════════════════════════════",
             "#>",
             "",
-            '#Requires -RunAsAdministrator',
+            "#Requires -RunAsAdministrator",
             "",
             '$ErrorActionPreference = "SilentlyContinue"',
             "",
@@ -337,7 +333,7 @@ class WinHardener(HardenBase):
             lines.append(f"Write-Host '### 回滚 [{i}] {action}'")
 
             if not commands:
-                lines.append(f"# [提示] 此操作无 Windows 自动化命令，无需回滚。")
+                lines.append("# [提示] 此操作无 Windows 自动化命令，无需回滚。")
                 lines.append("")
                 continue
 
@@ -347,10 +343,11 @@ class WinHardener(HardenBase):
                 rollback = _build_rollback_cmd(substituted)
 
                 if substituted.startswith("#") and not rollback.startswith("#"):
-                    lines.append(f"# 原操作为注释引导，无需回滚")
+                    lines.append("# 原操作为注释引导，无需回滚")
                 elif "netsh advfirewall firewall add rule" in substituted:
                     # 提取规则名用于回滚
                     import re
+
                     rule_match = re.search(r'name="([^"]+)"', substituted)
                     if rule_match:
                         rule_name = rule_match.group(1)
@@ -361,13 +358,13 @@ class WinHardener(HardenBase):
                     else:
                         lines.append(rollback)
                     has_rollback = True
-                elif "netsh advfirewall export" in substituted:
-                    lines.append(rollback)
-                elif rollback.startswith("# 回滚："):
-                    lines.append(rollback)
-                elif rollback.startswith("# ") and "无法自动回滚" in rollback:
-                    lines.append(rollback)
-                elif rollback.startswith("# "):
+                elif (
+                    "netsh advfirewall export" in substituted
+                    or rollback.startswith("# 回滚：")
+                    or rollback.startswith("# ")
+                    and "无法自动回滚" in rollback
+                    or rollback.startswith("# ")
+                ):
                     lines.append(rollback)
                 else:
                     lines.append(rollback)
@@ -380,8 +377,7 @@ class WinHardener(HardenBase):
 
         # 防火墙全量回滚提示
         has_firewall = any(
-            "netsh advfirewall" in str(rec.get("commands", {}).get("windows", []))
-            for rec in recommendations
+            "netsh advfirewall" in str(rec.get("commands", {}).get("windows", [])) for rec in recommendations
         )
         if has_firewall:
             lines += [
@@ -404,6 +400,7 @@ class WinHardener(HardenBase):
     def _gen_audit_id(target: str) -> str:
         """生成审计 ID"""
         import uuid
+
         return f"HARDEN-WIN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
 
@@ -478,7 +475,7 @@ if __name__ == "__main__":
         print(f"[OK] 状态: {result.status.value} os={result.os_platform.value}")
 
         # 检查加固脚本内容
-        with open(result.script_path, "r", encoding="utf-8-sig") as f:
+        with open(result.script_path, encoding="utf-8-sig") as f:
             harden_text = f.read()
         assert "#Requires -RunAsAdministrator" in harden_text, "缺少管理员权限声明"
         assert "R4" in harden_text, "缺少 R4 所有权提示"
@@ -490,7 +487,7 @@ if __name__ == "__main__":
         print(f"[OK] 加固脚本: {len(harden_text)} 字符，含 R4 Read-Host + netsh + Get-Service + 占位符引导")
 
         # 检查回滚脚本内容
-        with open(result.rollback_path, "r", encoding="utf-8-sig") as f:
+        with open(result.rollback_path, encoding="utf-8-sig") as f:
             rollback_text = f.read()
         assert "#Requires -RunAsAdministrator" in rollback_text, "回滚脚本缺管理员声明"
         assert "delete rule" in rollback_text, "回滚脚本缺少 netsh delete rule"
@@ -506,7 +503,8 @@ if __name__ == "__main__":
         # 变量替换
         substituted = hardener._substitute(
             'netsh advfirewall firewall add rule name="Block_{port}" dir=in action=block protocol=TCP localport={port}',
-            "3389", "192.168.1.1"
+            "3389",
+            "192.168.1.1",
         )
         assert "localport=3389" in substituted, f"端口替换失败: {substituted}"
         assert 'name="Block_3389"' in substituted, f"名称替换失败: {substituted}"
@@ -517,9 +515,10 @@ if __name__ == "__main__":
         full_text = harden_text + rollback_text
         for kw in dangerous:
             assert kw not in full_text, f"检测到执行性代码: {kw}"
-        print(f"[OK] 零执行性代码（无 subprocess/Invoke-Expression/Start-Process）")
+        print("[OK] 零执行性代码（无 subprocess/Invoke-Expression/Start-Process）")
 
         print("=== WinHardener: ALL PASSED ===")
     finally:
         import shutil
+
         shutil.rmtree(out_dir, ignore_errors=True)

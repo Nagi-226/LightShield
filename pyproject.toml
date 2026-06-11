@@ -30,7 +30,11 @@ dependencies = [
 nmap = ["python-nmap>=0.7.0,<1.0"]  # Nmap Python 封装（当前适配器通过 subprocess 直接调用 nmap）
 dev = [
     "pytest>=7.0",                   # 测试框架
+    "pytest-cov>=4.0",               # 测试覆盖率
     "ruff>=0.1.0",                   # Python 代码检查/格式化
+    "pre-commit>=3.0",               # Git hook 框架
+    "bandit>=1.7",                   # 安全漏洞扫描
+    "mypy>=1.0",                     # 静态类型检查
 ]
 
 # === 命令行入口 ===
@@ -54,9 +58,117 @@ include = ["lightshield*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+addopts = ["-v"]
+
+# 覆盖率配置（手动启用：pytest --cov=lightshield --cov-report=term）
+[tool.coverage.run]
+source = ["lightshield"]
+omit = ["tests/*", "*/__main__"]
+
+[tool.coverage.report]
+fail_under = 60              # 当前最低覆盖率门槛（v0.3.0→70, v1.0.0→80）
+                                # 当前 61%: cli/core 在无真实 Nmap/用户交互时难测试
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+]
 
 [tool.ruff]
 target-version = "py310"
 line-length = 120
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+
+# === 规则集（分层递进） ===
+# E/W:  pycodestyle — 基础格式（空白/换行/缩进）
+# F:    pyflakes    — 逻辑错误（未定义变量/未使用 import）
+# I:    isort       — import 排序统一
+# N:    pep8-naming — 命名规范（类名 PascalCase / 函数名 snake_case）
+# UP:   pyupgrade   — 现代化语法（移除过时的 typing 写法）
+# B:    flake8-bugbear — 常见 bug 模式（可变默认参数/裸 except/等）
+# SIM:  flake8-simplify — 代码简化建议（冗余 if/不必要的推导式/等）
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pycodestyle + pyflakes（基础格式）
+    "I",              # isort（import 排序统一）
+    "N",              # pep8-naming（命名规范）
+    "UP",             # pyupgrade（现代化语法）
+    "B",              # flake8-bugbear（常见 bug 模式）
+    "SIM",            # flake8-simplify（代码简化）
+    "C90",            # McCabe 圈复杂度
+    "D",              # pydocstyle（docstring 规范 —— 跨 Agent 文档一致性）
+]
+ignore = [
+    "E501",   # 行长度由 line-length=120 控制
+    "D415",   # 中文 docstring 不使用英文标点结尾
+    "D213",   # 与 D212 互斥，选 D212（summary 在第一行）
+    "D203",   # 与 D211 互斥，选 D211（class 前无空行）
+    "D406",   # 与 D407 互斥
+    "D407",   # Google 风格不需要 Args 下划线
+    "D107",   # __init__ 的 docstring 由类级 docstring 覆盖即可
+    "D417",   # **kwargs/**extra 的参数描述非强制
+    "D102",   # 公开方法的 docstring 由函数级文档覆盖（避免重复要求）
+]
+
+# === 针对特定规则的微调 ===
+# McCabe 圈复杂度上限
+[tool.ruff.lint.mccabe]
+max-complexity = 20  # v0.2.0: 2 个函数略超 15（run_scan=17, component_checker.scan=27）
+                     # v0.3.0 目标：15，需拆分 scan() 为子方法
+
+# pydocstyle 适配中文 docstring（忽略英文标点格式要求）
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Google 风格 docstring，兼容中文
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]              # __init__.py 的 import 用于重新导出
+"tests/*.py" = ["N802", "N803", "N806", "E402", "D210"]  # 测试文件: 非标准命名 + sys.path import + Unicode 引号 docstring
+"lightshield/scanners/component_checker.py" = ["C901"]  # scan() 复杂度 27：集中了多阶段检测逻辑，v0.3.0 拆分
+
+# =============================================================================
+# Bandit — 安全漏洞扫描
+# =============================================================================
+[tool.bandit]
+# 仅扫描 lightshield/ 包目录（不扫描外部项目如 hackingtool/MSF）
+exclude_dirs = ["tests", ".venv", "venv", "env", ".git", "scripts", "docs"]
+
+# 跳过的合法模式（安全工具项目特有的豁免）
+skips = [
+    "B101",   # assert — 安全工具中 assert 用于测试和自检逻辑，非安全控制
+    "B404",   # import subprocess — MSF/Nmap 适配器需调用外部安全工具
+    "B603",   # subprocess without shell=True — 我们的用法不含 shell 注入风险
+    "B602",   # subprocess_popen_with_shell_equals_true — 不使用
+    "B607",   # start_process_with_partial_path — 工具路径由环境决定
+]
+
+[tool.bandit.assert_used]
+# 允许 assert 用于测试和自检
+
+# =============================================================================
+# Mypy — 静态类型检查
+# =============================================================================
+# 策略：从宽松开始（项目已有 ~8000 行非类型化代码），随 Phase 推进逐步收紧。
+# 目标路径：v0.3.0 → disallow_untyped_defs=true, v1.0.0 → strict=true
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true       # 第三方库（python-nmap 等无 stub）
+show_error_codes = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+
+# 初始阶段：允许未标注类型的函数和变量（后续版本收紧）
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true         # v0.0.21: 收紧，检查无类型标注的函数体
+no_implicit_optional = false        # 允许 `x: str = None`（旧代码兼容）
+warn_return_any = false
+warn_unreachable = true
+
+# 排除目录
+exclude = [
+    "tests/",
+    "scripts/",
+    "docs/",
+]

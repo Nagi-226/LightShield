@@ -1,5 +1,4 @@
-"""
-LightShield 核心调度器 — 主控逻辑
+"""LightShield 核心调度器 — 主控逻辑
 
 负责：
   - 适配器注册与管理
@@ -15,11 +14,10 @@ LightShield 核心调度器 — 主控逻辑
     result = core.run_scan("192.168.1.1", scan_types=["port_scan"])
 """
 
+import datetime
 import os
 import sys as _sys
 import time
-import datetime
-from typing import Optional
 
 # Allow direct script execution (python lightshield/core.py)
 if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os.path.abspath(__file__))):
@@ -27,13 +25,14 @@ if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os
 
 from lightshield.adapters.base import BaseAdapter, ScanResult, VulnFinding
 from lightshield.config import get_config
-from lightshield.utils.constants import ScanStatus, ScanType, RiskLevel
+from lightshield.harden.base import HardenResult
+from lightshield.utils.constants import ScanStatus
 from lightshield.utils.validator import TargetValidator
-
 
 # =============================================================================
 # 主调度器
 # =============================================================================
+
 
 class LightShieldCore:
     """LightShield 主调度器 — 扫描任务编排与合规控制中心
@@ -45,12 +44,14 @@ class LightShieldCore:
     """
 
     def __init__(self, config=None):
-        """
+        """初始化核心调度器。
+
         Args:
-            config: LightShieldConfig 实例，默认使用全局单例
+        config: LightShieldConfig 实例，默认使用全局单例
         """
         self._config = config or get_config()
         self._adapters: dict[str, BaseAdapter] = {}
+        self._task_results: dict[str, ScanResult] = {}  # v0.2.0: 内存缓存, v1.0: 线程池, v2.0: Redis
         self._scan_log: list[dict] = []
 
     # =========================================================================
@@ -78,7 +79,7 @@ class LightShieldCore:
             if self._adapters.get(cap) is adapter:
                 del self._adapters[cap]
 
-    def get_adapter(self, capability: str) -> Optional[BaseAdapter]:
+    def get_adapter(self, capability: str) -> BaseAdapter | None:
         """按能力名称获取适配器"""
         return self._adapters.get(capability)
 
@@ -90,13 +91,15 @@ class LightShieldCore:
         """列出所有注册的适配器及其能力"""
         seen = set()
         result = []
-        for cap, adapter in self._adapters.items():
+        for _cap, adapter in self._adapters.items():
             if adapter.name not in seen:
                 seen.add(adapter.name)
-                result.append({
-                    "name": adapter.name,
-                    "capabilities": adapter.capabilities(),
-                })
+                result.append(
+                    {
+                        "name": adapter.name,
+                        "capabilities": adapter.capabilities(),
+                    }
+                )
         return result
 
     # =========================================================================
@@ -132,7 +135,7 @@ class LightShieldCore:
     def run_scan(
         self,
         target: str,
-        scan_types: Optional[list[str]] = None,
+        scan_types: list[str] | None = None,
         *,
         confirm_ownership: bool = False,
         **kwargs,
@@ -160,6 +163,7 @@ class LightShieldCore:
             ScanResult 合并结果
         """
         from lightshield.utils.logger import get_logger
+
         logger = get_logger()
 
         # ---- Step 1: R2 输入校验 ----
@@ -192,10 +196,7 @@ class LightShieldCore:
             return ScanResult(
                 status=ScanStatus.FAILED,
                 target=target,
-                error=(
-                    f"[R6 违规] 请求 {requested_count} 个扫描类型，"
-                    f"超过上限 {self._config.max_concurrent_scans}"
-                ),
+                error=(f"[R6 违规] 请求 {requested_count} 个扫描类型，超过上限 {self._config.max_concurrent_scans}"),
             )
 
         # ---- Step 4: 确定扫描类型 ----
@@ -302,14 +303,81 @@ class LightShieldCore:
         """便捷方法：全量扫描"""
         return self.run_scan(target, scan_types=None, **kwargs)
 
+    # =========================================================================
+    # 异步任务接口（v0.2.0 同步实现，v1.0+ 可切换为消息队列）
+    # =========================================================================
+
+    def submit_scan(
+        self,
+        target: str,
+        scan_types: list[str] | None = None,
+        *,
+        confirm_ownership: bool = False,
+        **kwargs,
+    ) -> str:
+        """提交扫描任务，返回 task_id。
+
+        当前版本（v0.2.0）同步执行——提交即完成。
+        v1.0.0：线程池异步执行，task_id 用于轮询状态。
+        v2.0.0：Celery 任务入队，task_id 对应 Redis 中的任务状态。
+
+        Args:
+            target: 扫描目标
+            scan_types: 扫描类型列表
+            confirm_ownership: 是否已确认所有权
+            **kwargs: 传递给 run_scan 的额外参数
+
+        Returns:
+            task_id: 格式 "LS-YYYYMMDD-HHMMSS-xxxxxx"
+        """
+        import uuid
+        from datetime import datetime
+
+        task_id = f"LS-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+
+        # v0.2.0: 同步执行，结果直接缓存到内存
+        # v1.0.0: 线程池 → self._task_results[task_id] = future
+        # v2.0.0: Celery → redis.set(task_id, task_data)
+        result = self.run_scan(target, scan_types=scan_types, confirm_ownership=confirm_ownership, **kwargs)
+        self._task_results[task_id] = result
+
+        return task_id
+
+    def get_scan_status(self, task_id: str) -> dict:
+        """查询扫描任务状态。
+
+        v0.2.0：任务已完成（同步），直接返回结果摘要。
+        v1.0.0：查线程池 Future → PENDING / RUNNING / COMPLETED。
+        v2.0.0：查 Redis → 支持分布式查询。
+
+        Args:
+            task_id: submit_scan() 返回的任务 ID
+
+        Returns:
+            {"task_id": str, "status": str, "target": str, "findings": int, ...}
+        """
+        result = self._task_results.get(task_id)
+        if result is None:
+            return {"task_id": task_id, "status": "not_found"}
+
+        return {
+            "task_id": task_id,
+            "status": result.status.value,
+            "target": result.target,
+            "ports": len(result.ports),
+            "findings": len(result.findings),
+            "duration_seconds": result.duration_seconds,
+            "error": result.error,
+        }
+
     def generate_hardening(
         self,
         target: str,
-        findings: Optional[list[VulnFinding]] = None,
+        findings: list[VulnFinding] | None = None,
         *,
-        recommendations: Optional[list[dict]] = None,
-        output_dir: Optional[str] = None,
-        os_platform: Optional[str] = None,
+        recommendations: list[dict] | None = None,
+        output_dir: str | None = None,
+        os_platform: str | None = None,
     ) -> "HardenResult":
         """根据扫描发现生成加固脚本（默认不自动执行）
 
@@ -357,11 +425,8 @@ class LightShieldCore:
 
         # Step 3: 选择加固适配器
         platform = (os_platform or "").lower()
-        if platform == "windows":
-            hardener = WinHardener()
-        else:
-            # 默认 Linux，向后兼容 v0.0.16
-            hardener = LinuxHardener()
+        # 默认 Linux，向后兼容 v0.0.16
+        hardener = WinHardener() if platform == "windows" else LinuxHardener()
 
         result = hardener.generate(
             target,
@@ -415,12 +480,12 @@ if __name__ == "__main__":
 
     # 1. 初始化
     core = LightShieldCore()
-    print(f"[OK] 核心调度器初始化成功")
+    print("[OK] 核心调度器初始化成功")
 
     # 2. 合规校验
     is_valid, reason = core._validate_request("192.168.1.1")
     assert is_valid, f"合法 IP 被拒绝: {reason}"
-    print(f"[OK] 合法 IP '192.168.1.1' 通过校验")
+    print("[OK] 合法 IP '192.168.1.1' 通过校验")
 
     is_valid, reason = core._validate_request("192.168.1.0/24")
     assert not is_valid, f"CIDR 未被拒绝: {reason}"

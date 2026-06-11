@@ -1,5 +1,4 @@
-"""
-LightShield 加固适配器抽象基类
+"""LightShield 加固适配器抽象基类
 
 与 adapters/base.py 对称——前者定义“扫描”接口，这里定义“系统加固”接口。
 所有加固能力（Linux / Windows / 等）只需实现此基类。
@@ -16,20 +15,20 @@ LightShield 加固适配器抽象基类
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 from lightshield.utils.constants import OSPlatform
-
 
 # =============================================================================
 # 数据结构
 # =============================================================================
 
+
 class HardenStatus(Enum):
     """加固执行状态"""
-    GENERATED = "generated"     # 已生成脚本（未执行）
-    NO_ACTION = "no_action"     # 无推荐项，无需操作
-    FAILED = "failed"           # 生成/执行失败
+
+    GENERATED = "generated"  # 已生成脚本（未执行）
+    NO_ACTION = "no_action"  # 无推荐项，无需操作
+    FAILED = "failed"  # 生成/执行失败
 
 
 @dataclass
@@ -47,15 +46,16 @@ class HardenResult:
         audit_id: 关联审计日志的 ID
         error: 错误信息（status=FAILED 时填充）
     """
+
     status: HardenStatus
     target: str
     os_platform: OSPlatform
     recommendations: list[dict] = field(default_factory=list)
-    script_path: Optional[str] = None
-    rollback_path: Optional[str] = None
+    script_path: str | None = None
+    rollback_path: str | None = None
     action_count: int = 0
     audit_id: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
     def to_dict(self) -> dict:
         """导出为字典"""
@@ -76,6 +76,7 @@ class HardenResult:
 # 抽象基类
 # =============================================================================
 
+
 class HardenBase(ABC):
     """所有加固适配器的抽象基类
 
@@ -88,9 +89,10 @@ class HardenBase(ABC):
     """
 
     def __init__(self, name: str = ""):
-        """
+        """初始化加固适配器。
+
         Args:
-            name: 适配器名称（用于日志和审计）
+        name: 适配器名称（用于日志和审计）
         """
         self.name = name or self.__class__.__name__
 
@@ -99,7 +101,7 @@ class HardenBase(ABC):
         self,
         target: str,
         recommendations: list[dict],
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> HardenResult:
         """生成加固脚本（默认不自动执行）
 
@@ -132,4 +134,5 @@ class HardenBase(ABC):
     def _audit_action(target: str, action: str, result: str) -> None:
         """记录加固操作到审计日志"""
         from lightshield.utils.logger import get_logger
+
         get_logger().audit_harden_action(target, action, result)

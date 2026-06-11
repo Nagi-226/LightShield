@@ -1,0 +1,63 @@
+# =============================================================================
+# LightShield v0.0.19 E2E — 靶机容器
+# =============================================================================
+# 预置 5 个漏洞：Telnet / MySQL弱口令 / Redis无密码 / 老旧OpenSSH / 敏感目录
+# 内部使用，不对外暴露端口。
+# =============================================================================
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ---- 安装靶机服务 ----
+RUN apt update && apt install -y --no-install-recommends \
+    # 漏洞 1: Telnet (port 23)
+    telnetd xinetd \
+    # 漏洞 2: MySQL弱口令 (port 3306)
+    mysql-server \
+    # 漏洞 3: Redis无密码 (port 6379)
+    redis-server \
+    # 漏洞 4: OpenSSH (port 22) — Ubuntu 22.04 自带 8.9p1，低于 9.0
+    openssh-server \
+    # 漏洞 5: HTTP 敏感目录 (port 8080)
+    python3 \
+    # 工具
+    net-tools iproute2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- 配置 Telnet ----
+RUN echo "service telnet { disable = no; flags = REUSE; socket_type = stream; wait = no; user = root; server = /usr/sbin/in.telnetd; }" > /etc/xinetd.d/telnet
+
+# ---- 配置 MySQL 弱口令 (root/root) ----
+# MySQL 8.0 默认使用 auth_socket，改为 mysql_native_password
+RUN service mysql start && \
+    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;" && \
+    # 允许远程连接（容器内网）
+    sed -i 's/^bind-address.*/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    mysql -e "CREATE USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'root'; GRANT ALL ON *.* TO 'root'@'%'; FLUSH PRIVILEGES;" && \
+    service mysql stop
+
+# ---- 配置 Redis 无密码 ----
+RUN sed -i 's/^# requirepass.*/requirepass /' /etc/redis/redis.conf && \
+    sed -i 's/^bind 127.0.0.1/bind 0.0.0.0/' /etc/redis/redis.conf && \
+    sed -i 's/^protected-mode yes/protected-mode no/' /etc/redis/redis.conf
+
+# ---- 配置 SSH ----
+RUN mkdir -p /var/run/sshd && \
+    echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config && \
+    echo "root:root" | chpasswd
+
+# ---- 创建敏感目录 HTTP 服务 ----
+RUN mkdir -p /var/www/sensitive/.git && \
+    echo "ref: refs/heads/main" > /var/www/sensitive/.git/HEAD && \
+    echo 'DB_PASSWORD=prod_secret_12345' > /var/www/sensitive/.env && \
+    echo '<html><body><h1>Internal Admin Panel</h1></body></html>' > /var/www/sensitive/index.html
+
+# ---- 启动脚本 ----
+COPY docker/entrypoint-target.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 22 23 3306 6379 8080
+
+CMD ["/entrypoint.sh"]

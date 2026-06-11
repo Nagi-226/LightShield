@@ -1,5 +1,4 @@
-"""
-LightShield 规则引擎
+"""LightShield 规则引擎
 
 基于 JSON 规则库的漏洞特征匹配与风险分级系统。
 支持：
@@ -19,17 +18,15 @@ LightShield 规则引擎
 
 import json
 import os
-from dataclasses import dataclass, field
-from typing import Optional
 
 from lightshield.adapters.base import ScanResult, VulnFinding
-from lightshield.utils.constants import RiskLevel, HIGH_RISK_PORTS
+from lightshield.utils.constants import RiskLevel
 from lightshield.utils.logger import get_logger
-
 
 # =============================================================================
 # 规则引擎
 # =============================================================================
+
 
 class RuleEngine:
     """轻量化规则引擎 — 漏洞特征匹配 + 加固策略推荐
@@ -69,8 +66,7 @@ class RuleEngine:
         self._loaded = True
         self._logger.info(
             "rules",
-            f"规则加载完成：漏洞规则 {len(self._vuln_rules)} 条，"
-            f"加固规则 {len(self._harden_rules)} 条",
+            f"规则加载完成：漏洞规则 {len(self._vuln_rules)} 条，加固规则 {len(self._harden_rules)} 条",
         )
 
     def _load_json(self, path: str) -> list[dict]:
@@ -83,7 +79,7 @@ class RuleEngine:
             self._logger.info("rules", f"规则文件不存在，跳过：{path}")
             return []
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
         except (json.JSONDecodeError, OSError) as e:
             self._logger.error("rules", f"规则文件加载失败：{path}", exception=e)
@@ -165,7 +161,7 @@ class RuleEngine:
         )
         return deduped
 
-    def _match_port(self, rule: dict, result: ScanResult) -> Optional[VulnFinding]:
+    def _match_port(self, rule: dict, result: ScanResult) -> VulnFinding | None:
         """端口特征匹配"""
         port = rule.get("port")
         if port is None:
@@ -185,7 +181,7 @@ class RuleEngine:
                 )
         return None
 
-    def _match_service_version(self, rule: dict, result: ScanResult) -> Optional[VulnFinding]:
+    def _match_service_version(self, rule: dict, result: ScanResult) -> VulnFinding | None:
         """服务版本匹配（CVE 对照）"""
         service_name = rule.get("service", "").lower()
         max_affected = rule.get("max_affected_version")
@@ -212,10 +208,10 @@ class RuleEngine:
                     )
         return None
 
-    def _match_service_fingerprint(self, rule: dict, result: ScanResult) -> Optional[VulnFinding]:
+    def _match_service_fingerprint(self, rule: dict, result: ScanResult) -> VulnFinding | None:
         """服务指纹匹配（弱口令等特征）"""
-        service = rule.get("service", "").lower()
-        auth_result = rule.get("auth_result", "")
+        rule.get("service", "").lower()
+        rule.get("auth_result", "")
 
         # 从 result 的 findings 中查找匹配
         for f in result.findings:
@@ -231,10 +227,10 @@ class RuleEngine:
                 )
         return None
 
-    def _match_header(self, rule: dict, result: ScanResult) -> Optional[VulnFinding]:
+    def _match_header(self, rule: dict, result: ScanResult) -> VulnFinding | None:
         """HTTP 响应头特征匹配"""
-        header_name = rule.get("header", "").lower()
-        header_pattern = rule.get("pattern", "")
+        rule.get("header", "").lower()
+        rule.get("pattern", "")
 
         # 从 result 的 raw_output 或 services 中查找
         for svc in result.services:
@@ -273,13 +269,15 @@ class RuleEngine:
                     action_key = f"{rule.get('action')}:{finding.port or finding.vuln_type}"
                     if action_key not in seen_actions:
                         seen_actions.add(action_key)
-                        recommendations.append({
-                            "action": rule.get("action", ""),
-                            "target": str(finding.port or finding.vuln_type),
-                            "reason": rule.get("reason", finding.title),
-                            "commands": rule.get("commands", []),
-                            "severity": finding.severity.value,
-                        })
+                        recommendations.append(
+                            {
+                                "action": rule.get("action", ""),
+                                "target": str(finding.port or finding.vuln_type),
+                                "reason": rule.get("reason", finding.title),
+                                "commands": rule.get("commands", []),
+                                "severity": finding.severity.value,
+                            }
+                        )
 
         # 按严重程度排序
         severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -336,8 +334,9 @@ class RuleEngine:
             (major, minor, patch) 元组
         """
         import re
+
         # 提取主版本号
-        clean = re.sub(r'[^0-9.]', '.', version_str.split("-")[0])
+        clean = re.sub(r"[^0-9.]", ".", version_str.split("-")[0])
         parts = clean.split(".")
         result = []
         for p in parts[:3]:  # 只取 major.minor.patch
@@ -398,24 +397,27 @@ class RuleEngine:
 # =============================================================================
 
 if __name__ == "__main__":
-    import os, sys as _sys
+    import os
+    import sys as _sys
+
     _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     engine = RuleEngine()
     engine.load_rules()
 
-    print(f"=== RuleEngine self-check ===")
+    print("=== RuleEngine self-check ===")
     print(f"  Vuln rules loaded: {engine.vuln_rule_count}")
     print(f"  Harden rules loaded: {engine.harden_rule_count}")
 
     # 版本比较测试
-    assert engine._version_affected("1.0", "2.0") == True
-    assert engine._version_affected("2.0", "1.0") == False
-    assert engine._version_affected("", "2.0") == True  # unknown = risky
-    print(f"  Version comparison: OK")
+    assert engine._version_affected("1.0", "2.0")
+    assert not engine._version_affected("2.0", "1.0")
+    assert engine._version_affected("", "2.0")  # unknown = risky
+    print("  Version comparison: OK")
 
     # 风险摘要
     from lightshield.adapters.base import VulnFinding
+
     findings = [
         VulnFinding("test", RiskLevel.CRITICAL, "C", "d", "r"),
         VulnFinding("test", RiskLevel.HIGH, "H", "d", "r"),
@@ -425,4 +427,4 @@ if __name__ == "__main__":
     assert summary["critical"] == 1 and summary["high"] == 1
     print(f"  Risk summary: {summary}")
 
-    print(f"=== RuleEngine: ALL PASSED ===")
+    print("=== RuleEngine: ALL PASSED ===")

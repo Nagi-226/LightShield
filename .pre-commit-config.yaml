@@ -1,0 +1,117 @@
+# =============================================================================
+# LightShield Pre-commit 框架配置
+# =============================================================================
+# 用途：本地 git commit 前自动执行的代码质量检查
+# 安装：pre-commit install
+# 手动运行全部文件检查：pre-commit run --all-files
+# 更新 hook 版本：pre-commit autoupdate
+#
+# CI 中运行：pre-commit run --all-files
+# =============================================================================
+
+# ── 全局设置 ─────────────────────────────────────────────────────────────────
+
+default_language_version:
+  python: python3.12
+
+# 仅在 LightShield 仓库内运行（不扫描外部项目）
+# 外部路径如 E:\Open-Source Projects by others\ 不在 git 仓库中，天然不受影响
+
+# ── Hook 仓库 ─────────────────────────────────────────────────────────────────
+
+repos:
+  # ===========================================================================
+  # Tier 1: 基础文件卫生（最快，最先运行）
+  # ===========================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: "  [FILE] 去除行尾空白"
+      - id: end-of-file-fixer
+        name: "  [FILE] 文件末尾换行"
+      - id: check-yaml
+        name: "  [FILE] YAML 语法检查"
+      - id: check-json
+        name: "  [FILE] JSON 语法检查"
+      - id: check-added-large-files
+        name: "  [FILE] 大文件拦截"
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+        name: "  [FILE] 合并冲突标记检查"
+      - id: detect-private-key
+        name: "  [FILE] 私钥泄露检测"
+      - id: debug-statements
+        name: "  [FILE] 调试语句检查（pdb/breakpoint）"
+      - id: mixed-line-ending
+        name: "  [FILE] 混合换行符检查"
+        args: ["--fix=lf"]
+
+  # ===========================================================================
+  # Tier 2: LightShield 合规扫描（本地 hook，保留现有逻辑）
+  # ===========================================================================
+  - repo: local
+    hooks:
+      - id: lightshield-compliance
+        name: "  [LS合规] R1-R6 合规扫描"
+        entry: bash .githooks/pre-commit
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+
+  # ===========================================================================
+  # Tier 3: Ruff — Lint + Format（自动修复）
+  # ===========================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.3
+    hooks:
+      - id: ruff
+        name: "  [RUFF] Lint 检查 + 自动修复"
+        args: ["--fix", "--unsafe-fixes", "--config", "pyproject.toml"]
+      - id: ruff-format
+        name: "  [RUFF] 代码格式化"
+
+  # ===========================================================================
+  # Tier 4: Bandit — 安全漏洞扫描
+  # ===========================================================================
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        name: "  [SEC] Bandit 安全扫描"
+        args:
+          - "-c"
+          - "pyproject.toml"
+          - "-r"
+          - "lightshield/"
+          - "-ll"     # 只报告 LOW 及以上级别
+        pass_filenames: false
+
+  # ===========================================================================
+  # Tier 5: Mypy — 静态类型检查（最后运行，最慢）
+  # ===========================================================================
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        name: "  [TYPE] Mypy 类型检查"
+        args:
+          - "--config-file=pyproject.toml"
+          - "lightshield/"  # 显式指定扫描目标（pass_filenames: false 时必要）
+        pass_filenames: false
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-beautifulsoup4
+
+# =============================================================================
+# CI 使用说明
+# =============================================================================
+# 在 GitHub Actions 中运行相同检查：
+#   - uses: pre-commit/action@v3.0.1
+#
+# 或者在 workflow 中：
+#   pip install pre-commit
+#   pre-commit run --all-files
+# =============================================================================

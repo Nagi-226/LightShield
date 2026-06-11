@@ -17,26 +17,24 @@
 import logging
 import os
 import re
-import threading
-import tempfile
 import shutil
+import tempfile
+import threading
 from datetime import datetime
 
 import pytest
 
 import lightshield.utils.logger as logger_mod
 from lightshield.utils.logger import (
-    get_logger,
     LightShieldLogger,
-    LightShieldFormatter,
-    AuditFormatter,
     SensitiveDataFilter,
+    get_logger,
 )
-
 
 # =============================================================================
 # 辅助函数与 fixture
 # =============================================================================
+
 
 def _reset_logger_singleton():
     """重置模块级单例，使 get_logger() 返回新实例（测试隔离）"""
@@ -67,6 +65,7 @@ def temp_logger():
 # =============================================================================
 # 单例与线程安全
 # =============================================================================
+
 
 class TestLoggerSingleton:
     """get_logger() 单例行为验证"""
@@ -99,6 +98,7 @@ class TestLoggerSingleton:
 # =============================================================================
 # 审计方法
 # =============================================================================
+
 
 class TestAuditMethods:
     """审计专用方法行为验证"""
@@ -133,9 +133,7 @@ class TestAuditMethods:
 
     def test_audit_msf_call_no_exception(self, temp_logger):
         """audit_msf_call 不抛异常"""
-        temp_logger.audit_msf_call(
-            "auxiliary/scanner/ssh/ssh_login", "192.168.1.1", True, 12.5
-        )
+        temp_logger.audit_msf_call("auxiliary/scanner/ssh/ssh_login", "192.168.1.1", True, 12.5)
 
     def test_audit_config_change_no_exception(self, temp_logger):
         """audit_config_change 不抛异常"""
@@ -146,38 +144,50 @@ class TestAuditMethods:
 # 敏感信息过滤
 # =============================================================================
 
+
 class TestSensitiveDataFilter:
     """SensitiveDataFilter 敏感信息替换验证"""
 
-    @pytest.mark.parametrize("input_msg, keyword", [
-        ("login attempt password=Secret123!", "password"),
-        ("auth token=abc123token", "token"),
-        ("config secret=mykey999", "secret"),
-        ("request api_key=sk-12345abcdef", "api_key"),
-        ("remote key=a1b2c3d4e5f6g7h8i9j0", "key"),
-    ])
+    @pytest.mark.parametrize(
+        "input_msg, keyword",
+        [
+            ("login attempt password=Secret123!", "password"),
+            ("auth token=abc123token", "token"),
+            ("config secret=mykey999", "secret"),
+            ("request api_key=sk-12345abcdef", "api_key"),
+            ("remote key=a1b2c3d4e5f6g7h8i9j0", "key"),
+        ],
+    )
     def test_filter_replaces_sensitive_data(self, input_msg, keyword):
         """日志消息中的敏感字段被替换为 ***REDACTED***"""
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg=input_msg, args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=input_msg,
+            args=(),
+            exc_info=None,
         )
         filt = SensitiveDataFilter()
         filt.filter(record)
 
         assert keyword in input_msg.lower() or keyword == "key"  # 确认输入包含关键字
-        assert "***REDACTED***" in record.msg, (
-            f"消息中应含 REDACTED，实际: {record.msg!r}"
-        )
+        assert "***REDACTED***" in record.msg, f"消息中应含 REDACTED，实际: {record.msg!r}"
         assert keyword not in record.msg.lower() or "redacted" in record.msg.lower(), (
-            f"原始关键字应在过滤后消失或变为 REDACTED"
+            "原始关键字应在过滤后消失或变为 REDACTED"
         )
 
     def test_filter_always_returns_true(self):
         """SensitiveDataFilter.filter() 始终返回 True（不拦截日志）"""
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="normal message", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="normal message",
+            args=(),
+            exc_info=None,
         )
         filt = SensitiveDataFilter()
         assert filt.filter(record) is True
@@ -186,18 +196,28 @@ class TestSensitiveDataFilter:
         """对无敏感信息的消息，过滤后内容不变"""
         clean_msg = "扫描完成，发现 3 个开放端口"
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg=clean_msg, args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=clean_msg,
+            args=(),
+            exc_info=None,
         )
         filt = SensitiveDataFilter()
         filt.filter(record)
         assert record.msg == clean_msg
 
     def test_filter_handles_non_str_msg(self):
-        """filter 对非字符串 msg 不报错"""
+        """Filter 对非字符串 msg 不报错"""
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg=42, args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=42,
+            args=(),
+            exc_info=None,
         )
         filt = SensitiveDataFilter()
         # 不应抛异常
@@ -209,27 +229,28 @@ class TestSensitiveDataFilter:
 # 日志级别方法
 # =============================================================================
 
+
 class TestLogLevelMethods:
     """debug / info / warning / error 四级方法验证"""
 
     def test_debug_no_exception(self, temp_logger):
-        """debug 方法不抛异常"""
+        """Debug 方法不抛异常"""
         temp_logger.debug("test_module", "调试信息", extra="value")
 
     def test_info_no_exception(self, temp_logger):
-        """info 方法不抛异常"""
+        """Info 方法不抛异常"""
         temp_logger.info("test_module", "普通信息", key="val")
 
     def test_warning_no_exception(self, temp_logger):
-        """warning 方法不抛异常"""
+        """Warning 方法不抛异常"""
         temp_logger.warning("test_module", "警告信息", hint="check")
 
     def test_error_without_exception(self, temp_logger):
-        """error 方法（无 exception）不抛异常"""
+        """Error 方法（无 exception）不抛异常"""
         temp_logger.error("test_module", "错误信息")
 
     def test_error_with_exception(self, temp_logger):
-        """error 方法传入 exception=ValueError 时包含异常类名与消息"""
+        """Error 方法传入 exception=ValueError 时包含异常类名与消息"""
         # 写入后检查日志文件内容
         temp_logger.error("scanner", "扫描失败", exception=ValueError("参数错误"))
 
@@ -237,7 +258,7 @@ class TestLogLevelMethods:
         today = datetime.now().strftime("%Y-%m-%d")
         log_file = os.path.join(temp_logger._log_dir, f"lightshield-{today}.log")
         if os.path.exists(log_file):
-            with open(log_file, "r", encoding="utf-8") as f:
+            with open(log_file, encoding="utf-8") as f:
                 content = f.read()
             assert "ValueError" in content, f"日志应包含异常类型，实际: {content[:200]}"
             assert "参数错误" in content, f"日志应包含异常消息，实际: {content[:200]}"
@@ -246,6 +267,7 @@ class TestLogLevelMethods:
 # =============================================================================
 # get_recent_logs
 # =============================================================================
+
 
 class TestGetRecentLogs:
     """get_recent_logs 方法验证"""
@@ -285,6 +307,7 @@ class TestGetRecentLogs:
 # 日志文件写入
 # =============================================================================
 
+
 class TestFileLogging:
     """日志文件写入与轮转验证"""
 
@@ -294,9 +317,9 @@ class TestFileLogging:
         log_file = os.path.join(temp_logger._log_dir, f"lightshield-{today}.log")
         # 写入一条日志强制刷新
         temp_logger.info("test", "test message to create file")
-        assert os.path.exists(log_file) or os.path.exists(
-            os.path.join(temp_logger._log_dir, f"audit-{today}.log")
-        ), f"应有日志文件存在"
+        assert os.path.exists(log_file) or os.path.exists(os.path.join(temp_logger._log_dir, f"audit-{today}.log")), (
+            "应有日志文件存在"
+        )
 
     def test_dual_output_console_and_file(self, temp_logger):
         """确认同时存在控制台和文件 handler"""
@@ -309,6 +332,7 @@ class TestFileLogging:
 # =============================================================================
 # get_log_dir
 # =============================================================================
+
 
 class TestGetLogDir:
     """get_log_dir 方法验证"""

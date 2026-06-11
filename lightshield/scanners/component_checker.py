@@ -1,5 +1,4 @@
-"""
-LightShield 组件版本检测器 — 组件指纹识别 + CVE 匹配
+"""LightShield 组件版本检测器 — 组件指纹识别 + CVE 匹配
 
 基于 HTTP 响应头（Server / X-Powered-By）、HTML meta 标签识别
 Web 组件及其版本，并与内置 CVE 知识库进行匹配，输出带风险分级的
@@ -25,20 +24,15 @@ Web 组件及其版本，并与内置 CVE 知识库进行匹配，输出带风�
 from __future__ import annotations
 
 import re
-import itertools
 import time
-import socket
 from dataclasses import dataclass
-from typing import Optional
-from urllib.parse import urlparse
 
 import requests
 
 from lightshield.adapters.base import BaseAdapter, ScanResult, VulnFinding
-from lightshield.utils.constants import ScanStatus, RiskLevel
-from lightshield.utils.validator import TargetValidator
+from lightshield.utils.constants import RiskLevel, ScanStatus
 from lightshield.utils.logger import get_logger
-
+from lightshield.utils.validator import TargetValidator
 
 # =============================================================================
 # 组件名规范化映射
@@ -59,20 +53,17 @@ _COMPONENT_ALIASES: dict[str, str] = {
     "tomcat": "apache_tomcat",
     "apache-coyote": "apache_tomcat",
     "jetty": "jetty",
-
     # 脚本语言
     "php": "php",
     "python": "python",
     "werkzeug": "werkzeug",
     "gunicorn": "gunicorn",
-
     # 数据库
     "mysql": "mysql",
     "mariadb": "mariadb",
     "postgresql": "postgresql",
     "redis": "redis",
     "mongodb": "mongodb",
-
     # CMS / 框架
     "wordpress": "wordpress",
     "drupal": "drupal",
@@ -82,7 +73,6 @@ _COMPONENT_ALIASES: dict[str, str] = {
     "laravel": "laravel",
     "flask": "werkzeug",
     "express": "nodejs",
-
     # 其他
     "openssh": "openssh",
     "openssl": "openssl",
@@ -100,27 +90,29 @@ _COMPONENT_ALIASES: dict[str, str] = {
 # CVE 知识库（≥25 条，来源于 NVD 公开记录）
 # =============================================================================
 
-@dataclass  # type: ignore  # Python 3.10 标准库无 dataclass，此处用装饰器兼容
+
+@dataclass  # Python 3.10 标准库含 dataclass
 class _CveEntry:
     """CVE 知识库条目"""
+
     cve_id: str
-    component: str          # 规范组件名
-    max_affected: str       # 最大受影响版本（不含），即 version < max_affected
-    min_version: str        # 起始受影响版本（含），'' 表示所有更早版本
+    component: str  # 规范组件名
+    max_affected: str  # 最大受影响版本（不含），即 version < max_affected
+    min_version: str  # 起始受影响版本（含），'' 表示所有更早版本
     severity: RiskLevel
     cvss_score: float
-    title_cn: str           # 中文简述
-    description_cn: str     # 中文详细描述
-    remediation_cn: str     # 中文修复建议
+    title_cn: str  # 中文简述
+    description_cn: str  # 中文详细描述
+    remediation_cn: str  # 中文修复建议
 
 
-# ---- 使用 @dataclass 装饰器 (Python 3.10+) ----
-from dataclasses import dataclass as _dataclass
+# ---- CVE 知识库条目 (Python 3.10+ dataclass) ----
 
 
-@_dataclass
+@dataclass
 class CveEntry:
     """CVE 知识库条目"""
+
     cve_id: str
     component: str
     max_affected: str
@@ -197,7 +189,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 OpenSSH 至 9.6p1+ 或使用 ProxyUseFdpass。",
     ),
-
     # ============================
     # nginx
     # ============================
@@ -214,10 +205,7 @@ CVE_DATABASE: list[CveEntry] = [
             "可在 nginx 服务器上造成拒绝服务。影响范围：HTTP/2 启用的 "
             "nginx version < 1.25.3 和 < 1.24.1。"
         ),
-        remediation_cn=(
-            "升级至 nginx 1.25.3 / 1.24.1+，"
-            "或在配置中限制 http2_max_concurrent_streams 为较低值。"
-        ),
+        remediation_cn=("升级至 nginx 1.25.3 / 1.24.1+，或在配置中限制 http2_max_concurrent_streams 为较低值。"),
     ),
     CveEntry(
         cve_id="CVE-2023-45802",
@@ -249,7 +237,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 nginx 至 1.21.0 或更高版本。",
     ),
-
     # ============================
     # Apache HTTP Server
     # ============================
@@ -299,7 +286,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 Apache HTTP Server 至 2.4.59 或更高版本。",
     ),
-
     # ============================
     # PHP
     # ============================
@@ -348,7 +334,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 PHP 至 8.1.16 或更高版本。",
     ),
-
     # ============================
     # MySQL / MariaDB
     # ============================
@@ -391,12 +376,10 @@ CVE_DATABASE: list[CveEntry] = [
         cvss_score=7.5,
         title_cn="MariaDB 段错误拒绝服务 (CVE-2022-32084)",
         description_cn=(
-            "MariaDB 10.9.3 之前版本存在多个段错误崩溃点，"
-            "可被用于拒绝服务攻击。影响范围：version < 10.9.3。"
+            "MariaDB 10.9.3 之前版本存在多个段错误崩溃点，可被用于拒绝服务攻击。影响范围：version < 10.9.3。"
         ),
         remediation_cn="升级 MariaDB 至 10.9.3 或更高版本。",
     ),
-
     # ============================
     # WordPress
     # ============================
@@ -445,7 +428,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 WordPress 至 6.0.4 或更高版本。",
     ),
-
     # ============================
     # Apache Tomcat
     # ============================
@@ -480,7 +462,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 Tomcat，或禁用 HTTP/2 协议。",
     ),
-
     # ============================
     # PostgreSQL
     # ============================
@@ -514,7 +495,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 PostgreSQL 至 15.5 或更高版本。",
     ),
-
     # ============================
     # Redis
     # ============================
@@ -548,7 +528,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 Redis 至 7.2.4 或更高版本。",
     ),
-
     # ============================
     # phpMyAdmin
     # ============================
@@ -567,7 +546,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 phpMyAdmin 至 5.2.1 或更高版本。",
     ),
-
     # ============================
     # Node.js
     # ============================
@@ -603,7 +581,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 Node.js 或禁用实验性权限模型。",
     ),
-
     # ============================
     # vsftpd / FTP
     # ============================
@@ -622,7 +599,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 vsftpd 至 3.0.5 或更高版本。",
     ),
-
     # ============================
     # Drupal
     # ============================
@@ -641,7 +617,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 Drupal 至 10.0.9 或更高版本。",
     ),
-
     # ============================
     # Joomla
     # ============================
@@ -660,7 +635,6 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 Joomla 至 4.3.0 或更高版本。",
     ),
-
     # ============================
     # OpenSSL
     # ============================
@@ -779,12 +753,10 @@ def _version_matches(actual: str, rules: list[tuple[str, str]]) -> bool:
 # 格式: (header_name, regex_pattern, component_name)
 _HEADER_SIGNATURES: list[tuple[str, str, str]] = [
     # 按优先级排序：越具体的模式越靠前
-
     # PHP（X-Powered-By）
     ("x-powered-by", r"PHP/(\d+\.\d+\.\d+)", "php"),
     ("x-powered-by", r"ASP\.NET", ""),
     ("x-powered-by", r"Express", "nodejs"),
-
     # 服务器
     ("server", r"nginx/(\d+\.\d+\.\d+)", "nginx"),
     ("server", r"openresty/(\d+\.\d+\.\d+)", "openresty"),
@@ -796,14 +768,13 @@ _HEADER_SIGNATURES: list[tuple[str, str, str]] = [
     ("server", r"Werkzeug/(\d+\.\d+\.\d+)", "werkzeug"),
     ("server", r"gunicorn/(\d+\.\d+\.\d+)", "gunicorn"),
     ("server", r"Jetty\((\d+\.\d+\.\d+)", "jetty"),
-
     # 框架 / CMS
     ("x-generator", r"Drupal\s+(\d+\.\d+\.\d+)", "drupal"),
     ("x-drupal-cache", r"", "drupal"),
 ]
 
 # HTML meta 标签签名
-_META_SIGNATURES: list[tuple[str, str, str]] = [
+_META_SIGNATURES: list[tuple[str, str]] = [
     # (meta name/content regex, version capture, component_name)
     (r'<meta\s+name="generator"\s+content="WordPress\s+(\d+\.\d+\.\d+)', "wordpress"),
     (r'<meta\s+name="generator"\s+content="Joomla!\s*-\s*(\d+\.\d+\.\d+)', "joomla"),
@@ -831,6 +802,7 @@ _COOKIE_SIGNATURES: list[tuple[str, str]] = [
 # 组件检测适配器
 # =============================================================================
 
+
 class ComponentCheckerAdapter(BaseAdapter):
     """组件版本检测 + CVE 匹配适配器
 
@@ -846,11 +818,8 @@ class ComponentCheckerAdapter(BaseAdapter):
     """
 
     # HTTP 请求配置
-    _TIMEOUT = 10             # 单次请求超时（秒）
-    _USER_AGENT = (
-        "Mozilla/5.0 (compatible; LightShield-Security-Scanner/0.0.7; "
-        "+https://github.com/lightshield)"
-    )
+    _TIMEOUT = 10  # 单次请求超时（秒）
+    _USER_AGENT = "Mozilla/5.0 (compatible; LightShield-Security-Scanner/0.0.7; +https://github.com/lightshield)"
     _MAX_BODY_SIZE = 512 * 1024  # 最多读取 512KB HTML
 
     def __init__(self):
@@ -910,7 +879,7 @@ class ComponentCheckerAdapter(BaseAdapter):
 
         # ---- Step 2: 探测 HTTP 服务 ----
         detected_components: dict[str, str] = {}  # {规范组件名: 版本}
-        raw_details: list[dict] = []               # 原始检测详情
+        raw_details: list[dict] = []  # 原始检测详情
 
         http_ports = kwargs.get("http_ports", [80, 443, 8080, 8443])
         timeout_val = kwargs.get("timeout", self._TIMEOUT)
@@ -918,10 +887,7 @@ class ComponentCheckerAdapter(BaseAdapter):
 
         # 去重端口
         for port in sorted(set(http_ports)):
-            if port == 443:
-                url = f"https://{target}"
-            else:
-                url = f"http://{target}:{port}"
+            url = f"https://{target}" if port == 443 else f"http://{target}:{port}"
 
             try:
                 resp = requests.get(
@@ -930,6 +896,7 @@ class ComponentCheckerAdapter(BaseAdapter):
                     headers={"User-Agent": user_agent},
                     allow_redirects=True,
                     stream=True,  # 流式读取，限制 body 大小
+                    # nosec B501 — 安全扫描需兼容内网自签证书；跳过 SSL 验证为设计决策，非遗漏
                     verify=False,  # 自签证书不阻断检测
                 )
                 # 限制读取大小
@@ -939,7 +906,6 @@ class ComponentCheckerAdapter(BaseAdapter):
                     if len(body) > self._MAX_BODY_SIZE:
                         break
                 html_text = body.decode("utf-8", errors="replace")
-                status_code = resp.status_code
             except requests.exceptions.SSLError:
                 # HTTPS 证书错误 → 尝试 HTTP 回退（仅在非 443 端口）
                 self._logger.info("component_checker", f"SSL 错误 {url}，跳过")
@@ -967,13 +933,15 @@ class ComponentCheckerAdapter(BaseAdapter):
                     component = comp_name or _infer_component_from_header(header_key, value)
                     if component and component not in detected_components:
                         detected_components[component] = version
-                        raw_details.append({
-                            "source": f"header:{header_key}",
-                            "component": component,
-                            "version": version,
-                            "raw_value": value,
-                            "port": port,
-                        })
+                        raw_details.append(
+                            {
+                                "source": f"header:{header_key}",
+                                "component": component,
+                                "version": version,
+                                "raw_value": value,
+                                "port": port,
+                            }
+                        )
 
             # ---- 解析 HTML meta ----
             for pattern, comp_name in _META_SIGNATURES:
@@ -982,28 +950,31 @@ class ComponentCheckerAdapter(BaseAdapter):
                     version = m.group(1)
                     if comp_name not in detected_components:
                         detected_components[comp_name] = version
-                        raw_details.append({
-                            "source": "html:meta",
-                            "component": comp_name,
-                            "version": version,
-                            "raw_value": m.group(0),
-                            "port": port,
-                        })
+                        raw_details.append(
+                            {
+                                "source": "html:meta",
+                                "component": comp_name,
+                                "version": version,
+                                "raw_value": m.group(0),
+                                "port": port,
+                            }
+                        )
 
             # ---- Cookie 指纹识别 ----
             set_cookies = headers_lower.get("set-cookie", "")
             for cookie_name, comp_name in _COOKIE_SIGNATURES:
-                if comp_name and cookie_name.lower() in set_cookies.lower():
-                    if comp_name not in detected_components:
-                        detected_components[comp_name] = ""
-                        raw_details.append({
+                if comp_name and cookie_name.lower() in set_cookies.lower() and comp_name not in detected_components:
+                    detected_components[comp_name] = ""
+                    raw_details.append(
+                        {
                             "source": "header:cookie",
                             "component": comp_name,
                             "version": "",
                             "raw_value": f"Cookie contains '{cookie_name}'",
                             "port": port,
-                        })
-                        break  # 只取最匹配的一个
+                        }
+                    )
+                    break  # 只取最匹配的一个
 
             # 取第一个成功的 HTTP 响应即可获得足够信息
             if detected_components:
@@ -1017,63 +988,47 @@ class ComponentCheckerAdapter(BaseAdapter):
             canonical = _COMPONENT_ALIASES.get(svc_name, svc_name)
             if canonical and canonical not in detected_components:
                 detected_components[canonical] = svc_version
-                raw_details.append({
-                    "source": "services",
-                    "component": canonical,
-                    "version": svc_version,
-                    "raw_value": f"{svc_name} {svc_version}",
-                    "port": svc.get("port", ""),
-                })
+                raw_details.append(
+                    {
+                        "source": "services",
+                        "component": canonical,
+                        "version": svc_version,
+                        "raw_value": f"{svc_name} {svc_version}",
+                        "port": svc.get("port", ""),
+                    }
+                )
 
         # ---- Step 4: CVE 匹配 ----
         findings: list[VulnFinding] = []
         for comp_name, comp_version in detected_components.items():
             matched_cves = self._match_cves(comp_name, comp_version)
             for cve in matched_cves:
-                findings.append(VulnFinding(
-                    vuln_type="component_cve",
-                    severity=cve.severity,
-                    title=cve.title_cn,
-                    description=(
-                        f"检测到 {comp_name} {comp_version} 存在已知漏洞。\n"
-                        f"{cve.description_cn}"
-                    ),
-                    evidence=(
-                        f"组件: {comp_name} {comp_version}  "
-                        f"CVE: {cve.cve_id}  "
-                        f"CVSS: {cve.cvss_score}"
-                    ),
-                    remediation=cve.remediation_cn,
-                    cve_id=cve.cve_id,
-                    cvss_score=cve.cvss_score,
-                ))
+                findings.append(
+                    VulnFinding(
+                        vuln_type="component_cve",
+                        severity=cve.severity,
+                        title=cve.title_cn,
+                        description=(f"检测到 {comp_name} {comp_version} 存在已知漏洞。\n{cve.description_cn}"),
+                        evidence=(f"组件: {comp_name} {comp_version}  CVE: {cve.cve_id}  CVSS: {cve.cvss_score}"),
+                        remediation=cve.remediation_cn,
+                        cve_id=cve.cve_id,
+                        cvss_score=cve.cvss_score,
+                    )
+                )
 
         # 如果只检测到组件但没有匹配到 CVE，生成 INFO 级别记录
-        for comp_name, comp_version in detected_components.items():
-            has_cve = any(
-                cve.component == comp_name
-                for cve in CVE_DATABASE
-            )
+        for comp_name, _comp_version in detected_components.items():
+            has_cve = any(cve.component == comp_name for cve in CVE_DATABASE)
             if not has_cve:
                 # 组件不在 CVE 知识库中 — 记录但不算漏洞
                 pass
-            elif not any(
-                f.cve_id
-                for f in findings
-                if any(cve.component == comp_name for cve in CVE_DATABASE)
-            ):
+            elif not any(f.cve_id for f in findings if any(cve.component == comp_name for cve in CVE_DATABASE)):
                 pass  # 已退出循环
 
         # ---- Step 5: 组装结果 ----
         duration = round(time.time() - start_time, 2)
-        services_out = [
-            {"name": comp, "version": ver}
-            for comp, ver in detected_components.items()
-        ]
-        ports_out = [
-            {"port": d.get("port", 0), "service": d["component"], "state": "open"}
-            for d in raw_details
-        ]
+        services_out = [{"name": comp, "version": ver} for comp, ver in detected_components.items()]
+        ports_out = [{"port": d.get("port", 0), "service": d["component"], "state": "open"} for d in raw_details]
 
         result = ScanResult(
             status=ScanStatus.COMPLETED,
@@ -1081,8 +1036,7 @@ class ComponentCheckerAdapter(BaseAdapter):
             ports=ports_out,
             services=services_out,
             findings=findings,
-            raw_output=f"检测到 {len(detected_components)} 个组件, "
-                       f"匹配 {len(findings)} 个 CVE",
+            raw_output=f"检测到 {len(detected_components)} 个组件, 匹配 {len(findings)} 个 CVE",
             duration_seconds=duration,
         )
 
@@ -1140,16 +1094,14 @@ class ComponentCheckerAdapter(BaseAdapter):
             return "未发现匹配的 CVE 漏洞。"
         lines = [f"目标: {result.target}", f"匹配 CVE 数量: {len(result.findings)}", ""]
         for f in result.findings:
-            lines.append(
-                f"[{f.severity.value.upper():8s}] {f.cve_id}  "
-                f"(CVSS {f.cvss_score}) — {f.title}"
-            )
+            lines.append(f"[{f.severity.value.upper():8s}] {f.cve_id}  (CVSS {f.cvss_score}) — {f.title}")
         return "\n".join(lines)
 
 
 # =============================================================================
 # 工具函数
 # =============================================================================
+
 
 def _infer_component_from_header(header_key: str, value: str) -> str:
     """从无法精确匹配的 header 值推断组件名称"""
@@ -1189,9 +1141,9 @@ if __name__ == "__main__":
     print("✅ _parse_version() 通过")
 
     # 4. 版本范围匹配
-    assert _version_matches("8.9p1", [("8.5p1", "9.8p1")]) is True   # 在区间内
-    assert _version_matches("8.5p1", [("8.5p1", "9.8p1")]) is True   # 等于 min
-    assert _version_matches("9.0p1", [("8.5p1", "9.8p1")]) is True   # 在区间内
+    assert _version_matches("8.9p1", [("8.5p1", "9.8p1")]) is True  # 在区间内
+    assert _version_matches("8.5p1", [("8.5p1", "9.8p1")]) is True  # 等于 min
+    assert _version_matches("9.0p1", [("8.5p1", "9.8p1")]) is True  # 在区间内
     assert _version_matches("9.8p1", [("8.5p1", "9.8p1")]) is False  # 等于 max（不含）
     assert _version_matches("7.4p1", [("8.5p1", "9.8p1")]) is False  # 低于 min
     assert _version_matches("9.9p1", [("8.5p1", "9.8p1")]) is False  # 高于 max

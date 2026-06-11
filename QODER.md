@@ -82,7 +82,7 @@ Qoder MCP 配置在 `~/.qoder/mcp.json` 或 `~/.qoder-cn/mcp.json`：
 {
   "mcpServers": {
     "context7": {
-      "type": "http", 
+      "type": "http",
       "url": "https://mcp.context7.com/sse"
     }
   }

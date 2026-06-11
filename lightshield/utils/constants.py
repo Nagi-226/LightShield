@@ -1,5 +1,4 @@
-"""
-LightShield 轻盾 — 全局常量与枚举定义
+"""LightShield 轻盾 — 全局常量与枚举定义
 
 包含：
   - 风险等级、扫描状态、扫描类型等枚举
@@ -15,13 +14,14 @@ LightShield 轻盾 — 全局常量与枚举定义
 
 from enum import Enum
 
-
 # ============================================================
 # 枚举定义
 # ============================================================
 
+
 class RiskLevel(Enum):
     """风险等级"""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -31,16 +31,18 @@ class RiskLevel(Enum):
 
 class ScanStatus(Enum):
     """扫描状态"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
-    PARTIAL = "partial"      # 部分完成（某些适配器失败）
+    PARTIAL = "partial"  # 部分完成（某些适配器失败）
     FAILED = "failed"
-    CANCELLED = "cancelled"   # 用户取消（v0.0.04 S1 修复）
+    CANCELLED = "cancelled"  # 用户取消（v0.0.04 S1 修复）
 
 
 class ScanType(Enum):
     """扫描类型"""
+
     PORT_SCAN = "port_scan"
     SERVICE_DETECT = "service_detect"
     WEB_VULN = "web_vuln"
@@ -50,6 +52,7 @@ class ScanType(Enum):
 
 class AdapterType(Enum):
     """扫描适配器类型"""
+
     NMAP = "nmap"
     SELF_SCRIPT = "self_script"
     MSF_SCANNER = "msf_scanner"
@@ -57,6 +60,7 @@ class AdapterType(Enum):
 
 class OSPlatform(Enum):
     """操作系统平台"""
+
     LINUX = "linux"
     WINDOWS = "windows"
     UNKNOWN = "unknown"
@@ -64,6 +68,7 @@ class OSPlatform(Enum):
 
 class OutputFormat(Enum):
     """报告输出格式"""
+
     MARKDOWN = "markdown"
     TEXT = "text"
 
@@ -122,10 +127,10 @@ HIGH_RISK_PORTS: dict[int, str] = {
 # 合规约束常量
 # ============================================================
 
-MAX_CONCURRENT_SCANS: int = 20            # R6：扫描并发上限
-MIN_SCAN_INTERVAL: float = 5.0           # R6：扫描间隔（秒）
-MAX_TARGETS_PER_SESSION: int = 1         # R2：每次仅允许一个目标
-DEFAULT_SCAN_TIMEOUT: int = 30           # 默认超时（秒）
+MAX_CONCURRENT_SCANS: int = 20  # R6：扫描并发上限
+MIN_SCAN_INTERVAL: float = 5.0  # R6：扫描间隔（秒）
+MAX_TARGETS_PER_SESSION: int = 1  # R2：每次仅允许一个目标
+DEFAULT_SCAN_TIMEOUT: int = 30  # 默认超时（秒）
 
 
 # ============================================================
@@ -133,11 +138,28 @@ DEFAULT_SCAN_TIMEOUT: int = 30           # 默认超时（秒）
 # ============================================================
 
 WEAK_PASSWORD_PATTERNS: list[str] = [
-    "admin", "password", "123456", "root", "test",
-    "guest", "qwerty", "letmein", "monkey", "dragon",
-    "master", "passwd", "mysql", "oracle", "sa",
-    "1234", "12345", "12345678", "123456789",
-    "abc123", "admin123", "password123",
+    "admin",
+    "password",
+    "123456",
+    "root",
+    "test",
+    "guest",
+    "qwerty",
+    "letmein",
+    "monkey",
+    "dragon",
+    "master",
+    "passwd",
+    "mysql",
+    "oracle",
+    "sa",
+    "1234",
+    "12345",
+    "12345678",
+    "123456789",
+    "abc123",
+    "admin123",
+    "password123",
 ]
 
 

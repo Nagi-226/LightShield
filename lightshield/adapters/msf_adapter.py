@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 if __package__ in {None, ""}:  # 允许直接执行本文件进行自检。
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -148,7 +148,7 @@ class MsfScannerAdapter(BaseAdapter):
         self,
         module_path: str,
         target: str,
-        options: Optional[dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """安全执行 MSF 模块，带完整审计日志。
 
@@ -218,7 +218,7 @@ class MsfScannerAdapter(BaseAdapter):
                 "duration_seconds": duration,
                 "result": "timeout",
             }
-        except FileNotFoundError as exc:
+        except FileNotFoundError:
             duration = time.monotonic() - started_at
             audit_entry["result"] = "failed"
             audit_entry["duration_seconds"] = round(duration, 3)

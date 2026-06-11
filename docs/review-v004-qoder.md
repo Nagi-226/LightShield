@@ -137,7 +137,7 @@ if not skip_confirmation:
 **修复建议**：
 
 ```python
-def run_scan(self, target, scan_types=None, *, 
+def run_scan(self, target, scan_types=None, *,
              ownership_confirmed: bool = False, **kwargs) -> ScanResult:
     ...
     # Step 2: R4 所有权确认
