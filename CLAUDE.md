@@ -4,14 +4,13 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-11 22:45 — v0.2.0 发布 + v0.0.21-22 完成 + v0.0.23-30 十版本规划。
->   - v0.2.0 已 tag，E2E 终审通过（WSL2 Ubuntu，7 漏洞检测 + CVE-2023-38408）
->   - 质量体系成熟：pre-commit 9 组 hook / 覆盖率 71% / mypy check_untyped_defs=true 零错误
->   - 架构预留就绪：Repository 抽象 / submit_scan 异步接口 / config 未来扩展字段
->   - v0.0.21-22 已交付：mypy 收紧 + 41 个 CLI/Core 测试
->   - 8/8 Agent 零任务，明日从 v0.0.23（C90 重构）或 v0.0.24（Codex CVE 扩充）继续
+> **上次会话**：2026-06-12 22:15 — v0.0.26 规则引擎增强交付，阶段二全部完成 ✅。
+>   - v0.2.0 已 tag，E2E 终审通过
+>   - 质量基线：**534 tests** / 0 fail / 覆盖率 77% / ruff + mypy + C90 全零违规
+>   - 阶段一 ✅✅✅ 质量深化 | 阶段二 ✅✅✅ 内容增长 | 阶段三 ⬜⬜⬜ GUI 铺路
+>   - v0.0.27 Flask API 骨架待开工（阶段三起跑线）
 > **进度追踪**：`.guardrails/PROGRESS.md`
-> **明日启动**：C90 重构 component_checker.scan() > Codex CVE 库扩充 > Reasonix 批量测试
+> **明日启动**：v0.0.27 Flask REST API（POST /api/scan + GET /api/scan/<id> + Session 鉴权）
 
 ---
 

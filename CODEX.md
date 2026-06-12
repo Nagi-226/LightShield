@@ -133,10 +133,11 @@ v0.0.12  test_validator.py      ✅  225行/12函数
 v0.0.13  test_msf_adapter.py    ✅  185行/全覆盖
 v0.0.16  审查 linux_harden.py   ✅  10 issues / 5 fixed (B1/B2/H3/M1/L1)
 ──────────────────────────────────────
-         7/7 完成，0 个待执行 ✅
+         7/7 完成，1 个待执行 🟢
 ```
 
-> 当前状态：**全部任务完成，零剩余。** 等待 v0.3.0 新任务分配。
+> 当前状态：**v0.0.24 CVE 知识库扩充已分配，等待执行。**
+> 上一任务审查报告：`docs/review-v016-codex.md`
 > 审查报告：`docs/review-v016-codex.md`
 
 ---
@@ -844,3 +845,161 @@ LightShield 轻盾 v0.1.0
 ### v0.0.16 预告（等 v0.0.15 完成后解锁）
 
 Codex 将在 v0.0.16 作为 **安全审查者** 审查 `lightshield/harden/linux_harden.py`——确保自动加固脚本不会引入新的安全风险或误关关键服务。
+
+---
+
+## 十三、v0.0.24 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.0.23 刚完成 C90 重构（`component_checker.scan()` 从 F(41) 降到 A(4)）。阶段一质量深化已全部交付。
+现在进入阶段二：**内容增长**——让扫描器真正有价值。
+
+当前 CVE 知识库（`lightshield/scanners/component_checker.py` 的 `CVE_DATABASE`）仅有 **28 条记录**，覆盖 11 个组件。
+许多常见组件的 CVE 覆盖面不足（如 nginx 仅 3 条、MySQL 仅 2 条、Redis 仅 2 条），且完全缺少 Laravel/Django/Magento/MongoDB 等广泛使用的组件。
+
+### 目标
+
+将 CVE 条目从 **28 → 50+**，覆盖 **Top 10 Web 组件**，每个组件至少 3 条 CVE 记录。
+
+### 扩充优先级
+
+| 优先级 | 组件 | 当前条目 | 目标条目 | 理由 |
+|:--:|------|:--:|:--:|------|
+| 🔴 | nginx | 3 | 5+ | 全球最广泛 Web 服务器 |
+| 🔴 | apache_httpd | 3 | 5+ | 市场份额第二 |
+| 🔴 | php | 3 | 5+ | 78% 网站使用 |
+| 🔴 | mysql | 2 | 4+ | 最广泛开源数据库 |
+| 🟡 | redis | 2 | 4+ | 常因配置不当暴露 |
+| 🟡 | postgresql | 2 | 4+ | 企业首选数据库 |
+| 🟡 | apache_tomcat | 2 | 4+ | Java 应用服务器 |
+| 🟡 | nodejs | 2 | 4+ | 现代 Web 应用主流 |
+| 🟢 | mariadb | 1 | 3+ | MySQL 替代品 |
+| 🟢 | openssl | 2 | 3+ | 加密基础设施 |
+| 🟢 | wordpress | 3 | 4+ | 43% 网站使用 CMS |
+| 🟢 | drupal | 1 | 3+ | 企业 CMS |
+| 🟢 | joomla | 1 | 3+ | 流行 CMS |
+| 🟢 | phpmyadmin | 1 | 2+ | 常见管理面板 |
+| ⚪ | MongoDB | 0 | 3+ | **新组件** — 广泛使用 |
+| ⚪ | Django | 0 | 2+ | **新组件** — Python 首选框架 |
+| ⚪ | Laravel | 0 | 2+ | **新组件** — PHP 首选框架 |
+| ⚪ | Bind | 0 | 1+ | **新组件** — DNS 服务器 |
+| ⚪ | Exim | 0 | 1+ | **新组件** — 邮件服务器 |
+
+### 约束
+
+1. **所有 CVE 必须来自公开 NVD 记录**（nvd.nist.gov），不得编造 CVE 编号
+2. **版本范围必须精确**：`min_version` / `max_affected` 必须是实际受影响的版本号
+3. **CVSS 分数必须准确**：使用 NVD 公开的 CVSS v3.x 评分
+4. **中文描述准确**：标题、描述、修复建议全部中文化
+5. **优先级**：2022-2025 年的高危/严重 CVE 优先（CVSS ≥ 7.5）
+6. **格式严格遵守**：必须使用 `CveEntry` dataclass 的字段结构
+
+### 依赖就绪
+
+```
+lightshield/scanners/component_checker.py  ✅ CVE_DATABASE 已定义 28 条
+lightshield/utils/constants.py             ✅ RiskLevel enum (CRITICAL/HIGH/MEDIUM/LOW)
+CveEntry dataclass                          ✅ 8 字段（cve_id/component/max_affected/min_version/severity/cvss_score/title_cn/description_cn/remediation_cn）
+```
+
+### 启动提示词（直接复制到 Codex）
+
+```
+你是 LightShield 项目的高级开发工程师，使用 GPT-5.5 模型。
+
+## 项目背景
+LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Python 3.10+。
+路径：E:/Github Project/LightShield/
+
+## 任务：扩充 CVE 知识库
+
+### 核心需求
+在 `lightshield/scanners/component_checker.py` 的 `CVE_DATABASE` 列表中新增 ~25 条 CVE 记录，
+将总量从 28 条提升到 50+ 条，覆盖至少 18 个组件。
+
+### 你要修改的文件
+`lightshield/scanners/component_checker.py`
+
+只修改 `CVE_DATABASE` 列表（在现有 28 条记录后追加新条目）。不修改任何其他代码。
+
+### CveEntry 格式（严格遵守）
+
+```python
+CveEntry(
+    cve_id="CVE-YYYY-NNNNN",       # 精确 CVE 编号
+    component="规范组件名",          # 必须匹配 _COMPONENT_ALIASES 中的 key
+    max_affected="X.Y.Z",           # 最大受影响版本（不含），即 version < max_affected
+    min_version="X.Y.Z",            # 起始受影响版本（含），'' 表示所有更早版本
+    severity=RiskLevel.CRITICAL,    # CRITICAL / HIGH / MEDIUM / LOW
+    cvss_score=9.8,                 # CVSS v3.x 浮点数
+    title_cn="中文漏洞标题 (CVE-YYYY-NNNNN)",
+    description_cn=("中文详细描述。影响范围：min ≤ version < max。"),
+    remediation_cn="中文修复建议。",
+)
+```
+
+### 版本范围规则
+- `min_version=""` 表示所有低于 `max_affected` 的版本都受影响
+- `min_version="X.Y.Z"` 表示从该版本起受影响（含）
+- `max_affected="X.Y.Z"` 表示小于该版本的受影响（不含），即 [min, max) 半开区间
+- OpenSSH 版本用 `p` 后缀（如 `9.8p1`），其他组件用标准语义化版本
+
+### 必须扩充的组件（至少各新增 1-2 条）
+
+**已有组件，需增加条目**：
+- nginx: +2 条（建议 CVE-2024-7344 / CVE-2022-41741 等）
+- apache_httpd: +2 条（建议 CVE-2024-4084 / CVE-2023-45802 等）
+- php: +2 条（建议 CVE-2024-4577 已存在，补充 CVE-2023-3824 / CVE-2024-2961 等）
+- mysql: +2 条（建议 CVE-2024-21096 / CVE-2023-22084 等）
+- redis: +2 条（建议 CVE-2024-31449 / CVE-2022-24834 等）
+- postgresql: +2 条
+- apache_tomcat: +2 条
+- nodejs: +2 条
+- wordpress: +1 条
+- drupal: +2 条
+- joomla: +2 条
+- mariadb: +2 条
+- openssl: +1 条
+- phpmyadmin: +1 条
+
+**全新组件，需新增**：
+- mongodb: +3 条
+- django: +2 条
+- laravel: +2 条
+- magento: 此组件已在别名表但无 CVE → +2 条
+- bind: +1 条
+- exim: +1 条
+
+### 数据来源约束
+
+1. ⚠️ **CVE 编号必须真实存在**于 NVD 公开数据库（nvd.nist.gov）。不得编造。
+2. **CVSS 分数必须准确**——使用 NVD 公开的 CVSS v3.x Base Score。
+3. **版本范围必须精确**——核对 CVE 详情中的 `cpe:affected` 版本范围。
+4. **优先收录**：CVSS ≥ 7.5、2022-2025 年、有公开 PoC 的高价值 CVE。
+5. 如果某个组件找不到足够的高质量 CVE，标注原因并跳过——宁可少加，不加低质量记录。
+
+### 合规约束
+
+- R1（禁攻击）：CVE 描述中不包含 exploit 利用代码，仅描述漏洞影响和修复
+- 描述语言：面向防御者，不是攻击者。强调"如何发现"和"如何修复"，不写"如何利用"
+- 修复建议：具体、可操作（升级到哪个版本、改哪个配置）
+
+### 代码规范
+- 中文注释分组（如 `# === MongoDB ===`）
+- 每个 CVE 条目前保留简短注释说明漏洞名称
+- 条目按组件分组排列，组件按字母序，同组件内按 CVSS 降序
+- 所有 CVE 描述使用中文
+
+### 验收标准
+1. CVE_DATABASE 总条目 ≥ 50
+2. 覆盖组件 ≥ 18
+3. 每个原有组件至少 +1 条
+4. 至少 5 个新组件有 CVE 覆盖
+5. CveEntry 格式无语法错误（可被 Python import）
+6. 无编造 CVE 编号（抽查 5 条去 NVD 验证）
+
+### 输出
+只修改一个文件：lightshield/scanners/component_checker.py
+仅修改 CVE_DATABASE 列表部分（追加新条目），不改动其他任何代码。
+```

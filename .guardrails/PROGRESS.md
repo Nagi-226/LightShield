@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-11 22:30 | **当前版本**：v0.2.0 ✅ 已发布 | **下一目标**：v0.3.0
-> **会话状态**：v0.0.01-0.0.20 全部交付 + 架构预留就绪。8/8 Agent 零任务。
-> **下一阶段**：v0.0.21-0.0.30 十版本迭代 → v0.3.0 GUI 发布
+> **最后更新**：2026-06-12 19:30 | **当前版本**：v0.2.0 ✅ 已发布 | **下一目标**：v0.3.0
+> **会话状态**：v0.0.01-0.0.24 全部交付。阶段一（质量深化）✅ 完成。阶段二 1/3（CVE ✅）。
+> **下一阶段**：v0.0.25 Repository SQLite 实现 → v0.0.26 规则引擎增强 → v0.0.27 Flask API 骨架
 > **规则**：每个 Agent 产出必须经 Claude Code 实际读码验收
 > **⚠️  本机环境**：`python` 被沙箱拦截 exit 49，用 `py` 替代（`py -m pytest tests/ -v`）
 
@@ -80,33 +80,33 @@
 
 ---
 
-### 阶段一：质量深化（v0.0.21-0.0.23）—— 把基础打牢
+### 阶段一：质量深化（v0.0.21-0.0.23）—— 把基础打牢 ✅ 已完成
 
-| 版本 | 目标 | Agent | 关键交付 |
-|:--:|------|:--:|------|
-| **v0.0.21** | mypy 收紧 + 类型安全 | CC | `check_untyped_defs=true`、修复存量类型错误、新增 type hints 覆盖 |
-| **v0.0.22** | CLI + core 测试覆盖 | Reasonix | CLI arg 解析测试(0%→60%)、core._validate_request 测试(0%→70%) |
-| **v0.0.23** | 覆盖率冲刺 70% | Reasonix + CC | 补齐 nmap_adapter mock 测试(19%→40%)、win_harden 脚本内容测试(15%→50%)、C90 重构 component_checker.scan() |
+| 版本 | 目标 | Agent | 关键交付 | 状态 |
+|:--:|------|:--:|------|:--:|
+| **v0.0.21** | mypy 收紧 + 类型安全 | CC | `check_untyped_defs=true`、修复存量类型错误、新增 type hints 覆盖 | ✅ |
+| **v0.0.22** | CLI + core 测试覆盖 | Reasonix | CLI arg 解析测试(0%→60%)、core._validate_request 测试(0%→70%) | ✅ |
+| **v0.0.23** | C90 重构 + 测试补齐 | CC | `scan()` F(41)→A(4)、5 helper 提取、移除 C901 豁免、+92 测试（nmap 30 + win_harden 34 + component 28）、覆盖率 71→78% | ✅ |
 
 **阶段一验收标准**：
-- mypy `check_untyped_defs=true`，0 errors
-- 覆盖率 ≥70%（当前 61%）
-- 无 C90 违规（圈复杂度全部 ≤20）
+- mypy `check_untyped_defs=true`，0 errors ✅
+- 覆盖率 ≥70%（当前 **78%**）✅
+- 无 C90 违规（圈复杂度全部 ≤20）✅
 
 ---
 
 ### 阶段二：内容增长（v0.0.24-0.0.26）—— 让产品有用
 
-| 版本 | 目标 | Agent | 关键交付 |
-|:--:|------|:--:|------|
-| **v0.0.24** | CVE 知识库扩充 | Codex | CVE 条目 25→50+、覆盖 Top 10 Web 组件（nginx/apache/tomcat/node.js/php/wordpress/joomla/drupal/postgresql/redis） |
-| **v0.0.25** | Repository SQLite 实现 | CC | `SqliteRepository`、扫描历史查询、`lightshield history` 子命令 |
-| **v0.0.26** | 规则引擎增强 | CC | 远程规则导入（URL/文件）、规则热加载、规则版本管理 |
+| 版本 | 目标 | Agent | 关键交付 | 状态 |
+|:--:|------|:--:|------|:--:|
+| **v0.0.24** | CVE 知识库扩充 | Codex | CVE 条目 28→69、覆盖组件 11→22、新增 6 组件（mongodb/django/laravel/magento/bind/exim） | ✅ |
+| **v0.0.25** | Repository SQLite 实现 | CC | `SqliteRepository`、扫描历史查询、`lightshield history` 子命令、28 条测试 | ✅ |
+| **v0.0.26** | 规则引擎增强 | CC | `import_rules_from_url/file`、`reload_rules()` 热加载、`rule_metadata` 版本指纹、`--rules-url` CLI、18 条新测试 | ✅ |
 
 **阶段二验收标准**：
-- CVE 知识库 ≥50 条（覆盖 OWASP Top 10 常见组件）
-- SQLite 存储可用，`lightshield history` 可列出历史扫描
-- 规则引擎支持 `--rules-url` 远程导入
+- CVE 知识库 ≥50 条（覆盖 OWASP Top 10 常见组件）✅ 70 条 / 22 组件
+- SQLite 存储可用，`lightshield history` 可列出历史扫描 ✅
+- 规则引擎支持 `--rules-url` 远程导入 ✅
 
 ---
 
@@ -172,7 +172,7 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 | Agent | 已完成任务 | 待完成任务 |
 |------|:--:|:--:|
-| Claude Code | 10 | 0 |
+| Claude Code | 13 | 3 (v0.0.27 + v0.0.29 + v0.0.30) |
 | Codex | 8 | 0 |
 | Hermes | 6 | 0 |
 | Reasonix | 4 | 0 |
@@ -210,3 +210,10 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 | 2026-06-10 22:00 | Codex 审查修复：B1 `<service>`占位符→注释引导、B2 SSH/iptables备份路径硬编码跨脚本可用、H3 sed覆盖注释/非注释行+grep兜底、M1 CLI复用recommendations不重复计算、L1 删死import+死注释。回归346项全过 |
 | 2026-06-10 22:10 | v0.0.20 文档填充：README 架构描述补细节、CHANGELOG 完整版(0.1.0/0.2.0全部条目)、FAQ 4条TODO全部填充(场景对比表/加固执行示例/macOS兼容/帮助渠道) |
 | 2026-06-10 22:15 | 收尾：PROGRESS.md/CLAUDE.md 同步，4/8 Agent 全部任务完成，明日仅 v0.0.19 E2E→发布 |
+| 2026-06-11 22:45 | v0.2.0 发布：E2E 终审通过（WSL2 Ubuntu, 7 漏洞+CVE-2023-38408），pre-commit 9组hook，覆盖率71% |
+| 2026-06-12 19:00 | v0.0.23 C90 重构：scan() F(41)→A(4) + 5 helper 提取 + 移除 C901 豁免 + 新增 92 测试 |
+| 2026-06-12 19:30 | Codex v0.0.24 CVE 扩充：28→70 条 CVE，11→22 组件，新增 mongodb/django/laravel/magento/bind/exim 覆盖 |
+| 2026-06-12 20:00 | CodeWhale 审查 v0.0.23+24：🟢通过，7 发现（1高/4中/2低），高优 CVE-2024-31449 版本范围已修复为中优先级已清理 |
+| 2026-06-12 20:10 | CodeWhale 审查修复：CVE-2024-31449 拆为双分支覆盖 + 删废弃 _CveEntry + fix port 默认值 + 清 skip_confirmation |
+| 2026-06-12 20:30 | v0.0.25 SqliteRepository 交付：SqliteRepository 类（12 方法）+ get_repository("sqlite") 工厂 + lightshield history CLI + run_scan_command 自动存档 + 28 条测试 |
+| 2026-06-12 22:15 | v0.0.26 规则引擎增强：import_rules_from_url/file、reload_rules() 热加载（保留导入规则）、rule_metadata 版本指纹（SHA256）、--rules-url CLI 集成、+18 条测试 |

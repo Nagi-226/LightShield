@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# SQLite 数据库（运行时生成）
+data/
+
 # 虚拟环境
 .venv/
 venv/

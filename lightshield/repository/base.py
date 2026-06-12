@@ -20,7 +20,7 @@ from datetime import datetime
 class ScanRepository(ABC):
     """扫描结果持久化抽象基类。
 
-    定义了 save / get / list / delete 四个标准操作。
+    定义了 save / get / list / delete / list_recent 标准操作。
     各版本只需实现此接口即可切换存储后端。
     """
 
@@ -61,6 +61,18 @@ class ScanRepository(ABC):
 
         Returns:
             True 表示删除成功
+        """
+
+    @abstractmethod
+    def list_recent(self, limit: int = 20, offset: int = 0) -> list[dict]:
+        """列出最近扫描记录（全部目标，按时间倒序）。
+
+        Args:
+            limit: 最大返回条数
+            offset: 分页偏移
+
+        Returns:
+            扫描摘要列表
         """
 
 
@@ -147,6 +159,49 @@ class JsonFileRepository(ScanRepository):
                 return True
         return False
 
+    def list_recent(self, limit: int = 20, offset: int = 0) -> list[dict]:
+        """列出最近扫描记录（全部目标，按时间倒序）。"""
+        results: list[dict] = []
+        scans_root = os.path.join(self._data_dir, "scans")
+        if not os.path.isdir(scans_root):
+            return results
+
+        all_files: list[tuple[str, str]] = []
+        for month_dir in os.listdir(scans_root):
+            month_path = os.path.join(scans_root, month_dir)
+            if not os.path.isdir(month_path):
+                continue
+            for filename in os.listdir(month_path):
+                if filename.endswith(".json"):
+                    all_files.append((month_dir, filename))
+
+        # 按文件名倒序（含时间戳前缀，天然倒序）
+        all_files.sort(key=lambda x: x[1], reverse=True)
+
+        for month_dir, filename in all_files[offset : offset + limit]:
+            filepath = os.path.join(scans_root, month_dir, filename)
+            try:
+                with open(filepath, encoding="utf-8") as f:
+                    data = json.load(f)
+                results.append(
+                    {
+                        "scan_id": data.get("scan_id", ""),
+                        "target": data.get("target", ""),
+                        "status": data.get("status", ""),
+                        "ports_count": len(data.get("ports", [])),
+                        "services_count": len(data.get("services", [])),
+                        "findings_count": len(data.get("findings", [])),
+                        "cve_count": sum(1 for f in data.get("findings", []) if f.get("cve_id")),
+                        "os_info": data.get("os_info"),
+                        "error": data.get("error"),
+                        "duration_seconds": data.get("duration_seconds", 0),
+                        "created_at": data.get("saved_at", ""),
+                    }
+                )
+            except (json.JSONDecodeError, OSError):
+                continue
+        return results
+
 
 # =============================================================================
 # 工厂函数（未来切换点）
@@ -172,8 +227,9 @@ def get_repository(backend: str = "json", **kwargs) -> ScanRepository:
     if backend == "json":
         _repository = JsonFileRepository(data_dir=kwargs.get("data_dir", "./data"))
     elif backend == "sqlite":
-        # v1.0.0 占位：return SqliteRepository(db_url=kwargs["db_url"])
-        raise NotImplementedError("SQLite backend — v1.0.0")
+        from lightshield.repository.sqlite_repo import SqliteRepository
+
+        _repository = SqliteRepository(db_url=kwargs.get("db_url", "data/lightshield.db"))
     elif backend == "postgres":
         # v2.0.0 占位：return PostgresRepository(db_url=kwargs["db_url"])
         raise NotImplementedError("PostgreSQL backend — v2.0.0")

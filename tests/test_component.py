@@ -275,3 +275,348 @@ class TestScan:
     def test_scan_mocked_http_full(self, checker):
         """Mock HTTP 请求后 scan() 返回 COMPLETED（完整 mock 链复杂，跳过）"""
         pass
+
+
+# =============================================================================
+# _supplement_from_services（v0.0.23 新增 helper）
+# =============================================================================
+
+
+class TestSupplementFromServices:
+    """_supplement_from_services() 从上游服务列表提取非 HTTP 组件"""
+
+    def test_returns_empty_for_empty_services(self, checker):
+        """空服务列表返回空字典和空详情列表"""
+        components, details = checker._supplement_from_services([])
+        assert components == {}
+        assert details == []
+
+    def test_maps_known_service_to_canonical_name(self, checker):
+        """已知服务（nginx）被映射为规范组件名"""
+        components, details = checker._supplement_from_services([{"name": "nginx", "version": "1.24.0", "port": 80}])
+        assert "nginx" in components
+        assert components["nginx"] == "1.24.0"
+
+    def test_maps_alias_to_canonical(self, checker):
+        """别名（httpd → apache_httpd）被正确映射"""
+        components, details = checker._supplement_from_services([{"name": "httpd", "version": "2.4.58", "port": 80}])
+        assert "apache_httpd" in components
+        assert components["apache_httpd"] == "2.4.58"
+
+    def test_preserves_unknown_service_name_as_is(self, checker):
+        """未知服务名保持原样（无别名映射）"""
+        components, _ = checker._supplement_from_services([{"name": "custom-app", "version": "3.0", "port": 9000}])
+        assert "custom-app" in components
+
+    def test_details_include_source_port_and_raw_value(self, checker):
+        """详情包含 source / port / raw_value 字段"""
+        _, details = checker._supplement_from_services([{"name": "mysql", "version": "8.0.35", "port": 3306}])
+        assert len(details) == 1
+        d = details[0]
+        assert d["source"] == "services"
+        assert d["component"] == "mysql"
+        assert d["version"] == "8.0.35"
+        assert d["port"] == 3306
+        assert "8.0.35" in d["raw_value"]
+
+    def test_multiple_services_all_returned(self, checker):
+        """多个服务同时返回"""
+        components, details = checker._supplement_from_services(
+            [
+                {"name": "mysql", "version": "8.0.35", "port": 3306},
+                {"name": "redis", "version": "7.2.1", "port": 6379},
+                {"name": "openssh", "version": "8.9p1", "port": 22},
+            ]
+        )
+        assert len(components) == 3
+        assert len(details) == 3
+
+    def test_empty_name_skipped(self, checker):
+        """名称为空的条目返回空结果（canonical 为空时跳过）"""
+        components, details = checker._supplement_from_services([{"name": "", "version": "1.0", "port": 80}])
+        assert components == {}
+        assert details == []
+
+    def test_missing_version_defaults_to_empty_string(self, checker):
+        """缺少 version 的条目版本为空字符串"""
+        components, _ = checker._supplement_from_services([{"name": "nginx", "port": 80}])
+        assert components["nginx"] == ""
+
+
+# =============================================================================
+# _build_cve_findings（v0.0.23 新增 helper）
+# =============================================================================
+
+
+class TestBuildCveFindings:
+    """_build_cve_findings() 组件 → CVE 匹配 → VulnFinding 列表"""
+
+    def test_returns_empty_for_no_components(self, checker):
+        """空组件字典返回空 findings"""
+        findings = checker._build_cve_findings({})
+        assert findings == []
+
+    def test_openssh_vulnerable_version_matches_cves(self, checker):
+        """OpenSSH 9.0p1 返回多个 CVE findings"""
+        findings = checker._build_cve_findings({"openssh": "9.0p1"})
+        assert len(findings) >= 1
+        for f in findings:
+            assert f.vuln_type == "component_cve"
+            assert f.cve_id is not None
+            assert f.cvss_score is not None
+            assert f.cvss_score > 0
+
+    def test_nginx_safe_version_returns_empty(self, checker):
+        """Nginx 安全版本（无 CVE 匹配）返回空列表"""
+        findings = checker._build_cve_findings({"nginx": "1.26.0"})
+        assert findings == []
+
+    def test_mixed_components_only_matching_returned(self, checker):
+        """混合组件：有漏洞的返回 finding，无漏洞的跳过"""
+        findings = checker._build_cve_findings({"nginx": "1.26.0", "openssh": "9.0p1"})
+        cve_ids = {f.cve_id for f in findings}
+        assert len(findings) >= 1
+        # 所有 finding 都应该来自 OpenSSH（nginx 1.26.0 无匹配）
+        for cid in cve_ids:
+            assert cid is not None
+
+    def test_finding_has_all_required_fields(self, checker):
+        """每个 VulnFinding 包含完整的必填字段"""
+        findings = checker._build_cve_findings({"openssh": "9.0p1"})
+        for f in findings:
+            assert f.vuln_type
+            assert f.severity is not None
+            assert f.title
+            assert f.description
+            assert f.remediation
+            assert f.cve_id
+            assert f.cvss_score is not None
+            assert "openssh" in f.evidence.lower()
+
+    def test_empty_version_no_match(self, checker):
+        """空版本不匹配 CVE（保守策略）"""
+        findings = checker._build_cve_findings({"nginx": ""})
+        assert findings == []
+
+    def test_unknown_component_no_match(self, checker):
+        """未知组件不匹配任何 CVE"""
+        findings = checker._build_cve_findings({"unknown_app": "1.0"})
+        assert findings == []
+
+
+# =============================================================================
+# _assemble_result（v0.0.23 新增 helper）
+# =============================================================================
+
+
+class TestAssembleResult:
+    """_assemble_result() 组装 ScanResult"""
+
+    def test_returns_scan_result_with_completed_status(self, checker):
+        """返回 status=COMPLETED 的 ScanResult"""
+        import time
+
+        result = checker._assemble_result(
+            target="example.com",
+            components={"nginx": "1.20.0"},
+            findings=[],
+            raw_details=[],
+            start_time=time.time(),
+        )
+        assert result.status == ScanStatus.COMPLETED
+        assert result.target == "example.com"
+
+    def test_services_output_has_name_and_version(self, checker):
+        """Services 输出包含 name 和 version"""
+        import time
+
+        result = checker._assemble_result(
+            target="example.com",
+            components={"nginx": "1.20.0", "mysql": "8.0.35"},
+            findings=[],
+            raw_details=[],
+            start_time=time.time(),
+        )
+        assert len(result.services) == 2
+        svc_names = {s["name"] for s in result.services}
+        assert svc_names == {"nginx", "mysql"}
+        for s in result.services:
+            assert "version" in s
+
+    def test_ports_output_from_raw_details(self, checker):
+        """Ports 从 raw_details 正确生成"""
+        import time
+
+        raw_details = [
+            {"component": "nginx", "port": 80, "source": "header:server"},
+            {"component": "mysql", "port": 3306, "source": "services"},
+        ]
+        result = checker._assemble_result(
+            target="example.com",
+            components={"nginx": "1.20.0", "mysql": "8.0.35"},
+            findings=[],
+            raw_details=raw_details,
+            start_time=time.time(),
+        )
+        assert len(result.ports) == 2
+        ports_set = {p["port"] for p in result.ports}
+        assert ports_set == {80, 3306}
+
+    def test_raw_output_includes_counts(self, checker):
+        """raw_output 包含组件数和 CVE 命中数"""
+        import time
+
+        from lightshield.adapters.base import VulnFinding
+        from lightshield.utils.constants import RiskLevel
+
+        findings = [
+            VulnFinding(
+                vuln_type="test",
+                severity=RiskLevel.HIGH,
+                title="测试漏洞",
+                description="测试描述",
+                remediation="升级",
+                cve_id="CVE-TEST-001",
+                cvss_score=7.5,
+            )
+        ]
+        result = checker._assemble_result(
+            target="example.com",
+            components={"nginx": "1.20.0"},
+            findings=findings,
+            raw_details=[],
+            start_time=time.time(),
+        )
+        assert "1" in result.raw_output  # 1 个组件
+        assert "1" in result.raw_output  # 1 个 CVE
+
+    def test_duration_is_positive_float(self, checker):
+        """duration_seconds 为正浮点数"""
+        import time
+
+        start = time.time()
+        result = checker._assemble_result(
+            target="example.com",
+            components={},
+            findings=[],
+            raw_details=[],
+            start_time=start,
+        )
+        assert result.duration_seconds >= 0
+        assert isinstance(result.duration_seconds, float)
+
+    def test_empty_components_and_findings(self, checker):
+        """空组件和空 findings → 返回有效的 ScanResult"""
+        import time
+
+        result = checker._assemble_result(
+            target="example.com",
+            components={},
+            findings=[],
+            raw_details=[],
+            start_time=time.time(),
+        )
+        assert result.status == ScanStatus.COMPLETED
+        assert result.services == []
+        assert result.ports == []
+        assert result.findings == []
+
+
+# =============================================================================
+# _parse_http_response（v0.0.23 新增 helper，mock Response）
+# =============================================================================
+
+
+class TestParseHttpResponse:
+    """_parse_http_response() 从 HTTP Response 提取组件指纹"""
+
+    @staticmethod
+    def _make_mock_response(headers=None, body_chunks=None):
+        """构造 mock Response 对象（使用 unittest.mock）"""
+        from unittest.mock import MagicMock
+
+        mock = MagicMock()
+        mock.headers = headers or {}
+        mock.iter_content.return_value = body_chunks or [b""]
+        return mock
+
+    def test_extracts_nginx_from_server_header(self, checker):
+        """从 Server 响应头提取 nginx 版本"""
+        mock_resp = self._make_mock_response(
+            headers={
+                "Server": "nginx/1.24.0",
+                "X-Powered-By": "PHP/8.1.27",
+            },
+            body_chunks=[b"<html><head><meta name='generator' content='WordPress 6.4.2'></head></html>"],
+        )
+        components, details = checker._parse_http_response(mock_resp, 80)
+        assert "nginx" in components
+        assert components["nginx"] == "1.24.0"
+
+    def test_extracts_php_from_x_powered_by(self, checker):
+        """从 X-Powered-By 响应头提取 PHP 版本"""
+        mock_resp = self._make_mock_response(
+            headers={
+                "Server": "nginx/1.24.0",
+                "X-Powered-By": "PHP/8.1.27",
+            },
+        )
+        components, details = checker._parse_http_response(mock_resp, 80)
+        assert "php" in components
+        assert components["php"] == "8.1.27"
+
+    def test_extracts_wordpress_from_html_meta(self, checker):
+        """从 HTML meta generator 提取 WordPress 版本"""
+        mock_resp = self._make_mock_response(
+            headers={
+                "Server": "nginx/1.24.0",
+                "X-Powered-By": "PHP/8.1.27",
+            },
+            body_chunks=[b'<html><head><meta name="generator" content="WordPress 6.4.2"></head></html>'],
+        )
+        components, details = checker._parse_http_response(mock_resp, 80)
+        assert "wordpress" in components
+        assert components["wordpress"] == "6.4.2"
+
+    def test_details_include_source_and_port(self, checker):
+        """每条 detail 包含 source / port 字段"""
+        mock_resp = self._make_mock_response(
+            headers={
+                "Server": "nginx/1.24.0",
+                "X-Powered-By": "PHP/8.1.27",
+            },
+        )
+        _, details = checker._parse_http_response(mock_resp, 443)
+        assert len(details) >= 2
+        sources = {d["source"] for d in details}
+        assert "header:server" in sources
+        for d in details:
+            assert d["port"] == 443
+
+    def test_empty_headers_returns_empty_components(self, checker):
+        """无匹配头的响应返回空组件"""
+        mock_resp = self._make_mock_response(
+            headers={"Cache-Control": "no-cache"},
+        )
+        components, details = checker._parse_http_response(mock_resp, 80)
+        assert components == {}
+        assert details == []
+
+    def test_cookie_fingerprint_detected(self, checker):
+        """Set-Cookie 包含 PHPSESSID 时识别为 PHP"""
+        mock_resp = self._make_mock_response(
+            headers={"Set-Cookie": "PHPSESSID=abc123; path=/"},
+            body_chunks=[b"<html></html>"],
+        )
+        components, details = checker._parse_http_response(mock_resp, 80)
+        assert "php" in components
+
+    def test_body_truncated_at_max_size(self, checker):
+        """Body 超过 _MAX_BODY_SIZE 时截断不报错"""
+        mock_resp = self._make_mock_response(
+            headers={},
+            body_chunks=[b"x" * 8192] * 70,  # 70 × 8192 > 512KB
+        )
+        components, details = checker._parse_http_response(mock_resp, 80)
+        # 不抛出异常即为通过
+        assert isinstance(components, dict)

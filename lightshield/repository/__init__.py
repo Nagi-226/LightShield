@@ -7,4 +7,4 @@ v2.0.0：PostgreSQL + Redis 缓存，SaaS 多租户。
 切换方式：修改 config.py → repository_backend，调用方只依赖 ScanRepository 抽象。
 """
 
-__all__ = ["ScanRepository", "JsonFileRepository", "get_repository"]
+__all__ = ["ScanRepository", "JsonFileRepository", "SqliteRepository", "get_repository"]

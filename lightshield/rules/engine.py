@@ -7,17 +7,24 @@
   - 弱口令特征匹配
   - 加固策略推荐
   - 风险等级自动计算
-  - 外部规则导入
+  - 外部规则导入（文件/URL）
+  - 规则热加载（保留导入规则）
+  - 规则版本管理
 
 用法：
     from lightshield.rules.engine import RuleEngine
     engine = RuleEngine()
-    engine.load_rules("vuln_rules.json")
+    engine.load_rules()
+    engine.import_rules_from_url("https://example.com/rules.json")
     findings = engine.match(scan_result)
 """
 
+import hashlib
 import json
 import os
+import time
+
+import requests
 
 from lightshield.adapters.base import ScanResult, VulnFinding
 from lightshield.utils.constants import RiskLevel
@@ -37,18 +44,29 @@ class RuleEngine:
     - 轻量化：纯 Python 实现，无重型依赖
     """
 
+    _REQUIRED_RULE_FIELDS = {"rule_id", "match_type"}  # import 校验
+    _IMPORT_TIMEOUT = 15  # URL 导入超时（秒）
+
     def __init__(self):
         self._vuln_rules: list[dict] = []
         self._harden_rules: list[dict] = []
         self._loaded: bool = False
         self._logger = get_logger()
 
+        # v0.0.26: 追踪导入规则 ID（与内置规则区分，支持热加载）
+        self._imported_vuln_ids: set[str] = set()
+        self._imported_harden_ids: set[str] = set()
+
+        # v0.0.26: 规则版本元数据
+        self._rule_versions: dict[str, str] = {}  # {"vuln": "1.0", "harden": "1.0"}
+        self._last_loaded_at: float = 0.0
+
     # =========================================================================
     # 规则加载
     # =========================================================================
 
     def load_rules(self, vuln_path: str = None, harden_path: str = None) -> None:
-        """加载规则库
+        """加载规则库（v0.0.26：支持热加载时保留已导入的外部规则）
 
         Args:
             vuln_path: 漏洞规则文件路径（JSON），默认 rules/vuln_rules.json
@@ -61,12 +79,51 @@ class RuleEngine:
         if harden_path is None:
             harden_path = os.path.join(base_dir, "harden_rules.json")
 
+        self._vuln_path = vuln_path
+        self._harden_path = harden_path
+
+        # 记录当前导入规则（将在热加载中保留）
+        imported_vuln = [r for r in self._vuln_rules if r.get("rule_id") in self._imported_vuln_ids]
+        imported_harden = [r for r in self._harden_rules if r.get("rule_id") in self._imported_harden_ids]
+
         self._vuln_rules = self._load_json(vuln_path)
         self._harden_rules = self._load_json(harden_path)
         self._loaded = True
+        self._last_loaded_at = time.time()
+
+        # 恢复已导入规则（去重追加）
+        builtin_vuln = {r.get("rule_id") for r in self._vuln_rules}
+        builtin_harden = {r.get("rule_id") for r in self._harden_rules}
+        for rule in imported_vuln:
+            if rule.get("rule_id") not in builtin_vuln:
+                self._vuln_rules.append(rule)
+        for rule in imported_harden:
+            if rule.get("rule_id") not in builtin_harden:
+                self._harden_rules.append(rule)
+
+        # 更新版本元数据
+        self._rule_versions["vuln"] = self._compute_version(self._vuln_rules[: len(builtin_vuln)])
+        self._rule_versions["harden"] = self._compute_version(self._harden_rules[: len(builtin_harden)])
+
         self._logger.info(
             "rules",
-            f"规则加载完成：漏洞规则 {len(self._vuln_rules)} 条，加固规则 {len(self._harden_rules)} 条",
+            f"规则加载完成：漏洞规则 {len(self._vuln_rules)} 条（内置 {len(builtin_vuln)} + 导入 {len(self._imported_vuln_ids)}），"
+            f"加固规则 {len(self._harden_rules)} 条（内置 {len(builtin_harden)} + 导入 {len(self._imported_harden_ids)}）",
+        )
+
+    def reload_rules(self) -> None:
+        """热加载：重新从磁盘加载内置规则，保留已导入的外部规则。
+
+        用途：运维期间更新内置规则文件后无需重启。
+        """
+        if not self._loaded:
+            self.load_rules()
+            return
+
+        self._logger.info("rules", "热加载规则（保留已导入的外部规则）")
+        self.load_rules(
+            vuln_path=getattr(self, "_vuln_path", None),
+            harden_path=getattr(self, "_harden_path", None),
         )
 
     def _load_json(self, path: str) -> list[dict]:
@@ -89,23 +146,118 @@ class RuleEngine:
             return data.get("rules", [])
         return data if isinstance(data, list) else []
 
-    def import_rules(self, rules: list[dict], rule_type: str = "vuln") -> None:
-        """导入外部规则（不覆盖已有规则）
+    def import_rules(self, rules: list[dict], rule_type: str = "vuln") -> int:
+        """导入外部规则（不覆盖已有规则，自动校验）
 
         Args:
             rules: 规则列表
             rule_type: "vuln" 或 "harden"
+
+        Returns:
+            成功导入的规则数
         """
-        if rule_type == "vuln":
-            existing_ids = {r.get("rule_id") for r in self._vuln_rules}
-            for rule in rules:
-                if rule.get("rule_id") not in existing_ids:
-                    self._vuln_rules.append(rule)
-        elif rule_type == "harden":
-            existing_ids = {r.get("rule_id") for r in self._harden_rules}
-            for rule in rules:
-                if rule.get("rule_id") not in existing_ids:
-                    self._harden_rules.append(rule)
+        target = self._vuln_rules if rule_type == "vuln" else self._harden_rules
+        imported_ids = self._imported_vuln_ids if rule_type == "vuln" else self._imported_harden_ids
+        existing_ids = {r.get("rule_id") for r in target}
+        count = 0
+
+        for rule in rules:
+            rule_id = rule.get("rule_id")
+            if not rule_id:
+                self._logger.warning("rules", f"跳过无 rule_id 的规则: {rule.get('title', '?')}")
+                continue
+            if not self._validate_rule(rule):
+                self._logger.warning("rules", f"规则校验失败，跳过: {rule_id}")
+                continue
+            if rule_id not in existing_ids:
+                target.append(rule)
+                imported_ids.add(rule_id)
+                existing_ids.add(rule_id)
+                count += 1
+
+        if count > 0:
+            self._logger.info("rules", f"导入 {rule_type} 规则 {count} 条")
+        return count
+
+    def import_rules_from_file(self, path: str, rule_type: str = "vuln") -> int:
+        """从本地文件导入规则
+
+        Args:
+            path: JSON 规则文件路径
+            rule_type: "vuln" 或 "harden"
+
+        Returns:
+            成功导入的规则数
+        """
+        if not os.path.exists(path):
+            self._logger.error("rules", f"规则文件不存在: {path}")
+            raise FileNotFoundError(f"规则文件不存在: {path}")
+        rules = self._load_json(path)
+        if not rules:
+            self._logger.warning("rules", f"规则文件为空或格式错误: {path}")
+            return 0
+        return self.import_rules(rules, rule_type)
+
+    def import_rules_from_url(self, url: str, rule_type: str = "vuln") -> int:
+        """从远程 URL 导入规则
+
+        通过 HTTP GET 获取 JSON 规则数据，校验后合并到当前规则集。
+        不覆盖已有规则（包括内置和已导入的）。
+
+        Args:
+            url: 远程规则 JSON URL（需返回 JSON 数组或 {"rules": [...]}）
+            rule_type: "vuln" 或 "harden"
+
+        Returns:
+            成功导入的规则数
+
+        Raises:
+            requests.RequestException: 网络请求失败
+            ValueError: 响应不是有效 JSON
+        """
+        self._logger.info("rules", f"从远程导入规则: {url}")
+
+        try:
+            resp = requests.get(
+                url,
+                timeout=self._IMPORT_TIMEOUT,
+                headers={"Accept": "application/json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except requests.Timeout:
+            self._logger.error("rules", f"远程规则导入超时: {url}")
+            raise
+        except requests.RequestException as e:
+            self._logger.error("rules", f"远程规则导入请求失败: {e}")
+            raise
+        except json.JSONDecodeError as e:
+            self._logger.error("rules", f"远程规则 JSON 解析失败: {e}")
+            raise ValueError(f"远程响应不是有效 JSON: {e}") from e
+
+        if isinstance(data, dict):
+            rules = data.get("rules", [])
+        elif isinstance(data, list):
+            rules = data
+        else:
+            raise ValueError(f"不支持的规则格式: {type(data)}")
+
+        count = self.import_rules(rules, rule_type)
+        return count
+
+    def _validate_rule(self, rule: dict) -> bool:
+        """校验规则是否包含必填字段"""
+        return all(field in rule for field in self._REQUIRED_RULE_FIELDS)
+
+    @staticmethod
+    def _compute_version(rules: list[dict]) -> str:
+        """基于规则内容计算版本指纹（SHA256 前 8 位）"""
+        serialized = json.dumps(
+            sorted(rules, key=lambda r: r.get("rule_id", "")),
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        return hashlib.sha256(serialized.encode()).hexdigest()[:8]
 
     # =========================================================================
     # 漏洞匹配
@@ -378,7 +530,7 @@ class RuleEngine:
         return list(seen.values())
 
     # =========================================================================
-    # 信息
+    # 信息 & 元数据
     # =========================================================================
 
     @property
@@ -390,6 +542,32 @@ class RuleEngine:
     def harden_rule_count(self) -> int:
         """已加载的加固规则数"""
         return len(self._harden_rules)
+
+    @property
+    def imported_rule_count(self) -> int:
+        """已导入的外部规则数"""
+        return len(self._imported_vuln_ids) + len(self._imported_harden_ids)
+
+    @property
+    def rule_metadata(self) -> dict:
+        """规则集元数据（版本 + 统计）
+
+        Returns:
+            {
+                "vuln_count": N, "harden_count": N, "imported_count": N,
+                "versions": {"vuln": "...", "harden": "..."},
+                "last_loaded": ISO8601,
+            }
+        """
+        from datetime import datetime
+
+        return {
+            "vuln_count": self.vuln_rule_count,
+            "harden_count": self.harden_rule_count,
+            "imported_count": self.imported_rule_count,
+            "versions": dict(self._rule_versions),
+            "last_loaded": (datetime.fromtimestamp(self._last_loaded_at).isoformat() if self._last_loaded_at else None),
+        }
 
 
 # =============================================================================

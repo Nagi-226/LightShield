@@ -414,3 +414,214 @@ class TestLoadJson:
             assert len(result) == 2
         finally:
             os.unlink(path)
+
+
+# =============================================================================
+# v0.0.26: import_rules_from_file / reload / metadata / URL import
+# =============================================================================
+
+
+class TestImportRulesFromFile:
+    """import_rules_from_file() 从本地文件导入规则"""
+
+    def test_imports_from_valid_json_file(self, engine, tmp_path):
+        """有效 JSON 文件成功导入"""
+        import json
+
+        rules_file = tmp_path / "test_rules.json"
+        rules_file.write_text(
+            json.dumps(
+                [
+                    {"rule_id": "FILE-001", "match_type": "port", "port": 8888},
+                    {"rule_id": "FILE-002", "match_type": "port", "port": 9999},
+                ],
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+        count = engine.import_rules_from_file(str(rules_file), rule_type="vuln")
+        assert count == 2
+        assert engine.vuln_rule_count >= 2
+
+    def test_nonexistent_file_raises(self, engine):
+        """不存在的文件抛出 FileNotFoundError"""
+        with pytest.raises(FileNotFoundError, match="规则文件不存在"):
+            engine.import_rules_from_file("/nonexistent/rules.json")
+
+    def test_empty_file_returns_zero(self, engine, tmp_path):
+        """空规则文件返回 0"""
+        rules_file = tmp_path / "empty_rules.json"
+        rules_file.write_text("[]", encoding="utf-8")
+        count = engine.import_rules_from_file(str(rules_file))
+        assert count == 0
+
+
+class TestImportRulesValidation:
+    """规则导入校验"""
+
+    def test_rule_without_rule_id_skipped(self, engine):
+        """无 rule_id 的规则被跳过"""
+        count = engine.import_rules([{"match_type": "port", "port": 80}], rule_type="vuln")
+        assert count == 0
+
+    def test_rule_without_match_type_skipped(self, engine):
+        """无 match_type 的规则被跳过"""
+        count = engine.import_rules([{"rule_id": "NO-MATCH", "port": 80}], rule_type="vuln")
+        assert count == 0
+
+    def test_import_returns_count(self, engine):
+        """import_rules 返回实际导入数"""
+        count = engine.import_rules(
+            [
+                {"rule_id": "COUNT-1", "match_type": "port", "port": 1},
+                {"rule_id": "COUNT-2", "match_type": "port", "port": 2},
+                {"rule_id": "COUNT-1", "match_type": "port", "port": 1},
+            ],
+            rule_type="vuln",
+        )
+        assert count == 2
+
+
+class TestRuleMetadata:
+    """rule_metadata 属性"""
+
+    def test_metadata_has_required_keys(self, engine):
+        """元数据包含所有必需键"""
+        meta = engine.rule_metadata
+        assert "vuln_count" in meta
+        assert "harden_count" in meta
+        assert "imported_count" in meta
+        assert "versions" in meta
+        assert "last_loaded" in meta
+
+    def test_imported_count_starts_at_zero(self, engine):
+        """初始 imported_count == 0"""
+        assert engine.imported_rule_count == 0
+
+    def test_imported_count_increments(self, engine):
+        """导入后 imported_count 递增"""
+        engine.import_rules(
+            [
+                {"rule_id": "IMP-1", "match_type": "port", "port": 1},
+                {"rule_id": "IMP-2", "match_type": "port", "port": 2},
+            ],
+            rule_type="vuln",
+        )
+        assert engine.imported_rule_count == 2
+
+    def test_versions_change_on_different_rules(self, engine):
+        """不同规则集产生不同版本指纹"""
+        v1 = engine._compute_version([{"rule_id": "A"}, {"rule_id": "B"}])
+        v2 = engine._compute_version([{"rule_id": "A"}, {"rule_id": "C"}])
+        assert v1 != v2
+
+    def test_versions_stable_on_same_rules(self, engine):
+        """相同规则产生相同版本指纹"""
+        rules = [{"rule_id": "A"}, {"rule_id": "B"}]
+        v1 = engine._compute_version(rules)
+        v2 = engine._compute_version(rules)
+        assert v1 == v2
+
+
+class TestReloadRules:
+    """reload_rules() 热加载"""
+
+    def test_reload_preserves_imported_rules(self, engine):
+        """热加载后导入的规则不丢失"""
+        engine.import_rules(
+            [
+                {"rule_id": "RL-001", "match_type": "port", "port": 7777},
+                {"rule_id": "RL-002", "match_type": "port", "port": 8888},
+            ],
+            rule_type="vuln",
+        )
+        assert engine.imported_rule_count == 2
+
+        engine.reload_rules()
+
+        assert engine.imported_rule_count == 2
+        rule_ids = {r.get("rule_id") for r in engine._vuln_rules}
+        assert "RL-001" in rule_ids
+        assert "RL-002" in rule_ids
+
+    def test_reload_does_not_lose_builtin_rules(self, engine):
+        """热加载后内置规则不丢失"""
+        builtin_before = engine.vuln_rule_count - engine.imported_rule_count
+        engine.reload_rules()
+        builtin_after = engine.vuln_rule_count - engine.imported_rule_count
+        assert builtin_after == builtin_before
+
+    def test_reload_before_load_triggers_initial_load(self):
+        """未加载时调用 reload 触发初始加载"""
+        new_engine = RuleEngine()
+        assert new_engine.vuln_rule_count == 0
+        new_engine.reload_rules()
+        assert new_engine.vuln_rule_count > 0
+
+
+class TestImportRulesFromUrl:
+    """import_rules_from_url() 远程规则导入 (mock HTTP)"""
+
+    @staticmethod
+    def _mock_response(json_data):
+        """构造 mock requests.Response"""
+        from unittest.mock import MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = json_data
+        mock_resp.raise_for_status = MagicMock()
+        return mock_resp
+
+    def test_imports_from_url_with_rules_key(self, engine):
+        """响应为 {"rules": [...]} 格式"""
+        from unittest.mock import patch
+
+        with patch(
+            "requests.get",
+            return_value=self._mock_response(
+                {
+                    "rules": [
+                        {"rule_id": "URL-001", "match_type": "port", "port": 1111},
+                        {"rule_id": "URL-002", "match_type": "port", "port": 2222},
+                    ]
+                }
+            ),
+        ):
+            count = engine.import_rules_from_url("https://example.com/rules.json")
+            assert count == 2
+
+    def test_imports_from_url_with_array_format(self, engine):
+        """响应为直接 JSON 数组格式"""
+        from unittest.mock import patch
+
+        with patch(
+            "requests.get",
+            return_value=self._mock_response(
+                [
+                    {"rule_id": "URL-ARR-1", "match_type": "port", "port": 3333},
+                ]
+            ),
+        ):
+            count = engine.import_rules_from_url("https://example.com/array.json")
+            assert count == 1
+
+    def test_url_timeout_raises(self, engine):
+        """超时异常正确抛出"""
+        from unittest.mock import patch
+
+        import requests
+
+        with patch("requests.get", side_effect=requests.Timeout), pytest.raises(requests.Timeout):
+            engine.import_rules_from_url("https://slow.example.com/rules.json")
+
+    def test_invalid_json_raises_value_error(self, engine):
+        """无效 JSON 响应抛出 ValueError"""
+        from unittest.mock import MagicMock, patch
+
+        bad_resp = MagicMock()
+        bad_resp.json.side_effect = ValueError("not json")
+        bad_resp.raise_for_status = MagicMock()
+
+        with patch("requests.get", return_value=bad_resp), pytest.raises(ValueError):
+            engine.import_rules_from_url("https://bad.example.com/data.json")

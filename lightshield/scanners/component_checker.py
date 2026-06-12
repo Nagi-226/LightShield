@@ -91,21 +91,6 @@ _COMPONENT_ALIASES: dict[str, str] = {
 # =============================================================================
 
 
-@dataclass  # Python 3.10 标准库含 dataclass
-class _CveEntry:
-    """CVE 知识库条目"""
-
-    cve_id: str
-    component: str  # 规范组件名
-    max_affected: str  # 最大受影响版本（不含），即 version < max_affected
-    min_version: str  # 起始受影响版本（含），'' 表示所有更早版本
-    severity: RiskLevel
-    cvss_score: float
-    title_cn: str  # 中文简述
-    description_cn: str  # 中文详细描述
-    remediation_cn: str  # 中文修复建议
-
-
 # ---- CVE 知识库条目 (Python 3.10+ dataclass) ----
 
 
@@ -668,6 +653,594 @@ CVE_DATABASE: list[CveEntry] = [
         ),
         remediation_cn="升级 OpenSSL 至 3.2.1 或更高版本。",
     ),
+    # ============================
+    # v0.0.24 CVE 扩充：现有组件
+    # ============================
+    # nginx ngx_http_mp4_module 内存破坏
+    CveEntry(
+        cve_id="CVE-2022-41741",
+        component="nginx",
+        max_affected="1.22.1",
+        min_version="1.1.3",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.8,
+        title_cn="nginx MP4 模块内存破坏漏洞 (CVE-2022-41741)",
+        description_cn=(
+            "nginx Open Source 的 ngx_http_mp4_module 在处理特制 MP4 文件时可能发生内存破坏，"
+            "导致工作进程崩溃或异常行为。影响范围：1.1.3 ≤ version < 1.22.1；"
+            "1.23.0 和 1.23.1 主线版本也受影响。"
+        ),
+        remediation_cn="升级 nginx 至 1.22.1 / 1.23.2 或更高版本；如无需在线播放 MP4，移除 mp4 指令或禁用该模块。",
+    ),
+    # nginx ngx_http_mp4_module 信息泄露/崩溃
+    CveEntry(
+        cve_id="CVE-2022-41742",
+        component="nginx",
+        max_affected="1.22.1",
+        min_version="1.1.3",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.1,
+        title_cn="nginx MP4 模块内存泄露漏洞 (CVE-2022-41742)",
+        description_cn=(
+            "nginx Open Source 的 ngx_http_mp4_module 在解析特制 MP4 文件时存在内存处理缺陷，"
+            "可能造成敏感内存泄露或工作进程崩溃。影响范围：1.1.3 ≤ version < 1.22.1；"
+            "1.23.0 和 1.23.1 主线版本也受影响。"
+        ),
+        remediation_cn="升级 nginx 至 1.22.1 / 1.23.2 或更高版本；对不可信媒体文件关闭 mp4 模块处理。",
+    ),
+    # Apache HTTP Server mod_rewrite 替换编码问题
+    CveEntry(
+        cve_id="CVE-2024-38474",
+        component="apache_httpd",
+        max_affected="2.4.60",
+        min_version="2.4.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Apache HTTP Server mod_rewrite 脚本执行/源码泄露 (CVE-2024-38474)",
+        description_cn=(
+            "Apache HTTP Server 2.4.59 及更早版本的 mod_rewrite 替换编码存在缺陷，"
+            "可能使配置允许目录中的脚本被间接执行，或暴露本不应直接访问的脚本源码。"
+            "影响范围：2.4.0 ≤ version < 2.4.60。"
+        ),
+        remediation_cn="升级 Apache HTTP Server 至 2.4.60 或更高版本，并复核 RewriteRule/ProxyPass 对后端路径的映射。",
+    ),
+    # Apache HTTP Server 后端响应头处理缺陷
+    CveEntry(
+        cve_id="CVE-2024-38476",
+        component="apache_httpd",
+        max_affected="2.4.60",
+        min_version="2.4.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Apache HTTP Server 后端响应头注入风险 (CVE-2024-38476)",
+        description_cn=(
+            "Apache HTTP Server 2.4.59 及更早版本在处理后端应用返回的响应头时存在缺陷，"
+            "可能引发信息泄露、服务端请求伪造或本地脚本执行。影响范围：2.4.0 ≤ version < 2.4.60。"
+        ),
+        remediation_cn="升级 Apache HTTP Server 至 2.4.60 或更高版本，并限制反向代理后端可控响应头。",
+    ),
+    # PHP PHAR 目录项栈缓冲区溢出
+    CveEntry(
+        cve_id="CVE-2023-3824",
+        component="php",
+        max_affected="8.1.22",
+        min_version="8.1.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="PHP PHAR 目录项栈缓冲区溢出 (CVE-2023-3824)",
+        description_cn=(
+            "PHP 在加载 PHAR 文件并读取目录项时长度校验不足，可能触发栈缓冲区溢出，"
+            "造成内存破坏或远程代码执行风险。影响范围：8.1.0 ≤ version < 8.1.22；"
+            "8.0.0 ≤ version < 8.0.30 和 8.2.0 ≤ version < 8.2.9 也受影响。"
+        ),
+        remediation_cn="升级 PHP 至 8.1.22 / 8.0.30 / 8.2.9 或更高版本，并避免处理不可信 PHAR 文件。",
+    ),
+    # PHP XML 全局状态污染
+    CveEntry(
+        cve_id="CVE-2023-3823",
+        component="php",
+        max_affected="8.1.22",
+        min_version="8.1.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.5,
+        title_cn="PHP XML 外部实体配置绕过 (CVE-2023-3823)",
+        description_cn=(
+            "PHP 多个 XML 函数依赖 libxml 全局状态跟踪外部实体等配置，"
+            "在特定调用顺序下可能使安全配置被意外复用或绕过，带来信息泄露风险。"
+            "影响范围：8.1.0 ≤ version < 8.1.22；8.0.x 和 8.2.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 PHP 至 8.1.22 / 8.0.30 / 8.2.9 或更高版本，并禁用不必要的 XML 外部实体加载。",
+    ),
+    # MySQL mysqldump 客户端组件漏洞
+    CveEntry(
+        cve_id="CVE-2024-21096",
+        component="mysql",
+        max_affected="8.0.37",
+        min_version="8.0.0",
+        severity=RiskLevel.MEDIUM,
+        cvss_score=4.9,
+        title_cn="MySQL Server mysqldump 客户端漏洞 (CVE-2024-21096)",
+        description_cn=(
+            "Oracle MySQL Server 的 Client: mysqldump 组件存在漏洞，"
+            "低复杂度场景下可能影响数据机密性或可用性。影响范围：8.0.0 ≤ version < 8.0.37；"
+            "8.1.0 至 8.3.0 维护线也受影响。"
+        ),
+        remediation_cn="升级 MySQL Server 至 8.0.37 或对应 Oracle CPU 修复版本，并限制 mysqldump 对不可信服务器的访问。",
+    ),
+    # MySQL InnoDB 组件漏洞
+    CveEntry(
+        cve_id="CVE-2023-22084",
+        component="mysql",
+        max_affected="8.0.35",
+        min_version="8.0.0",
+        severity=RiskLevel.MEDIUM,
+        cvss_score=4.9,
+        title_cn="MySQL Server InnoDB 拒绝服务漏洞 (CVE-2023-22084)",
+        description_cn=(
+            "Oracle MySQL Server 的 InnoDB 组件存在可被高权限网络用户触发的缺陷，"
+            "可能导致服务可用性受影响。影响范围：8.0.0 ≤ version < 8.0.35；"
+            "5.7.43 及更早版本和 8.1.0 也受影响。"
+        ),
+        remediation_cn="升级 MySQL Server 至 8.0.35 / 8.1.1 或对应 Oracle CPU 修复版本，并收紧高权限数据库账号。",
+    ),
+    # Redis Lua 栈缓冲区溢出（影响所有启用 Lua 脚本的版本，拆分覆盖）
+    CveEntry(
+        cve_id="CVE-2024-31449",
+        component="redis",
+        max_affected="6.2.16",
+        min_version="",  # 覆盖 5.x/6.x 等所有更早分支（NVD: 2.8.18 ≤ v < 6.2.16）
+        severity=RiskLevel.HIGH,
+        cvss_score=8.8,
+        title_cn="Redis Lua bit 库栈缓冲区溢出 (CVE-2024-31449)",
+        description_cn=(
+            "Redis 在 Lua 脚本 bit 库中存在栈缓冲区溢出漏洞，"
+            "经过认证的用户可能触发内存破坏并影响机密性、完整性和可用性。"
+            "影响范围：2.8.18 ≤ version < 6.2.16（广泛受影响分支）。"
+        ),
+        remediation_cn="升级 Redis 至 6.2.16 或更高版本，并限制 Lua 脚本执行权限。",
+    ),
+    CveEntry(
+        cve_id="CVE-2024-31449",
+        component="redis",
+        max_affected="7.2.6",
+        min_version="7.2.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=8.8,
+        title_cn="Redis Lua bit 库栈缓冲区溢出 — 7.2.x (CVE-2024-31449)",
+        description_cn=(
+            "Redis 7.2.x 在 Lua 脚本 bit 库中存在栈缓冲区溢出漏洞，"
+            "经过认证的用户可能触发内存破坏。"
+            "影响范围：7.2.0 ≤ version < 7.2.6。"
+        ),
+        remediation_cn="升级 Redis 至 7.2.6 或更高版本。",
+    ),
+    # Redis Lua cjson 库堆溢出
+    CveEntry(
+        cve_id="CVE-2022-24834",
+        component="redis",
+        max_affected="7.0.12",
+        min_version="7.0.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=8.8,
+        title_cn="Redis Lua cjson 堆溢出漏洞 (CVE-2022-24834)",
+        description_cn=(
+            "Redis 的 Lua cjson 库在处理特制脚本输入时可能发生堆溢出，"
+            "造成服务崩溃或内存破坏风险。影响范围：7.0.0 ≤ version < 7.0.12；"
+            "6.0.x 和 6.2.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Redis 至 7.0.12 / 6.2.13 / 6.0.20 或更高版本，并限制不可信用户执行 Lua 脚本。",
+    ),
+    # PostgreSQL REFRESH MATERIALIZED VIEW 权限下降延迟
+    CveEntry(
+        cve_id="CVE-2024-0985",
+        component="postgresql",
+        max_affected="15.6",
+        min_version="15.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=8.0,
+        title_cn="PostgreSQL 物化视图权限提升 (CVE-2024-0985)",
+        description_cn=(
+            "PostgreSQL 在 REFRESH MATERIALIZED VIEW CONCURRENTLY 中存在权限下降延迟问题，"
+            "对象创建者可能以命令发起者权限执行 SQL 函数。影响范围：15.0 ≤ version < 15.6；"
+            "12.x 至 14.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 PostgreSQL 至 15.6 / 14.11 / 13.14 / 12.18 或更高版本，并审计物化视图创建权限。",
+    ),
+    # PostgreSQL 行级安全复用查询跟踪不完整
+    CveEntry(
+        cve_id="CVE-2024-10976",
+        component="postgresql",
+        max_affected="16.5",
+        min_version="16.0",
+        severity=RiskLevel.MEDIUM,
+        cvss_score=5.4,
+        title_cn="PostgreSQL 行级安全绕过漏洞 (CVE-2024-10976)",
+        description_cn=(
+            "PostgreSQL 对启用行级安全的表复用查询时跟踪不完整，"
+            "可能导致查询查看或修改非预期行。影响范围：16.0 ≤ version < 16.5；"
+            "12.x 至 17.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 PostgreSQL 至 17.1 / 16.5 / 15.9 / 14.14 / 13.17 / 12.21 或更高版本。",
+    ),
+    # Apache Tomcat 默认 Servlet 写入导致路径等价问题
+    CveEntry(
+        cve_id="CVE-2025-24813",
+        component="apache_tomcat",
+        max_affected="10.1.35",
+        min_version="10.1.1",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Apache Tomcat 路径等价远程代码执行 (CVE-2025-24813)",
+        description_cn=(
+            "Apache Tomcat 在默认 Servlet 启用写入时存在路径等价处理缺陷，"
+            "可能导致远程代码执行、信息泄露或上传内容被篡改。影响范围：10.1.1 ≤ version < 10.1.35；"
+            "9.0.x 和 11.0.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Apache Tomcat 至 10.1.35 / 9.0.99 / 11.0.3 或更高版本，并关闭默认 Servlet 写入。",
+    ),
+    # Apache Tomcat JSP 编译 TOCTOU 竞态
+    CveEntry(
+        cve_id="CVE-2024-50379",
+        component="apache_tomcat",
+        max_affected="10.1.34",
+        min_version="10.1.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Apache Tomcat JSP 编译竞态执行漏洞 (CVE-2024-50379)",
+        description_cn=(
+            "Apache Tomcat 在大小写不敏感文件系统上进行 JSP 编译时存在 TOCTOU 竞态，"
+            "当默认 Servlet 可写时可能导致远程代码执行。影响范围：10.1.0 ≤ version < 10.1.34；"
+            "9.0.x 和 11.0.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Apache Tomcat 至 10.1.34 / 9.0.98 / 11.0.2 或更高版本，并禁用默认 Servlet 写入。",
+    ),
+    # Node.js policy 机制 Module._load 绕过
+    CveEntry(
+        cve_id="CVE-2023-32002",
+        component="nodejs",
+        max_affected="18.17.1",
+        min_version="18.0.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Node.js 实验性 policy 机制绕过 (CVE-2023-32002)",
+        description_cn=(
+            "Node.js 的 Module._load() 可绕过 policy.json 中的模块加载限制，"
+            "使受限模块加载外部代码。影响范围：18.0.0 ≤ version < 18.17.1；"
+            "16.x 和 20.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Node.js 至 18.17.1 / 16.20.2 / 20.5.1 或更高版本，并避免依赖实验性 policy 作为唯一边界。",
+    ),
+    # Node.js HTTP chunked 编码资源耗尽
+    CveEntry(
+        cve_id="CVE-2024-22019",
+        component="nodejs",
+        max_affected="18.19.1",
+        min_version="18.0.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.5,
+        title_cn="Node.js HTTP 分块编码拒绝服务 (CVE-2024-22019)",
+        description_cn=(
+            "Node.js HTTP 服务器在处理特制 chunked 编码请求时可能持续读取无限数量字节，"
+            "造成资源耗尽和拒绝服务。影响范围：18.0.0 ≤ version < 18.19.1；"
+            "20.x 和 21.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Node.js 至 18.19.1 / 20.11.1 / 21.6.2 或更高版本，并在反向代理层限制请求体大小。",
+    ),
+    # WordPress wp_lang 目录遍历
+    CveEntry(
+        cve_id="CVE-2023-2745",
+        component="wordpress",
+        max_affected="6.2.1",
+        min_version="6.2",
+        severity=RiskLevel.MEDIUM,
+        cvss_score=6.1,
+        title_cn="WordPress wp_lang 目录遍历漏洞 (CVE-2023-2745)",
+        description_cn=(
+            "WordPress Core 的 wp_lang 参数存在目录遍历风险，"
+            "未认证用户可能加载非预期翻译文件，并在特定条件下造成脚本执行风险。"
+            "影响范围：6.2 ≤ version < 6.2.1；多个旧维护分支对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 WordPress 至 6.2.1 或所在维护分支的最新安全版本，并限制可写语言目录。",
+    ),
+    # Drupal 文件名净化绕过
+    CveEntry(
+        cve_id="CVE-2022-25277",
+        component="drupal",
+        max_affected="9.4.3",
+        min_version="9.4.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.2,
+        title_cn="Drupal 文件上传扩展名净化绕过 (CVE-2022-25277)",
+        description_cn=(
+            "Drupal Core 对危险扩展名和文件名前后点号的净化存在绕过，"
+            "可能允许上传可导致服务器配置异常或执行风险的文件。"
+            "影响范围：9.4.0 ≤ version < 9.4.3；8.x/9.3.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Drupal 至 9.4.3 / 9.3.19 或更高版本，并限制高风险文件扩展名上传。",
+    ),
+    # Drupal Form API 访问判断错误
+    CveEntry(
+        cve_id="CVE-2022-25278",
+        component="drupal",
+        max_affected="9.4.3",
+        min_version="9.4.0",
+        severity=RiskLevel.MEDIUM,
+        cvss_score=6.5,
+        title_cn="Drupal Form API 访问控制错误 (CVE-2022-25278)",
+        description_cn=(
+            "Drupal Core Form API 在特定条件下对表单元素访问权限判断错误，"
+            "可能允许用户修改其不应访问的数据。影响范围：9.4.0 ≤ version < 9.4.3；"
+            "8.x/9.3.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Drupal 至 9.4.3 / 9.3.19 或更高版本，并复核自定义表单元素 access 配置。",
+    ),
+    # Joomla 邮件地址转义不足
+    CveEntry(
+        cve_id="CVE-2024-21725",
+        component="joomla",
+        max_affected="5.0.3",
+        min_version="5.0.0",
+        severity=RiskLevel.MEDIUM,
+        cvss_score=6.1,
+        title_cn="Joomla 邮件地址转义不足导致 XSS (CVE-2024-21725)",
+        description_cn=(
+            "Joomla 多个组件对邮件地址输出转义不足，可能造成跨站脚本风险。"
+            "影响范围：5.0.0 ≤ version < 5.0.3；4.0.0 ≤ version < 4.4.3 也受影响。"
+        ),
+        remediation_cn="升级 Joomla 至 5.0.3 / 4.4.3 或更高版本，并对模板中的邮件地址输出启用上下文转义。",
+    ),
+    # Joomla 内容过滤不足
+    CveEntry(
+        cve_id="CVE-2024-21726",
+        component="joomla",
+        max_affected="5.0.3",
+        min_version="5.0.0",
+        severity=RiskLevel.MEDIUM,
+        cvss_score=6.5,
+        title_cn="Joomla 内容过滤不足导致 XSS (CVE-2024-21726)",
+        description_cn=(
+            "Joomla 在多个组件中内容过滤不足，可能使低权限用户提交的内容触发跨站脚本风险。"
+            "影响范围：5.0.0 ≤ version < 5.0.3；3.7.0 至 3.10.15 和 4.0.0 至 4.4.3 也受影响。"
+        ),
+        remediation_cn="升级 Joomla 至 5.0.3 / 4.4.3 / 3.10.16 或更高版本，并启用严格 HTML 过滤策略。",
+    ),
+    # MariaDB VDec use-after-free
+    CveEntry(
+        cve_id="CVE-2022-27456",
+        component="mariadb",
+        max_affected="10.7.4",
+        min_version="10.7.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.5,
+        title_cn="MariaDB VDec 释放后使用漏洞 (CVE-2022-27456)",
+        description_cn=(
+            "MariaDB Server 在 VDec::VDec 组件中存在释放后使用缺陷，"
+            "可能导致服务崩溃或异常行为。影响范围：10.7.0 ≤ version < 10.7.4；"
+            "10.3.x 至 10.6.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 MariaDB 至 10.7.4 / 10.6.8 / 10.5.16 / 10.4.25 / 10.3.35 或更高版本。",
+    ),
+    # MariaDB Binary_string use-after-free
+    CveEntry(
+        cve_id="CVE-2022-27447",
+        component="mariadb",
+        max_affected="10.7.4",
+        min_version="10.7.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.5,
+        title_cn="MariaDB Binary_string 释放后使用漏洞 (CVE-2022-27447)",
+        description_cn=(
+            "MariaDB Server 在 Binary_string::free_buffer() 组件中存在释放后使用缺陷，"
+            "可能导致数据库服务崩溃。影响范围：10.7.0 ≤ version < 10.7.4；"
+            "10.3.x 至 10.6.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 MariaDB 至 10.7.4 / 10.6.8 / 10.5.16 / 10.4.25 / 10.3.35 或更高版本。",
+    ),
+    # OpenSSL X.400 地址类型混淆
+    CveEntry(
+        cve_id="CVE-2023-0286",
+        component="openssl",
+        max_affected="3.0.8",
+        min_version="3.0.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.4,
+        title_cn="OpenSSL X.400 地址类型混淆漏洞 (CVE-2023-0286)",
+        description_cn=(
+            "OpenSSL 在 X.509 GeneralName 的 X.400 地址处理中存在类型混淆，"
+            "证书解析或吊销列表检查时可能造成崩溃或内存安全风险。"
+            "影响范围：3.0.0 ≤ version < 3.0.8；1.1.1 和 1.0.2 分支对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 OpenSSL 至 3.0.8 / 1.1.1t / 1.0.2zg 或更高版本，并及时更新依赖 OpenSSL 的服务。",
+    ),
+    # phpMyAdmin 参数处理信息泄露
+    CveEntry(
+        cve_id="CVE-2022-0813",
+        component="phpmyadmin",
+        max_affected="5.1.2",
+        min_version="",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.5,
+        title_cn="phpMyAdmin 无效请求信息泄露 (CVE-2022-0813)",
+        description_cn=(
+            "phpMyAdmin 5.1.1 及更早版本在 lang、pma_parameter 和 cookie 相关处理上存在缺陷，"
+            "无效请求可能暴露敏感信息。影响范围：version < 5.1.2。"
+        ),
+        remediation_cn="升级 phpMyAdmin 至 5.1.2 或更高版本，并限制管理界面仅内网或 VPN 可访问。",
+    ),
+    # ============================
+    # v0.0.24 CVE 扩充：新增组件
+    # ============================
+    # MongoDB TLS CA 校验绕过
+    CveEntry(
+        cve_id="CVE-2024-1351",
+        component="mongodb",
+        max_affected="7.0.6",
+        min_version="7.0.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="MongoDB TLS CA 校验绕过 (CVE-2024-1351)",
+        description_cn=(
+            "MongoDB Server 在特定 --tlsCAFile / tls.CAFile 配置下可能跳过对端证书校验，"
+            "使不可信连接被接受，削弱传输安全保证。影响范围：7.0.0 ≤ version < 7.0.6；"
+            "4.4.x、5.0.x 和 6.0.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 MongoDB Server 至 7.0.6 / 6.0.14 / 5.0.25 / 4.4.29 或更高版本，并复核 TLS CA 配置。",
+    ),
+    # MongoDB 聚合阶段未初始化内存访问
+    CveEntry(
+        cve_id="CVE-2024-8654",
+        component="mongodb",
+        max_affected="6.0.4",
+        min_version="6.0.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="MongoDB 聚合阶段未初始化内存访问 (CVE-2024-8654)",
+        description_cn=(
+            "MongoDB Server 在内部聚合阶段处理零参数调用时可能访问未初始化内存，"
+            "导致不可预期行为或服务崩溃。影响范围：6.0.0 ≤ version < 6.0.4。"
+        ),
+        remediation_cn="升级 MongoDB Server 至 6.0.4 或更高版本，并限制未授权用户执行复杂聚合操作。",
+    ),
+    # MongoDB BSON 构造越界读取/崩溃
+    CveEntry(
+        cve_id="CVE-2024-10921",
+        component="mongodb",
+        max_affected="8.0.3",
+        min_version="8.0.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=8.1,
+        title_cn="MongoDB BSON 畸形请求内存读取漏洞 (CVE-2024-10921)",
+        description_cn=(
+            "MongoDB Server 在构造畸形 BSON 的请求处理中可能发生缓冲区越界读取或崩溃，"
+            "授权用户可影响服务可用性并可能读取内存内容。影响范围：8.0.0 ≤ version < 8.0.3；"
+            "5.0.x 至 7.0.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 MongoDB Server 至 8.0.3 / 7.0.15 / 6.0.19 / 5.0.30 或更高版本，并最小化数据库用户权限。",
+    ),
+    # Django Trunc/Extract SQL 注入
+    CveEntry(
+        cve_id="CVE-2022-34265",
+        component="django",
+        max_affected="4.0.6",
+        min_version="4.0",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Django Trunc/Extract SQL 注入 (CVE-2022-34265)",
+        description_cn=(
+            "Django 的 Trunc() 和 Extract() 数据库函数在 kind/lookup_name 使用不可信输入时可能发生 SQL 注入。"
+            "影响范围：4.0 ≤ version < 4.0.6；3.2 ≤ version < 3.2.14 也受影响。"
+        ),
+        remediation_cn="升级 Django 至 4.0.6 / 3.2.14 或更高版本，并禁止将用户输入直接传入 kind/lookup_name。",
+    ),
+    # Django JSONField alias SQL 注入
+    CveEntry(
+        cve_id="CVE-2024-42005",
+        component="django",
+        max_affected="4.2.15",
+        min_version="4.2",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.3,
+        title_cn="Django JSONField 别名 SQL 注入 (CVE-2024-42005)",
+        description_cn=(
+            "Django QuerySet.values() 和 values_list() 在处理 JSONField 模型列别名时可能受构造键名影响，"
+            "导致 SQL 注入风险。影响范围：4.2 ≤ version < 4.2.15；5.0 ≤ version < 5.0.8 也受影响。"
+        ),
+        remediation_cn="升级 Django 至 4.2.15 / 5.0.8 或更高版本，并校验传入 values()/values_list() 的字段名。",
+    ),
+    # Laravel 通配符文件验证绕过
+    CveEntry(
+        cve_id="CVE-2025-27515",
+        component="laravel",
+        max_affected="11.44.1",
+        min_version="",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Laravel 通配符文件验证绕过 (CVE-2025-27515)",
+        description_cn=(
+            "Laravel 在使用 files.* 等通配符规则验证文件或图片字段时，"
+            "特制请求可能绕过预期验证规则。影响范围：version < 11.44.1；"
+            "12.0.0 ≤ version < 12.1.1 也受影响。"
+        ),
+        remediation_cn="升级 Laravel 至 11.44.1 / 12.1.1 或更高版本，并对上传文件执行服务端 MIME、扩展名和内容校验。",
+    ),
+    # Laravel register_argc_argv 环境变量污染
+    CveEntry(
+        cve_id="CVE-2024-52301",
+        component="laravel",
+        max_affected="11.31.0",
+        min_version="11.0.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.5,
+        title_cn="Laravel register_argc_argv 环境变量污染 (CVE-2024-52301)",
+        description_cn=(
+            "Laravel 在 PHP register_argc_argv 开启时，特制查询字符串可能改变框架处理请求使用的环境值，"
+            "造成配置污染风险。影响范围：11.0.0 ≤ version < 11.31.0；"
+            "6.x 至 10.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 Laravel 至 11.31.0 / 10.48.23 / 9.52.17 / 8.83.28 等修复版本，并关闭 PHP register_argc_argv。",
+    ),
+    # Magento/Adobe Commerce XXE 导致代码执行风险
+    CveEntry(
+        cve_id="CVE-2024-34102",
+        component="magento",
+        max_affected="2.4.7p1",
+        min_version="",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Magento/Adobe Commerce XXE 代码执行风险 (CVE-2024-34102)",
+        description_cn=(
+            "Adobe Commerce / Magento Open Source 对 XML 外部实体引用限制不足，"
+            "可能导致任意代码执行风险。影响范围：version < 2.4.7p1；"
+            "2.4.6-p5、2.4.5-p7、2.4.4-p8 及更早维护线也受影响。"
+        ),
+        remediation_cn="升级 Magento Open Source / Adobe Commerce 至 2.4.7-p1 或对应维护分支安全补丁，并禁用不可信 XML 输入。",
+    ),
+    # Magento/Adobe Commerce 危险文件上传
+    CveEntry(
+        cve_id="CVE-2024-39397",
+        component="magento",
+        max_affected="2.4.7p2",
+        min_version="",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.0,
+        title_cn="Magento/Adobe Commerce 危险文件上传漏洞 (CVE-2024-39397)",
+        description_cn=(
+            "Adobe Commerce / Magento Open Source 存在危险类型文件上传限制不足，"
+            "攻击面可能扩展为任意代码执行风险。影响范围：version < 2.4.7p2；"
+            "2.4.6-p6、2.4.5-p8、2.4.4-p9 及更早维护线也受影响。"
+        ),
+        remediation_cn="升级 Magento Open Source / Adobe Commerce 至 2.4.7-p2 或对应维护分支安全补丁，并限制后台上传文件类型。",
+    ),
+    # BIND 递归解析器缓存性能退化 DoS
+    CveEntry(
+        cve_id="CVE-2023-2828",
+        component="bind",
+        max_affected="9.18.16",
+        min_version="9.18.0",
+        severity=RiskLevel.HIGH,
+        cvss_score=7.5,
+        title_cn="BIND 递归解析器缓存拒绝服务 (CVE-2023-2828)",
+        description_cn=(
+            "ISC BIND 递归解析器在缓存特定响应后可能因缓存数据库处理缺陷导致 named 进程异常退出，"
+            "造成 DNS 服务拒绝服务。影响范围：9.18.0 ≤ version < 9.18.16；"
+            "9.11.x、9.16.x 和 9.19.x 对应修复版本前也受影响。"
+        ),
+        remediation_cn="升级 BIND 至 9.18.16 / 9.16.42 / 9.19.14 或更高版本，并监控递归解析器异常退出。",
+    ),
+    # Exim SMTP Challenge 栈缓冲区溢出
+    CveEntry(
+        cve_id="CVE-2023-42116",
+        component="exim",
+        max_affected="4.96.1",
+        min_version="",
+        severity=RiskLevel.CRITICAL,
+        cvss_score=9.8,
+        title_cn="Exim SMTP Challenge 栈缓冲区溢出 (CVE-2023-42116)",
+        description_cn=(
+            "Exim SMTP Challenge 处理逻辑存在栈缓冲区溢出，可能导致远程代码执行风险。影响范围：version < 4.96.1。"
+        ),
+        remediation_cn="升级 Exim 至 4.96.1 或更高版本，并仅向可信网络暴露管理接口和认证相关功能。",
+    ),
 ]
 
 
@@ -846,18 +1419,16 @@ class ComponentCheckerAdapter(BaseAdapter):
 
         流程：
         1. R2 输入校验
-        2. HTTP 探测端口 80 / 443 / 8080 / 8443
-        3. 解析响应头 / HTML meta / Cookie 提取组件列表
-        4. 从 kwargs['services'] 补充非 HTTP 组件（如 MySQL/SSH）
-        5. 匹配 CVE 知识库 → 生成 VulnFinding
-        6. 返回合并结果
+        2. HTTP 探测 → 提取 Web 组件（委托 _probe_http_components）
+        3. 补充非 HTTP 组件（委托 _supplement_from_services）
+        4. CVE 知识库匹配 → 生成 VulnFinding（委托 _build_cve_findings）
+        5. 组装返回 ScanResult（委托 _assemble_result）
 
         Args:
             target: 扫描目标（IP 或域名）
             **kwargs:
                 services: 上游扫描得到的服务列表
                           [{"name": "mysql", "version": "8.0.35", "port": 3306}, ...]
-                ports: 上游端口列表
                 http_ports: 自定义 HTTP 端口列表，默认 [80, 443, 8080, 8443]
                 timeout: HTTP 请求超时（秒），默认 10
                 user_agent: 自定义 UA
@@ -877,37 +1448,86 @@ class ComponentCheckerAdapter(BaseAdapter):
 
         scan_id = self._log_scan_start(target, "component_check")
 
-        # ---- Step 2: 探测 HTTP 服务 ----
-        detected_components: dict[str, str] = {}  # {规范组件名: 版本}
-        raw_details: list[dict] = []  # 原始检测详情
-
+        # ---- Step 2: HTTP 探测 ----
         http_ports = kwargs.get("http_ports", [80, 443, 8080, 8443])
         timeout_val = kwargs.get("timeout", self._TIMEOUT)
         user_agent = kwargs.get("user_agent", self._USER_AGENT)
 
-        # 去重端口
+        detected_components, raw_details = self._probe_http_components(target, http_ports, timeout_val, user_agent)
+
+        # ---- Step 3: 补充非 HTTP 组件 ----
+        services = kwargs.get("services", [])
+        svc_components, svc_details = self._supplement_from_services(services)
+        for comp, ver in svc_components.items():
+            if comp not in detected_components:
+                detected_components[comp] = ver
+        raw_details.extend(svc_details)
+
+        # ---- Step 4: CVE 匹配 ----
+        findings = self._build_cve_findings(detected_components)
+
+        # ---- Step 5: 组装结果 ----
+        result = self._assemble_result(target, detected_components, findings, raw_details, start_time)
+
+        self._log_scan_end(scan_id, result)
+        self._logger.info(
+            "component_checker",
+            f"扫描完成: {len(detected_components)} 组件, {len(findings)} 个 CVE 命中",
+        )
+
+        return result
+
+    # =========================================================================
+    # scan() 子步骤（提取为独立方法以控制圈复杂度）
+    # =========================================================================
+
+    def _probe_http_components(
+        self, target: str, http_ports: list[int], timeout: int, user_agent: str
+    ) -> tuple[dict[str, str], list[dict]]:
+        """HTTP 多端口探测 → 提取 Web 组件指纹
+
+        遍历 HTTP 端口列表，对每个端口发起 GET 请求，
+        调用 _parse_http_response 解析响应提取组件信息。
+        首个成功返回组件信息的端口即停止探测。
+
+        Args:
+            target: 扫描目标（IP 或域名）
+            http_ports: HTTP 端口列表
+            timeout: 请求超时（秒）
+            user_agent: User-Agent 头
+
+        Returns:
+            (detected_components, raw_details)
+            - detected_components: {规范组件名: 版本号}
+            - raw_details: 原始检测详情列表
+        """
+        detected_components: dict[str, str] = {}
+        raw_details: list[dict] = []
+
         for port in sorted(set(http_ports)):
             url = f"https://{target}" if port == 443 else f"http://{target}:{port}"
 
             try:
                 resp = requests.get(
                     url,
-                    timeout=timeout_val,
+                    timeout=timeout,
                     headers={"User-Agent": user_agent},
                     allow_redirects=True,
-                    stream=True,  # 流式读取，限制 body 大小
-                    # nosec B501 — 安全扫描需兼容内网自签证书；跳过 SSL 验证为设计决策，非遗漏
-                    verify=False,  # 自签证书不阻断检测
+                    stream=True,
+                    # nosec B501 — 安全扫描需兼容内网自签证书
+                    verify=False,
                 )
-                # 限制读取大小
-                body = b""
-                for chunk in resp.iter_content(chunk_size=8192):
-                    body += chunk
-                    if len(body) > self._MAX_BODY_SIZE:
-                        break
-                html_text = body.decode("utf-8", errors="replace")
+                components, details = self._parse_http_response(resp, port)
+                for comp, ver in components.items():
+                    if comp not in detected_components:
+                        detected_components[comp] = ver
+                raw_details.extend(details)
+
+                # 首次成功即可获得足够信息
+                if detected_components:
+                    break
+
             except requests.exceptions.SSLError:
-                # HTTPS 证书错误 → 尝试 HTTP 回退（仅在非 443 端口）
                 self._logger.info("component_checker", f"SSL 错误 {url}，跳过")
                 continue
             except requests.exceptions.ConnectionError:
@@ -919,76 +1539,119 @@ class ComponentCheckerAdapter(BaseAdapter):
                 self._logger.info("component_checker", f"HTTP 请求失败 {url}: {exc}")
                 continue
 
-            # ---- 解析响应头 ----
-            headers_lower = {k.lower(): v for k, v in resp.headers.items()}
-            for header_key, pattern, comp_name in _HEADER_SIGNATURES:
-                value = headers_lower.get(header_key)
-                if not value:
-                    continue
-                m = re.search(pattern, value, re.IGNORECASE)
-                if m:
-                    version = ""
-                    if m.groups():
-                        version = m.group(1)
-                    component = comp_name or _infer_component_from_header(header_key, value)
-                    if component and component not in detected_components:
-                        detected_components[component] = version
-                        raw_details.append(
-                            {
-                                "source": f"header:{header_key}",
-                                "component": component,
-                                "version": version,
-                                "raw_value": value,
-                                "port": port,
-                            }
-                        )
+        return detected_components, raw_details
 
-            # ---- 解析 HTML meta ----
-            for pattern, comp_name in _META_SIGNATURES:
-                m = re.search(pattern, html_text, re.IGNORECASE)
-                if m and m.group(1):
-                    version = m.group(1)
-                    if comp_name not in detected_components:
-                        detected_components[comp_name] = version
-                        raw_details.append(
-                            {
-                                "source": "html:meta",
-                                "component": comp_name,
-                                "version": version,
-                                "raw_value": m.group(0),
-                                "port": port,
-                            }
-                        )
+    def _parse_http_response(self, resp: requests.Response, port: int) -> tuple[dict[str, str], list[dict]]:
+        """解析单次 HTTP 响应 → 提取组件指纹
 
-            # ---- Cookie 指纹识别 ----
-            set_cookies = headers_lower.get("set-cookie", "")
-            for cookie_name, comp_name in _COOKIE_SIGNATURES:
-                if comp_name and cookie_name.lower() in set_cookies.lower() and comp_name not in detected_components:
-                    detected_components[comp_name] = ""
+        从三个维度检测组件：
+        1. 响应头（Server / X-Powered-By / X-Generator 等）
+        2. HTML meta 标签（generator）
+        3. Set-Cookie 指纹
+
+        Args:
+            resp: requests 库的 Response 对象
+            port: 探测端口号
+
+        Returns:
+            (detected_components, raw_details)
+            - detected_components: {规范组件名: 版本号}
+            - raw_details: 原始检测详情列表
+        """
+        detected_components: dict[str, str] = {}
+        raw_details: list[dict] = []
+
+        # 读取 body（流式 + 大小截断）
+        body = b""
+        for chunk in resp.iter_content(chunk_size=8192):
+            body += chunk
+            if len(body) > self._MAX_BODY_SIZE:
+                break
+        html_text = body.decode("utf-8", errors="replace")
+
+        headers_lower = {k.lower(): v for k, v in resp.headers.items()}
+
+        # ---- 响应头解析 ----
+        for header_key, pattern, comp_name in _HEADER_SIGNATURES:
+            value = headers_lower.get(header_key)
+            if not value:
+                continue
+            m = re.search(pattern, value, re.IGNORECASE)
+            if m:
+                version = m.group(1) if m.groups() else ""
+                component = comp_name or _infer_component_from_header(header_key, value)
+                if component and component not in detected_components:
+                    detected_components[component] = version
                     raw_details.append(
                         {
-                            "source": "header:cookie",
-                            "component": comp_name,
-                            "version": "",
-                            "raw_value": f"Cookie contains '{cookie_name}'",
+                            "source": f"header:{header_key}",
+                            "component": component,
+                            "version": version,
+                            "raw_value": value,
                             "port": port,
                         }
                     )
-                    break  # 只取最匹配的一个
 
-            # 取第一个成功的 HTTP 响应即可获得足够信息
-            if detected_components:
-                break
+        # ---- HTML meta 解析 ----
+        for pattern, comp_name in _META_SIGNATURES:
+            m = re.search(pattern, html_text, re.IGNORECASE)
+            if m and m.group(1):
+                version = m.group(1)
+                if comp_name not in detected_components:
+                    detected_components[comp_name] = version
+                    raw_details.append(
+                        {
+                            "source": "html:meta",
+                            "component": comp_name,
+                            "version": version,
+                            "raw_value": m.group(0),
+                            "port": port,
+                        }
+                    )
 
-        # ---- Step 3: 补充非 HTTP 组件 ----
-        services = kwargs.get("services", [])
+        # ---- Cookie 指纹识别 ----
+        set_cookies = headers_lower.get("set-cookie", "")
+        for cookie_name, comp_name in _COOKIE_SIGNATURES:
+            if comp_name and cookie_name.lower() in set_cookies.lower() and comp_name not in detected_components:
+                detected_components[comp_name] = ""
+                raw_details.append(
+                    {
+                        "source": "header:cookie",
+                        "component": comp_name,
+                        "version": "",
+                        "raw_value": f"Cookie contains '{cookie_name}'",
+                        "port": port,
+                    }
+                )
+                break  # 只取最匹配的一个
+
+        return detected_components, raw_details
+
+    def _supplement_from_services(self, services: list[dict]) -> tuple[dict[str, str], list[dict]]:
+        """从上游服务列表补充非 HTTP 组件（如 MySQL/SSH/Redis）
+
+        通过 _COMPONENT_ALIASES 将服务名映射为规范组件名，
+        供后续 CVE 匹配使用。
+
+        Args:
+            services: 上游扫描得到的服务列表
+                      [{"name": "mysql", "version": "8.0.35", "port": 3306}, ...]
+
+        Returns:
+            (components, details)
+            - components: {规范组件名: 版本号}
+            - details: 原始检测详情列表
+        """
+        components: dict[str, str] = {}
+        details: list[dict] = []
+
         for svc in services:
             svc_name = svc.get("name", "").lower()
             svc_version = svc.get("version", "")
             canonical = _COMPONENT_ALIASES.get(svc_name, svc_name)
-            if canonical and canonical not in detected_components:
-                detected_components[canonical] = svc_version
-                raw_details.append(
+            if canonical:
+                components[canonical] = svc_version
+                details.append(
                     {
                         "source": "services",
                         "component": canonical,
@@ -998,9 +1661,19 @@ class ComponentCheckerAdapter(BaseAdapter):
                     }
                 )
 
-        # ---- Step 4: CVE 匹配 ----
+        return components, details
+
+    def _build_cve_findings(self, components: dict[str, str]) -> list[VulnFinding]:
+        """将检测到的组件与 CVE 知识库匹配 → 生成 VulnFinding 列表
+
+        Args:
+            components: {规范组件名: 版本号}
+
+        Returns:
+            CVE 匹配到的漏洞发现列表
+        """
         findings: list[VulnFinding] = []
-        for comp_name, comp_version in detected_components.items():
+        for comp_name, comp_version in components.items():
             matched_cves = self._match_cves(comp_name, comp_version)
             for cve in matched_cves:
                 findings.append(
@@ -1015,38 +1688,48 @@ class ComponentCheckerAdapter(BaseAdapter):
                         cvss_score=cve.cvss_score,
                     )
                 )
+        return findings
 
-        # 如果只检测到组件但没有匹配到 CVE，生成 INFO 级别记录
-        for comp_name, _comp_version in detected_components.items():
-            has_cve = any(cve.component == comp_name for cve in CVE_DATABASE)
-            if not has_cve:
-                # 组件不在 CVE 知识库中 — 记录但不算漏洞
-                pass
-            elif not any(f.cve_id for f in findings if any(cve.component == comp_name for cve in CVE_DATABASE)):
-                pass  # 已退出循环
+    def _assemble_result(
+        self,
+        target: str,
+        components: dict[str, str],
+        findings: list[VulnFinding],
+        raw_details: list[dict],
+        start_time: float,
+    ) -> ScanResult:
+        """组装最终的 ScanResult
 
-        # ---- Step 5: 组装结果 ----
+        Args:
+            target: 扫描目标
+            components: {规范组件名: 版本号}
+            findings: CVE 匹配生成的漏洞发现列表
+            raw_details: 原始检测详情
+            start_time: 扫描开始时间戳（time.time()）
+
+        Returns:
+            组装完成的 ScanResult
+        """
         duration = round(time.time() - start_time, 2)
-        services_out = [{"name": comp, "version": ver} for comp, ver in detected_components.items()]
-        ports_out = [{"port": d.get("port", 0), "service": d["component"], "state": "open"} for d in raw_details]
+        services_out = [{"name": comp, "version": ver} for comp, ver in components.items()]
+        ports_out = [
+            {
+                "port": d.get("port") if isinstance(d.get("port"), int) else 0,
+                "service": d["component"],
+                "state": "open",
+            }
+            for d in raw_details
+        ]
 
-        result = ScanResult(
+        return ScanResult(
             status=ScanStatus.COMPLETED,
             target=target,
             ports=ports_out,
             services=services_out,
             findings=findings,
-            raw_output=f"检测到 {len(detected_components)} 个组件, 匹配 {len(findings)} 个 CVE",
+            raw_output=(f"检测到 {len(components)} 个组件, 匹配 {len(findings)} 个 CVE"),
             duration_seconds=duration,
         )
-
-        self._log_scan_end(scan_id, result)
-        self._logger.info(
-            "component_checker",
-            f"扫描完成: {len(detected_components)} 组件, {len(findings)} 个 CVE 命中",
-        )
-
-        return result
 
     # =========================================================================
     # CVE 匹配引擎
@@ -1170,7 +1853,6 @@ if __name__ == "__main__":
     # 7. scan() 模拟（通过 services 注入）
     mock_result = checker.scan(
         "127.0.0.1",
-        skip_confirmation=True,
         services=[
             {"name": "nginx", "version": "1.24.0", "port": 80},
             {"name": "openssh", "version": "8.9p1", "port": 22},

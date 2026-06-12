@@ -45,6 +45,12 @@ def create_parser() -> argparse.ArgumentParser:
     harden_parser = subparsers.add_parser("harden", help="生成加固脚本（扫描 + 规则匹配 + 加固建议 + 脚本输出）")
     _add_harden_arguments(harden_parser)
 
+    history_parser = subparsers.add_parser("history", help="查看扫描历史记录")
+    history_parser.add_argument("target", nargs="?", help="按目标 IP/域名过滤（可选）")
+    history_parser.add_argument("--scan-id", help="查看指定扫描的详细信息")
+    history_parser.add_argument("--limit", type=int, default=20, help="最大显示条数，默认 20")
+    history_parser.add_argument("--format", choices=["table", "json"], default="table", help="输出格式，默认 table")
+
     subparsers.add_parser("version", help="显示版本号")
     return parser
 
@@ -63,6 +69,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "harden":
         return run_harden_command(args)
+
+    if args.command == "history":
+        return run_history_command(args)
 
     parser.print_help()
     return 1
@@ -107,6 +116,14 @@ def run_scan_command(args: argparse.Namespace) -> int:
         print("[3/4] 正在匹配规则... (RuleEngine)")
         rule_engine = RuleEngine()
         rule_engine.load_rules()
+
+        # v0.0.26: 远程规则导入
+        if getattr(args, "rules_url", None):
+            try:
+                imported = rule_engine.import_rules_from_url(args.rules_url)
+                print(f"[规则] 从远程导入 {imported} 条规则")
+            except Exception as exc:
+                print(f"[警告] 远程规则导入失败：{exc}，继续使用内置规则")
         rule_findings = rule_engine.match(scan_result)
         all_findings = _merge_findings(scan_result.findings, rule_findings)
         harden_recommendations = rule_engine.recommend_hardening(all_findings)
@@ -121,6 +138,41 @@ def run_scan_command(args: argparse.Namespace) -> int:
         )
 
         print(f"[完成] 报告已保存: {report_path}")
+
+        # 保存扫描结果到 SQLite 历史
+        try:
+            from lightshield.repository.base import get_repository
+
+            repo = get_repository("sqlite", db_url="data/lightshield.db")
+            scan_dict = {
+                "scan_id": getattr(scan_result, "scan_id", None),
+                "target": scan_result.target,
+                "status": scan_result.status.value,
+                "ports": scan_result.ports,
+                "services": scan_result.services,
+                "os_info": scan_result.os_info,
+                "findings": [
+                    {
+                        "vuln_type": f.vuln_type,
+                        "severity": f.severity.value,
+                        "title": f.title,
+                        "description": f.description,
+                        "remediation": f.remediation,
+                        "port": f.port,
+                        "cve_id": f.cve_id,
+                        "cvss_score": f.cvss_score,
+                        "evidence": f.evidence,
+                    }
+                    for f in all_findings
+                ],
+                "error": scan_result.error,
+                "duration_seconds": scan_result.duration_seconds,
+            }
+            scan_id = repo.save(scan_dict)
+            print(f"[历史] 扫描已保存：{scan_id}")
+        except Exception:
+            pass  # 历史保存失败不阻断主流程
+
         if scan_result.error:
             print(f"[警告] 部分扫描提示：{scan_result.error}")
         return 0
@@ -171,6 +223,14 @@ def run_harden_command(args: argparse.Namespace) -> int:
         print("[2/3] 正在匹配规则 + 生成加固建议...")
         rule_engine = RuleEngine()
         rule_engine.load_rules()
+
+        # v0.0.26: 远程规则导入
+        if getattr(args, "rules_url", None):
+            try:
+                imported = rule_engine.import_rules_from_url(args.rules_url)
+                print(f"[规则] 从远程导入 {imported} 条规则")
+            except Exception as exc:
+                print(f"[警告] 远程规则导入失败：{exc}，继续使用内置规则")
         rule_findings = rule_engine.match(scan_result)
         all_findings = _merge_findings(scan_result.findings, rule_findings)
         recommendations = rule_engine.recommend_hardening(all_findings)
@@ -225,6 +285,117 @@ def run_harden_command(args: argparse.Namespace) -> int:
         return 1
 
 
+def run_history_command(args: argparse.Namespace) -> int:
+    """执行 history 命令：查看扫描历史记录。"""
+    from lightshield.repository.base import get_repository
+
+    db_url = "data/lightshield.db"
+    try:
+        repo = get_repository("sqlite", db_url=db_url)
+    except Exception as exc:
+        print(f"[错误] 无法打开扫描历史数据库：{exc}")
+        return 1
+
+    # ---- 查看单条扫描详情 ----
+    if args.scan_id:
+        detail = repo.get(args.scan_id)
+        if detail is None:
+            print(f"[未找到] 扫描记录 {args.scan_id} 不存在。")
+            return 1
+        if args.format == "json":
+            import json
+
+            print(json.dumps(detail, ensure_ascii=False, indent=2))
+        else:
+            _print_scan_detail(detail)
+        return 0
+
+    # ---- 按目标过滤 ----
+    if args.target:
+        entries = repo.list_by_target(args.target, limit=args.limit)
+        title = f"目标 {args.target} 的扫描历史"
+    else:
+        entries = repo.list_recent(limit=args.limit)
+        title = f"最近 {len(entries)} 次扫描"
+
+    if not entries:
+        print("暂无扫描历史记录。")
+        print("运行 lightshield scan <target> 开始第一次扫描。")
+        return 0
+
+    if args.format == "json":
+        import json
+
+        print(json.dumps(entries, ensure_ascii=False, indent=2))
+    else:
+        _print_history_table(entries, title)
+
+    return 0
+
+
+def _print_history_table(entries: list[dict], title: str) -> None:
+    """以表格形式打印扫描历史列表。"""
+    print(f"\n{'=' * 80}")
+    print(f"  {title}")
+    print(f"{'=' * 80}")
+    print(
+        f"{'扫描 ID':<34s} {'目标':<20s} {'状态':<10s} {'端口':>4s} {'服务':>4s} {'漏洞':>4s} {'CVE':>4s} {'耗时':>6s}"
+    )
+    print("-" * 80)
+    for entry in entries:
+        sid = entry.get("scan_id", "?")
+        target = entry.get("target", "?")
+        status = entry.get("status", "?")
+        ports = entry.get("ports_count", 0)
+        services = entry.get("services_count", 0)
+        findings = entry.get("findings_count", 0)
+        cves = entry.get("cve_count", 0)
+        duration = entry.get("duration_seconds", 0)
+        print(
+            f"{sid:<34s} {target:<20s} {status:<10s} {ports:>4d} {services:>4d} {findings:>4d} {cves:>4d} {duration:>5.1f}s"
+        )
+    print("-" * 80)
+    total = len(entries)
+    print(f"  共 {total} 条记录")
+    if total > 0:
+        print("  查看详情：lightshield history --scan-id <扫描ID>")
+    print("")
+
+
+def _print_scan_detail(detail: dict) -> None:
+    """打印单条扫描详情。"""
+    print(f"\n{'=' * 60}")
+    print(f"  扫描详情：{detail.get('scan_id', '?')}")
+    print(f"{'=' * 60}")
+    print(f"  目标：{detail.get('target', '?')}")
+    print(f"  状态：{detail.get('status', '?')}")
+    print(f"  时间：{detail.get('created_at', '?')}")
+    print(f"  端口：{detail.get('ports_count', 0)}  服务：{detail.get('services_count', 0)}")
+    print(f"  漏洞：{detail.get('findings_count', 0)}  CVE：{detail.get('cve_count', 0)}")
+    if detail.get("os_info"):
+        print(f"  OS  ：{detail['os_info']}")
+    if detail.get("duration_seconds"):
+        print(f"  耗时：{detail['duration_seconds']}s")
+    if detail.get("error"):
+        print(f"  错误：{detail['error']}")
+
+    # 展开 findings
+    raw = detail.get("raw_result")
+    if isinstance(raw, dict):
+        findings = raw.get("findings", [])
+        if findings:
+            print(f"\n  漏洞发现 ({len(findings)} 条):")
+            for i, f in enumerate(findings[:10], 1):
+                sev = f.get("severity", "?")
+                title = f.get("title", "?")
+                cve = f.get("cve_id", "")
+                cve_str = f" [{cve}]" if cve else ""
+                print(f"    {i:>2d}. [{sev:>8s}] {title[:50]}{cve_str}")
+            if len(findings) > 10:
+                print(f"    ... 还有 {len(findings) - 10} 条，使用 --format json 查看完整数据")
+    print("")
+
+
 def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
     """为 harden 子命令添加参数。"""
     parser.add_argument("target", help="自有目标 IP、域名或 localhost")
@@ -245,6 +416,7 @@ def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
         help="确认你拥有目标所有权或已获得明确授权",
     )
     parser.add_argument("--timeout", type=int, default=60, help="扫描超时时间，默认 60 秒")
+    parser.add_argument("--rules-url", help="从远程 URL 导入额外规则（v0.0.26）")
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
 
@@ -269,6 +441,7 @@ def _add_scan_arguments(parser: argparse.ArgumentParser, default_scan_types: str
         help="指定扫描类型，逗号分隔，例如 port_scan,web_vuln",
     )
     parser.add_argument("--timeout", type=int, default=60, help="单个扫描器超时时间，默认 60 秒")
+    parser.add_argument("--rules-url", help="从远程 URL 导入额外规则（v0.0.26）")
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
 

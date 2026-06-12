@@ -123,7 +123,7 @@ convention = "google"  # Google 风格 docstring，兼容中文
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]              # __init__.py 的 import 用于重新导出
 "tests/*.py" = ["N802", "N803", "N806", "E402", "D210"]  # 测试文件: 非标准命名 + sys.path import + Unicode 引号 docstring
-"lightshield/scanners/component_checker.py" = ["C901"]  # scan() 复杂度 27：集中了多阶段检测逻辑，v0.3.0 拆分
+# component_checker.py C901 豁免已移除 — v0.0.23 将 scan() 拆分为 6 个方法，复杂度全面 ≤20
 
 # =============================================================================
 # Bandit — 安全漏洞扫描
