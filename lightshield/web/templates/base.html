@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}LightShield 轻盾{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <div class="shell">
+    {% if show_nav|default(false) %}
+    <header class="topbar">
+      <a class="brand" href="{{ url_for('pages.dashboard') }}" aria-label="LightShield 仪表板">
+        <span class="brand-mark">LS</span>
+        <span>
+          <strong>LightShield 轻盾</strong>
+          <small>安全自检控制台</small>
+        </span>
+      </a>
+      <nav class="topbar-actions" aria-label="页面操作">
+        {% block nav_actions %}{% endblock %}
+        <span class="user-chip">{{ username|default(session.get("user", "admin")) }}</span>
+        <button class="ghost-button" type="button" data-logout>退出</button>
+      </nav>
+    </header>
+    {% endif %}
+
+    <main class="{% block main_class %}main{% endblock %}">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <span>LightShield v0.0.28</span>
+      <span>仅用于已授权资产的安全自检</span>
+    </footer>
+  </div>
+
+  <script>
+    window.LightShield = {
+      csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || "",
+      csrfHeaders(extra = {}) {
+        return { ...extra, "X-CSRF-Token": this.csrfToken };
+      },
+    };
+
+    document.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-logout]");
+      if (!button) return;
+      button.disabled = true;
+      try {
+        await fetch("/api/logout", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: window.LightShield.csrfHeaders(),
+        });
+      } finally {
+        window.location.href = "/";
+      }
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

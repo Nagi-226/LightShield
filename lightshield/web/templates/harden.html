@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}加固建议 - LightShield 轻盾{% endblock %}
+
+{% block nav_actions %}
+<a class="ghost-button" href="{{ url_for('pages.view_report', scan_id=scan_id) }}">返回报告</a>
+{% endblock %}
+
+{% block content %}
+<section class="harden-page" aria-labelledby="harden-title">
+  <div class="workspace-head">
+    <div>
+      <p class="eyebrow">Hardening Workspace</p>
+      <h1 id="harden-title">加固操作建议</h1>
+    </div>
+    <div class="harden-summary">
+      <span>扫描</span>
+      <code>{{ scan_id }}</code>
+      <span>目标</span>
+      <strong>{{ target|default(scan_data.target|default("未知")) }}</strong>
+    </div>
+  </div>
+
+  {% if error %}
+  <div class="form-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <div class="harden-grid">
+    <section class="recommendation-panel" aria-labelledby="recommendation-title">
+      <div class="section-heading">
+        <p class="panel-kicker">Recommended Actions</p>
+        <h2 id="recommendation-title">加固建议列表</h2>
+        <p class="head-note">基于扫描 findings 和规则引擎生成，仅用于脚本生成前审阅。</p>
+      </div>
+
+      {% if recommendations %}
+      <div class="table-wrap">
+        <table class="history-table recommendation-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>严重度</th>
+              <th>操作</th>
+              <th>目标</th>
+              <th>原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in recommendations %}
+            {% set severity = item.severity|default("info") %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td><span class="status-badge risk-{{ severity }}">{{ severity }}</span></td>
+              <td>{{ item.action|default("-") }}</td>
+              <td><code>{{ item.target|default("-") }}</code></td>
+              <td>{{ item.reason|default("-") }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <strong>暂无可生成的加固建议</strong>
+        <p>当前扫描未命中需要生成脚本的风险项。</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <aside class="generate-panel" aria-labelledby="generate-title">
+      <div class="section-heading">
+        <p class="panel-kicker">Script Gate</p>
+        <h2 id="generate-title">生成加固脚本</h2>
+      </div>
+
+      <form id="harden-form" class="scan-form" data-api-url="{{ url_for('api.api_generate_harden', scan_id=scan_id) }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+        <label for="os-platform">目标操作系统</label>
+        <select id="os-platform" name="os_platform">
+          <option value="linux">Linux</option>
+          <option value="windows">Windows</option>
+        </select>
+
+        <label class="check-row" for="harden-confirm-ownership">
+          <input id="harden-confirm-ownership" name="confirm_ownership" type="checkbox">
+          <span>我确认拥有目标所有权，并授权生成加固脚本（R4）</span>
+        </label>
+
+        <div class="warning-note">
+          LightShield 只生成加固和回滚脚本，不会自动执行命令。请审阅脚本后手动运行。
+        </div>
+
+        <p id="harden-error" class="form-error" role="alert" hidden></p>
+        <button id="generate-harden-button" class="primary-button" type="submit" {% if not recommendations %}disabled{% endif %}>
+          生成加固脚本
+        </button>
+      </form>
+
+      <div id="harden-result" class="result-panel" hidden aria-live="polite">
+        <strong id="harden-result-title">脚本已生成</strong>
+        <p id="harden-result-message"></p>
+        <dl>
+          <dt>加固脚本</dt>
+          <dd><code id="harden-script-path">-</code></dd>
+          <dt>回滚脚本</dt>
+          <dd><code id="rollback-script-path">-</code></dd>
+        </dl>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const hardenForm = document.getElementById("harden-form");
+  const osPlatform = document.getElementById("os-platform");
+  const hardenConfirm = document.getElementById("harden-confirm-ownership");
+  const hardenError = document.getElementById("harden-error");
+  const generateButton = document.getElementById("generate-harden-button");
+  const resultPanel = document.getElementById("harden-result");
+  const resultTitle = document.getElementById("harden-result-title");
+  const resultMessage = document.getElementById("harden-result-message");
+  const hardenScriptPath = document.getElementById("harden-script-path");
+  const rollbackScriptPath = document.getElementById("rollback-script-path");
+
+  function setHardenError(message) {
+    hardenError.textContent = message;
+    hardenError.hidden = !message;
+  }
+
+  hardenForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setHardenError("");
+    resultPanel.hidden = true;
+
+    if (!hardenConfirm.checked) {
+      setHardenError("R4 合规要求：请先确认目标所有权和授权范围。");
+      return;
+    }
+
+    generateButton.disabled = true;
+    generateButton.textContent = "生成中...";
+
+    try {
+      const response = await fetch(hardenForm.dataset.apiUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: window.LightShield.csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          os_platform: osPlatform.value,
+          confirm_ownership: true,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || "脚本生成失败");
+      }
+
+      resultPanel.hidden = false;
+      resultTitle.textContent = data.generated ? "脚本已生成" : "无需生成脚本";
+      resultMessage.textContent = data.message || "";
+      hardenScriptPath.textContent = data.script_path || "-";
+      rollbackScriptPath.textContent = data.rollback_path || "-";
+    } catch (error) {
+      setHardenError(error.message);
+    } finally {
+      generateButton.disabled = false;
+      generateButton.textContent = "生成加固脚本";
+    }
+  });
+</script>
+{% endblock %}

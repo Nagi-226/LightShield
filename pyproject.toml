@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightshield"
-version = "0.1.0"
+version = "0.0.27"
 description = "LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,6 +28,7 @@ dependencies = [
 # === 可选依赖（非运行时必须） ===
 [project.optional-dependencies]
 nmap = ["python-nmap>=0.7.0,<1.0"]  # Nmap Python 封装（当前适配器通过 subprocess 直接调用 nmap）
+web = ["Flask>=3.0,<4.0"]  # Web API（v0.0.27+，可选依赖）
 dev = [
     "pytest>=7.0",                   # 测试框架
     "pytest-cov>=4.0",               # 测试覆盖率
@@ -35,6 +36,7 @@ dev = [
     "pre-commit>=3.0",               # Git hook 框架
     "bandit>=1.7",                   # 安全漏洞扫描
     "mypy>=1.0",                     # 静态类型检查
+    "Flask>=3.0,<4.0",              # Web API 测试
 ]
 
 # === 命令行入口 ===

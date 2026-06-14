@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}报告 - LightShield 轻盾{% endblock %}
+
+{% block nav_actions %}
+<a class="ghost-button" href="{{ url_for('pages.harden_page', scan_id=scan_id) }}">加固建议</a>
+<a class="ghost-button" href="{{ url_for('pages.dashboard') }}">返回</a>
+{% endblock %}
+
+{% block content %}
+<section class="report-page" aria-labelledby="report-title">
+  <div class="workspace-head">
+    <div>
+      <p class="eyebrow">Markdown Report Viewer</p>
+      <h1 id="report-title">扫描报告</h1>
+    </div>
+    <code class="scan-id">{{ scan_id }}</code>
+  </div>
+
+  <div class="report-meta" id="report-meta" aria-live="polite">
+    <div><span>目标</span><strong id="meta-target">加载中</strong></div>
+    <div><span>状态</span><strong id="meta-status">加载中</strong></div>
+    <div><span>端口</span><strong id="meta-ports">-</strong></div>
+    <div><span>发现</span><strong id="meta-findings">-</strong></div>
+  </div>
+
+  <div id="report-error" class="form-error" role="alert" hidden></div>
+  <article id="report-content" class="markdown-body" aria-live="polite">
+    <div class="loading-line"><span></span>正在加载 Markdown 报告...</div>
+  </article>
+
+  <div class="report-actions">
+    <a class="report-cta" href="{{ url_for('pages.harden_page', scan_id=scan_id) }}">查看加固建议</a>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+" crossorigin="anonymous"></script>
+<script>
+  const scanId = {{ scan_id|tojson }};
+  const scanStatusUrl = {{ url_for("api.api_get_scan_status", task_id=scan_id)|tojson }};
+  const reportApiUrl = {{ url_for("api.api_get_report", scan_id=scan_id, format="markdown")|tojson }};
+  const reportContent = document.getElementById("report-content");
+  const reportError = document.getElementById("report-error");
+
+  function escapeHtml(value) {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function sanitizeReportHtml(html) {
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    template.content.querySelectorAll("script, iframe, object, embed, link, style").forEach((node) => node.remove());
+    template.content.querySelectorAll("*").forEach((node) => {
+      [...node.attributes].forEach((attr) => {
+        const name = attr.name.toLowerCase();
+        const value = attr.value.trim().toLowerCase();
+        if (name.startsWith("on") || value.startsWith("javascript:")) {
+          node.removeAttribute(attr.name);
+        }
+      });
+    });
+    return template.innerHTML;
+  }
+
+  function renderMarkdown(markdown) {
+    if (window.marked) {
+      marked.setOptions({ gfm: true, breaks: true });
+      reportContent.innerHTML = sanitizeReportHtml(marked.parse(markdown));
+    } else {
+      reportContent.innerHTML = `<pre>${escapeHtml(markdown)}</pre>`;
+    }
+    decorateRiskLabels();
+  }
+
+  function decorateRiskLabels() {
+    const levels = ["critical", "high", "medium", "low", "info"];
+    reportContent.querySelectorAll("td, li, strong, code").forEach((node) => {
+      const text = node.textContent.trim().toLowerCase();
+      if (levels.includes(text)) {
+        node.classList.add(`risk-${text}`);
+      }
+    });
+  }
+
+  async function loadMeta() {
+    const response = await fetch(scanStatusUrl, { credentials: "same-origin" });
+    if (!response.ok) return;
+    const data = await response.json();
+    document.getElementById("meta-target").textContent = data.target || "未知";
+    document.getElementById("meta-status").textContent = data.status || "未知";
+    document.getElementById("meta-ports").textContent = data.ports ?? "-";
+    document.getElementById("meta-findings").textContent = data.findings ?? "-";
+  }
+
+  async function loadReport() {
+    try {
+      await loadMeta();
+      const response = await fetch(reportApiUrl, { credentials: "same-origin" });
+      const text = await response.text();
+      if (!response.ok) {
+        let message = text;
+        try {
+          message = JSON.parse(text).message || message;
+        } catch (_) {
+          // Keep the plain response body when it is not JSON.
+        }
+        throw new Error(message || "报告加载失败");
+      }
+      renderMarkdown(text);
+    } catch (error) {
+      reportError.textContent = error.message;
+      reportError.hidden = false;
+      reportContent.innerHTML = "<p>无法加载报告，请返回仪表板确认扫描状态。</p>";
+    }
+  }
+
+  loadReport();
+</script>
+{% endblock %}

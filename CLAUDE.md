@@ -4,13 +4,14 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-12 22:15 — v0.0.26 规则引擎增强交付，阶段二全部完成 ✅。
+> **上次会话**：2026-06-14 16:10 — v0.0.29 验收通过，阶段三全部完成。v0.0.30 三 Agent 并行任务已就绪。
 >   - v0.2.0 已 tag，E2E 终审通过
->   - 质量基线：**534 tests** / 0 fail / 覆盖率 77% / ruff + mypy + C90 全零违规
->   - 阶段一 ✅✅✅ 质量深化 | 阶段二 ✅✅✅ 内容增长 | 阶段三 ⬜⬜⬜ GUI 铺路
->   - v0.0.27 Flask API 骨架待开工（阶段三起跑线）
+>   - 质量基线：**575 tests** / 0 fail / ruff + mypy 全零违规
+>   - 阶段一 ✅✅✅ 质量深化 | 阶段二 ✅✅✅ 内容增长 | 阶段三 ✅✅✅ GUI 铺路
+>   - v0.0.30 集成发布：CodeWhale(审查) + Hermes(文档) + CC(E2E+tag) 三线并行
 > **进度追踪**：`.guardrails/PROGRESS.md`
-> **明日启动**：v0.0.27 Flask REST API（POST /api/scan + GET /api/scan/<id> + Session 鉴权）
+> **Agent 状态**：CodeWhale→CW-030 提示词已就绪 | Hermes→v0.0.30 提示词已就绪 | Codex→全部完成 🎉
+> **CC 下一步**：等 CodeWhale 审查报告 + Hermes 文档更新完成后 → E2E 终审 → git tag v0.3.0
 
 ---
 

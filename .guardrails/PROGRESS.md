@@ -1,10 +1,10 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-12 19:30 | **当前版本**：v0.2.0 ✅ 已发布 | **下一目标**：v0.3.0
-> **会话状态**：v0.0.01-0.0.24 全部交付。阶段一（质量深化）✅ 完成。阶段二 1/3（CVE ✅）。
-> **下一阶段**：v0.0.25 Repository SQLite 实现 → v0.0.26 规则引擎增强 → v0.0.27 Flask API 骨架
+> **最后更新**：2026-06-14 16:05 | **当前版本**：v0.2.0 ✅ 已发布 | **下一目标**：v0.3.0
+> **会话状态**：v0.0.01-0.0.29 全部交付。阶段一 ✅ 完成。阶段二 ✅ 完成。阶段三 3/3 ✅（Flask API ✅ + Web 仪表板 ✅ + 加固页面 ✅）。
+> **下一步**：v0.0.30 集成发布（CC + Hermes + CodeWhale）→ git tag v0.3.0
 > **规则**：每个 Agent 产出必须经 Claude Code 实际读码验收
-> **⚠️  本机环境**：`python` 被沙箱拦截 exit 49，用 `py` 替代（`py -m pytest tests/ -v`）
+> **⚠️  本机环境**：使用 Hermes venv Python (`d:/hermes-agent/hermes-agent/venv/Scripts/python.exe`)，不用系统 `py`（缺少 Flask 等依赖）
 
 ---
 
@@ -102,6 +102,7 @@
 | **v0.0.24** | CVE 知识库扩充 | Codex | CVE 条目 28→69、覆盖组件 11→22、新增 6 组件（mongodb/django/laravel/magento/bind/exim） | ✅ |
 | **v0.0.25** | Repository SQLite 实现 | CC | `SqliteRepository`、扫描历史查询、`lightshield history` 子命令、28 条测试 | ✅ |
 | **v0.0.26** | 规则引擎增强 | CC | `import_rules_from_url/file`、`reload_rules()` 热加载、`rule_metadata` 版本指纹、`--rules-url` CLI、18 条新测试 | ✅ |
+| **v0.0.27** | Flask API 骨架 | CC | `lightshield/web/` (app/auth/routes)、5 端点 (login/logout/scan/status/report)、Session 鉴权、`lightshield serve` CLI、25 条测试 | ✅ |
 
 **阶段二验收标准**：
 - CVE 知识库 ≥50 条（覆盖 OWASP Top 10 常见组件）✅ 70 条 / 22 组件
@@ -114,9 +115,9 @@
 
 | 版本 | 目标 | Agent | 关键交付 |
 |:--:|------|:--:|------|
-| **v0.0.27** | Flask API 骨架 | CC | REST API：`POST /api/scan`、`GET /api/scan/<id>`、`GET /api/report/<id>`、Session 鉴权 |
-| **v0.0.28** | Web 仪表板 | Codex | 扫描面板（输入目标→提交→查看进度）、报告查看器（Markdown 渲染）、历史记录列表 |
-| **v0.0.29** | 加固页面 + 安全加固 | Codex | 加固建议面板、一键生成脚本、Web 端 R4 所有权确认、CSRF 防护 |
+| **v0.0.27** | Flask API 骨架 | CC | REST API：`POST /api/scan`、`GET /api/scan/<id>`、`GET /api/report/<id>`、Session 鉴权 | ✅ |
+| **v0.0.28** | Web 仪表板 | Codex | 扫描面板（输入目标→提交→查看进度）、报告查看器（Markdown 渲染）、历史记录列表 | ✅ |
+| **v0.0.29** | 加固页面 + 安全加固 | Codex | 加固建议面板、一键生成脚本、Web 端 R4 所有权确认、CSRF 防护 | ✅ |
 
 **阶段三验收标准**：
 - Flask API 全部端点可用（curl 可调）
@@ -172,13 +173,13 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 | Agent | 已完成任务 | 待完成任务 |
 |------|:--:|:--:|
-| Claude Code | 13 | 3 (v0.0.27 + v0.0.29 + v0.0.30) |
-| Codex | 8 | 0 |
-| Hermes | 6 | 0 |
+| Claude Code | 14 | 1 (v0.0.30) |
+| Codex | 10 | 0 |
+| Hermes | 6 | 1 (v0.0.30) |
 | Reasonix | 4 | 0 |
-| Qoder | 1 | 2 |
-| QoderWork | 1 | 1 |
-| CodeWhale | 1 | 1 |
+| Qoder | 1 | 0 |
+| QoderWork | 1 | 0 |
+| CodeWhale | 1 | 1 (v0.0.30) |
 | CodeBuddy | 1 | 0 |
 
 ---
@@ -217,3 +218,5 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 | 2026-06-12 20:10 | CodeWhale 审查修复：CVE-2024-31449 拆为双分支覆盖 + 删废弃 _CveEntry + fix port 默认值 + 清 skip_confirmation |
 | 2026-06-12 20:30 | v0.0.25 SqliteRepository 交付：SqliteRepository 类（12 方法）+ get_repository("sqlite") 工厂 + lightshield history CLI + run_scan_command 自动存档 + 28 条测试 |
 | 2026-06-12 22:15 | v0.0.26 规则引擎增强：import_rules_from_url/file、reload_rules() 热加载（保留导入规则）、rule_metadata 版本指纹（SHA256）、--rules-url CLI 集成、+18 条测试 |
+| 2026-06-14 15:15 | v0.0.28 Web 仪表板交付（Codex）：pages.py 蓝图（3 页面路由）+ 4 Jinja2 模板（base/login/dashboard/report）+ style.css（673行深色主题）+ test_web_pages.py（7 条测试）。Claude Code 验收：ruff+mypy 全零，566 passed，7/7 smoke 通过 |
+| 2026-06-14 16:05 | v0.0.29 加固页面 + CSRF 交付（Codex）：csrf.py（60L 双通道 token）+ harden.html（174L 加固面板）+ POST /api/harden/<id> 端点 + GET /harden/<id> 页面 + 全模板 CSRF 集成。CC 验收：ruff+mypy 全零，575 passed，5/5 smoke 通过。修复 1 边界 bug（scan_data 未定义） |

@@ -6,6 +6,29 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 
 ---
 
+## [0.3.0] - 2026-06-14
+
+### Added
+
+- **Web 仪表板**：`lightshield serve` 启动 Flask Web 服务，浏览器图形界面操作 LightShield
+- **Flask REST API**：6 个端点（`POST /api/login`、`/api/logout`、`/api/scan`、`GET /api/scan/<id>`、`/api/report/<id>`、`POST /api/harden/<id>`）
+- **Session 鉴权**：Flask 原生 session（签名 cookie），凭证通过环境变量 `LS_WEB_USERNAME` / `LS_WEB_PASSWORD` 配置
+- **CSRF 防护**：自研 csrf.py 模块（`secrets.compare_digest` 时序安全 + X-CSRF-Token header + form hidden input 双通道）
+- **4 个 Web 页面**：登录页、仪表板（扫描面板+历史列表）、报告查看器（marked.js Markdown 渲染+SRI hash）、加固建议页（RuleEngine 建议+脚本生成）
+- **`lightshield serve`** CLI 子命令：支持 `--host` / `--port` / `--debug` 参数
+- `pip install lightshield[web]` 可选依赖（Flask>=3.0）
+- **CodeWhale v0.3.0 全量终审**：0 Blocker，5 Suggestion，全部修复（`docs/review-v030-codewhale.md`）
+- **Nagi 五大铁律 × 六大合规红线**：全量 R1-R6 逐条核查通过
+
+### Changed
+
+- 版本号 0.0.27 → 0.3.0
+- 测试总数 534 → 575
+- `lightshield/web/` 子包（6 个 Python 模块 + 5 个 Jinja2 模板 + 1 个 CSS）
+- 文档更新：INSTALL/USAGE/FAQ 补充 Web 仪表板章节
+
+---
+
 ## [0.2.0] - 开发中
 
 ### Added
@@ -48,5 +71,6 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 - 一键部署脚本 `scripts/deploy_linux.sh` + `scripts/deploy_win.ps1`
 - 121 项单元测试（Reasonix batch1：constants 45项 + logger 29项 + config 47项）
 
+[0.3.0]: https://github.com/LightShield/lightshield/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/LightShield/lightshield/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/LightShield/lightshield/releases/tag/v0.1.0

@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}仪表板 - LightShield 轻盾{% endblock %}
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block content %}
+<section class="workspace">
+  <div class="workspace-head">
+    <div>
+      <p class="eyebrow">Authorized Scan Workspace</p>
+      <h1>扫描面板</h1>
+    </div>
+    <p class="head-note">前端执行基础 R2/R4 提示，最终校验仍由 API 层完成。</p>
+  </div>
+
+  <div class="dashboard-grid">
+    <section class="scan-panel" aria-labelledby="scan-title">
+      <div class="section-heading">
+        <p class="panel-kicker">New Scan</p>
+        <h2 id="scan-title">新建扫描</h2>
+      </div>
+
+      <form id="scan-form" class="scan-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <label for="target">目标地址</label>
+        <input id="target" name="target" type="text" placeholder="127.0.0.1 或 example.com" required>
+
+        <label for="scan-type">扫描类型</label>
+        <select id="scan-type" name="scan_type">
+          <option value="full">全量扫描</option>
+          <option value="asset">资产扫描</option>
+          <option value="vuln">漏洞扫描</option>
+        </select>
+
+        <label class="check-row" for="confirm-ownership">
+          <input id="confirm-ownership" name="confirm_ownership" type="checkbox">
+          <span>我确认拥有目标所有权或已获得明确授权</span>
+        </label>
+
+        <p id="scan-error" class="form-error" role="alert" hidden></p>
+        <button id="start-scan-button" class="primary-button" type="submit">开始扫描</button>
+      </form>
+
+      <div id="scan-status" class="status-console" data-state="idle" aria-live="polite">
+        <span class="status-dot"></span>
+        <div>
+          <strong id="status-title">等待提交</strong>
+          <p id="status-detail">输入单个 IP 或域名，并完成 R4 授权确认。</p>
+        </div>
+      </div>
+
+      <a id="report-link" class="report-cta" href="#" hidden>查看报告</a>
+      <a id="harden-link" class="report-cta secondary-cta" href="#" hidden>加固建议</a>
+    </section>
+
+    <section class="history-panel" aria-labelledby="history-title">
+      <div class="section-heading">
+        <p class="panel-kicker">Recent Records</p>
+        <h2 id="history-title">扫描历史</h2>
+      </div>
+
+      {% if history %}
+      <div class="table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>扫描 ID</th>
+              <th>目标</th>
+              <th>状态</th>
+              <th>端口</th>
+              <th>发现</th>
+              <th>时间</th>
+              <th>报告</th>
+              <th>加固</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in history %}
+            {% set status = item.status|default("unknown") %}
+            <tr>
+              <td><code title="{{ item.scan_id }}">{{ item.scan_id }}</code></td>
+              <td>{{ item.target|default("-") }}</td>
+              <td><span class="status-badge status-{{ status }}">{{ status }}</span></td>
+              <td>{{ item.ports_count|default(0) }}</td>
+              <td>{{ item.findings_count|default(0) }}</td>
+              <td>{{ item.created_at|default("-") }}</td>
+              <td><a class="text-link" href="{{ url_for('pages.view_report', scan_id=item.scan_id) }}">查看报告</a></td>
+              <td><a class="text-link" href="{{ url_for('pages.harden_page', scan_id=item.scan_id) }}">加固</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <strong>暂无扫描历史</strong>
+        <p>完成第一次授权扫描后，最近 20 条记录会显示在这里。</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const scanTypeMap = {
+    full: null,
+    asset: ["port_scan", "service_detect"],
+    vuln: ["web_vuln", "weak_password", "component_check"],
+  };
+
+  const scanForm = document.getElementById("scan-form");
+  const targetInput = document.getElementById("target");
+  const scanTypeSelect = document.getElementById("scan-type");
+  const ownershipCheckbox = document.getElementById("confirm-ownership");
+  const scanError = document.getElementById("scan-error");
+  const startButton = document.getElementById("start-scan-button");
+  const statusBox = document.getElementById("scan-status");
+  const statusTitle = document.getElementById("status-title");
+  const statusDetail = document.getElementById("status-detail");
+  const reportLink = document.getElementById("report-link");
+  const hardenLink = document.getElementById("harden-link");
+
+  function setScanError(message) {
+    scanError.textContent = message;
+    scanError.hidden = !message;
+  }
+
+  function setStatus(state, title, detail) {
+    statusBox.dataset.state = state;
+    statusTitle.textContent = title;
+    statusDetail.textContent = detail;
+  }
+
+  function hasObviousTargetProblem(target) {
+    if (!target) return "请输入目标地址";
+    if (/\s/.test(target)) return "目标地址不能包含空格";
+    if (target.includes("://") || target.startsWith("http://") || target.startsWith("https://")) {
+      return "请填写域名或 IP，不要包含 URL 协议";
+    }
+    if (target.includes("/") || target.includes("?") || target.includes("#")) {
+      return "请填写单个 IP 或域名，不要包含路径、CIDR 或查询参数";
+    }
+    if (target.startsWith("*.")) return "不支持通配符域名";
+    if (/^\d{1,3}(?:\.\d{1,3}){3}-/.test(target)) return "不支持 IP 范围";
+    return "";
+  }
+
+  async function pollScan(taskId, attempt = 0) {
+    const response = await fetch(`/api/scan/${encodeURIComponent(taskId)}`, { credentials: "same-origin" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || "查询扫描状态失败");
+    }
+
+    const state = data.status || "running";
+    const target = data.target || "未知目标";
+    const detail = `目标 ${target}，端口 ${data.ports ?? 0}，发现 ${data.findings ?? 0}`;
+    setStatus(state, state, detail);
+
+    if (["completed", "partial"].includes(state)) {
+      reportLink.href = `/report/${encodeURIComponent(taskId)}`;
+      reportLink.hidden = false;
+      hardenLink.href = `/harden/${encodeURIComponent(taskId)}`;
+      hardenLink.hidden = false;
+      startButton.disabled = false;
+      startButton.textContent = "开始扫描";
+      return;
+    }
+
+    if (state === "failed") {
+      reportLink.hidden = true;
+      hardenLink.hidden = true;
+      startButton.disabled = false;
+      startButton.textContent = "开始扫描";
+      return;
+    }
+
+    if (attempt < 60) {
+      window.setTimeout(() => pollScan(taskId, attempt + 1).catch(handleScanFailure), 1500);
+    }
+  }
+
+  function handleScanFailure(error) {
+    setStatus("failed", "扫描失败", error.message);
+    startButton.disabled = false;
+    startButton.textContent = "开始扫描";
+  }
+
+  scanForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setScanError("");
+    reportLink.hidden = true;
+    hardenLink.hidden = true;
+
+    const target = targetInput.value.trim();
+    const targetProblem = hasObviousTargetProblem(target);
+    if (targetProblem) {
+      setScanError(targetProblem);
+      return;
+    }
+
+    if (!ownershipCheckbox.checked) {
+      setScanError("R4 合规要求：请先确认目标所有权或授权范围。");
+      return;
+    }
+
+    startButton.disabled = true;
+    startButton.textContent = "提交中...";
+    setStatus("running", "正在提交", "请求已发送到 LightShield API。");
+
+    try {
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: window.LightShield.csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          target,
+          scan_types: scanTypeMap[scanTypeSelect.value],
+          confirm_ownership: true,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || "扫描提交失败");
+      }
+      setStatus("running", "扫描中", `任务 ${data.task_id} 已创建，正在查询进度。`);
+      await pollScan(data.task_id);
+    } catch (error) {
+      handleScanFailure(error);
+    }
+  });
+</script>
+{% endblock %}

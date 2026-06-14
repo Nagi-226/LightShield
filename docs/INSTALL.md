@@ -17,6 +17,7 @@
 | 组件 | 用途 | 安装方式 |
 |------|------|----------|
 | `python-nmap` | Nmap Python 封装 | `pip install lightshield[nmap]` |
+| `flask` | Web 仪表板（Flask REST API + 浏览器面板） | `pip install lightshield[web]` |
 
 ---
 
@@ -127,6 +128,50 @@ lightshield version
 
 ```bash
 lightshield quick-scan 127.0.0.1 --confirm-ownership
+```
+
+---
+
+## Web 仪表板（可选）
+
+v0.3.0 新增 Web 仪表板，通过浏览器交互式使用 LightShield。
+
+### 安装
+
+```bash
+# 安装 Web 依赖
+pip install lightshield[web]
+
+# 或者与完整项目一起安装
+pip install -e .[web]
+```
+
+### 启动
+
+```bash
+lightshield serve
+```
+
+默认监听 `http://127.0.0.1:5000`。
+
+### 默认凭证
+
+| 用户名 | 密码 |
+|--------|------|
+| `admin` | `lightshield` |
+
+可通过环境变量覆盖：
+
+```bash
+# Linux / macOS
+export LS_WEB_USERNAME=myadmin
+export LS_WEB_PASSWORD=mysecret
+
+# Windows PowerShell
+$env:LS_WEB_USERNAME="myadmin"
+$env:LS_WEB_PASSWORD="mysecret"
+
+lightshield serve
 ```
 
 ---

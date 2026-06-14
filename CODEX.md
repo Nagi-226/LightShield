@@ -111,7 +111,7 @@ graphify affected "config.py"
 | v0.0.06 | `web_vuln_scanner.py` | ✅ | 读码验证：SQLI/XSS payload 仅检测，BS4 可选导入 |
 | v0.0.08 | `msf_adapter.py` | ✅ | 读码验证：is_module_allowed() 黑名单优先，subprocess timeout=60 |
 
-### v0.0.11-20（新任务）
+### v0.0.11-30
 
 | 版本 | 模块 | 状态 | Claude Code 验收 |
 |:--:|------|:--:|:--:|
@@ -119,6 +119,9 @@ graphify affected "config.py"
 | **v0.0.12** | `test_validator.py` | ✅ | 225 行 / 12 测试函数 |
 | **v0.0.13** | `test_msf_adapter.py` | ✅ | 185 行 / 白名单+黑名单+注入防护+审计日志 |
 | **v0.0.16** | 审查 `linux_harden.py` | ✅ | 审查报告已产出（见 `docs/review-v016-codex.md`） |
+| **v0.0.24** | CVE 知识库扩充 | ✅ | 28→70 条 CVE，11→22 组件，新增 mongodb/django/laravel/magento/bind/exim |
+| **v0.0.28** | Web 仪表板 | ✅ | 7 文件 / 7 测试 / CC 验收通过 — 扫描面板 + 报告查看器 + 历史记录列表 |
+| **v0.0.29** | 加固页面 + 安全加固 | 🟢 当前任务 | 加固建议面板 + 一键生成脚本 + Web R4 所有权确认 + CSRF 防护 |
 
 ---
 
@@ -131,14 +134,16 @@ v0.0.08  msf_adapter.py         ✅  R5 防线
 v0.0.11  cli.py + setup.py      ✅  R4 防线
 v0.0.12  test_validator.py      ✅  225行/12函数
 v0.0.13  test_msf_adapter.py    ✅  185行/全覆盖
-v0.0.16  审查 linux_harden.py   ✅  10 issues / 5 fixed (B1/B2/H3/M1/L1)
+v0.0.16  审查 linux_harden.py   ✅  10 issues / 5 fixed
+v0.0.24  CVE 知识库扩充         ✅  28→70 条 / 11→22 组件
+v0.0.28  Web 仪表板              ✅  7 文件 / 7 测试 / CC 验收通过
+v0.0.29  加固页面 + CSRF 防护      ✅  9 文件 / 9 测试 / CC 验收通过
 ──────────────────────────────────────
-         7/7 完成，1 个待执行 🟢
+        10/10 全部完成 🎉
 ```
 
-> 当前状态：**v0.0.24 CVE 知识库扩充已分配，等待执行。**
-> 上一任务审查报告：`docs/review-v016-codex.md`
-> 审查报告：`docs/review-v016-codex.md`
+> 当前状态：**全部任务完成！等待 v0.0.30 集成发布（CC + Hermes + CodeWhale）**
+> 上一任务：v0.0.29 加固页面 + CSRF 防护（已完成 ✅，CC 验收通过）
 
 ---
 
@@ -1002,4 +1007,844 @@ CveEntry(
 ### 输出
 只修改一个文件：lightshield/scanners/component_checker.py
 仅修改 CVE_DATABASE 列表部分（追加新条目），不改动其他任何代码。
+```
+
+---
+
+## 十四、v0.0.28 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.0.27 Flask API 骨架已由 Claude Code 交付。后端 5 个端点全部可用：
+
+| 端点 | 功能 | 鉴权 |
+|------|------|:--:|
+| `POST /api/login` | 用户登录 | 否 |
+| `POST /api/logout` | 用户登出 | 否 |
+| `POST /api/scan` | 提交扫描任务（R2 校验） | 是 |
+| `GET /api/scan/<id>` | 查询任务状态 | 是 |
+| `GET /api/report/<id>` | 获取扫描报告（markdown/text） | 是 |
+
+v0.0.28 需要你在此基础上构建 **Web 仪表板前端**——让用户通过浏览器完成 scan → view report 全流程。
+
+### 依赖就绪
+
+```
+lightshield/web/app.py          ✅ create_app(config) Flask 工厂
+lightshield/web/routes.py       ✅ api_bp Blueprint（/api/* 端点）
+lightshield/web/auth.py         ✅ Session 鉴权（login_required 装饰器）
+lightshield/core.py             ✅ submit_scan() / get_scan_status()
+lightshield/repository/          ✅ SqliteRepository（list_recent / get / list_by_target）
+```
+
+### 核心需求
+
+创建 Web 仪表板页面（Flask 模板 + 静态资源），实现：
+
+1. **登录页面** (`GET /`) — 用户名密码登录表单
+2. **仪表板主页** (`GET /dashboard`) — 扫描面板 + 历史列表
+3. **报告查看器** (`GET /report/<scan_id>`) — Markdown 渲染报告
+
+### 技术约束
+
+- **Flask 原生模板**：使用 Jinja2 模板引擎（Flask 内置），不引入 React/Vue 等前端框架
+- **CSS 框架**：推荐使用纯 CSS 或轻量级方案（如 Pico.css / Simple.css），不加构建工具链
+- **Markdown 渲染**：使用 Python `markdown` 库（需新增可选依赖）或前端 JS 库（如 marked.js CDN）
+- **零构建步骤**：`lightshield serve` 启动即可用，不需要 npm install / webpack / vite 等
+- **Session 复用**：页面登录使用已有 `/api/login` 端点，Session cookie 自动由浏览器携带
+
+### 页面设计
+
+#### 1. 登录页面 (`GET /`)
+
+```
+┌──────────────────────────────────────────┐
+│          LightShield 轻盾 Web 仪表板       │
+│                                          │
+│   ┌─────────────────────────────────┐    │
+│   │  用户名: [_______________]      │    │
+│   │  密码:   [_______________]      │    │
+│   │  [登录]                         │    │
+│   └─────────────────────────────────┘    │
+│                                          │
+│  默认凭证: admin / lightshield           │
+└──────────────────────────────────────────┘
+```
+
+- 表单向 `POST /api/login` 提交（AJAX 或 form POST）
+- 登录成功 → 重定向到 `/dashboard`
+- 登录失败 → 显示红色错误提示
+- 如已登录 → 直接重定向到 `/dashboard`
+
+#### 2. 仪表板主页 (`GET /dashboard`)
+
+```
+┌──────────────────────────────────────────┐
+│  LightShield 轻盾        [admin] [登出]   │
+├──────────────────────────────────────────┤
+│  ┌─ 新建扫描 ─────────────────────────┐  │
+│  │  目标地址: [_______________]       │  │
+│  │  扫描类型: [全量扫描 ▾]            │  │
+│  │  ☐ 我确认拥有目标所有权            │  │
+│  │  [开始扫描]                        │  │
+│  │  状态: 扫描中... / 完成 / 失败     │  │
+│  └────────────────────────────────────┘  │
+│                                          │
+│  ┌─ 扫描历史 ─────────────────────────┐  │
+│  │  扫描ID     目标      状态   时间   │  │
+│  │  LS-xxx  192.168.1  compl.. 12:00  │  │
+│  │  LS-xxx  10.0.0.1   failed 11:30  │  │
+│  │  [查看报告] [查看详情]              │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
+```
+
+- 扫描提交：AJAX `POST /api/scan` → 显示 task_id → 轮询 `GET /api/scan/<id>` 直到 completed
+- 历史列表：调用仓库 `list_recent(limit=20)` 展示
+- 点击"查看报告" → 跳转 `/report/<scan_id>`
+- 登出按钮 → `POST /api/logout` → 重定向到 `/`
+
+#### 3. 报告查看器 (`GET /report/<scan_id>`)
+
+```
+┌──────────────────────────────────────────┐
+│  LightShield 轻盾        [返回] [登出]    │
+├──────────────────────────────────────────┤
+│  扫描报告: LS-20260614-...               │
+│  目标: 127.0.0.1  状态: completed        │
+│  ─────────────────────────────────────── │
+│  # LightShield 安全检测报告              │
+│                                          │
+│  ## 一、资产概览                         │
+│  | 属性 | 值 |                           │
+│  |------|----|                           │
+│  | 目标 | 127.0.0.1 |                    │
+│  ...                                     │
+│                                          │
+│  ## 二、风险摘要                         │
+│  | 等级 | 数量 |                         │
+│  ...                                     │
+│                                          │
+│  ## 三、漏洞详情                         │
+│  ...                                     │
+│                                          │
+│  ## 四、加固操作建议                     │
+│  ...                                     │
+└──────────────────────────────────────────┘
+```
+
+- 调用 `GET /api/report/<scan_id>?format=markdown` 获取原始 markdown
+- 使用 marked.js（CDN）或 Python markdown 库渲染为 HTML
+- "返回"按钮 → `/dashboard`
+
+### 文件结构
+
+你需要创建以下文件：
+
+```
+lightshield/web/
+├── templates/                  # Jinja2 模板目录
+│   ├── base.html              # 基础布局（导航栏 + 页脚 + CSS 引入）
+│   ├── login.html             # 登录页面
+│   ├── dashboard.html         # 仪表板主页
+│   └── report.html            # 报告查看页面
+├── static/                    # 静态资源
+│   └── style.css              # 全局样式表
+└── pages.py                   # 页面路由蓝图（新文件 — 注册页面路由）
+
+lightshield/web/app.py          # 修改：注册 pages 蓝图
+```
+
+### pages.py 页面路由（新增）
+
+```python
+# lightshield/web/pages.py
+from flask import Blueprint, render_template, redirect, url_for, session
+
+pages_bp = Blueprint("pages", __name__)  # 注意：无 url_prefix，直接挂载到 /
+
+@pages_bp.route("/")
+def index():
+    """首页 — 已登录跳转到仪表板，否则显示登录页"""
+    if "user" in session:
+        return redirect(url_for("pages.dashboard"))
+    return render_template("login.html")
+
+@pages_bp.route("/dashboard")
+def dashboard():
+    """仪表板主页 — 需登录"""
+    if "user" not in session:
+        return redirect(url_for("pages.index"))
+    # 获取扫描历史传给模板
+    from lightshield.repository.base import get_repository
+    try:
+        repo = get_repository("sqlite", db_url="data/lightshield.db")
+        history = repo.list_recent(limit=20)
+    except Exception:
+        history = []
+    return render_template("dashboard.html", history=history)
+
+@pages_bp.route("/report/<scan_id>")
+def view_report(scan_id):
+    """报告查看器 — 需登录"""
+    if "user" not in session:
+        return redirect(url_for("pages.index"))
+    return render_template("report.html", scan_id=scan_id)
+```
+
+### app.py 修改
+
+在 `create_app()` 中注册 pages 蓝图：
+
+```python
+from lightshield.web.pages import pages_bp
+app.register_blueprint(pages_bp)  # 页面路由（无前缀，挂载在 /）
+```
+
+### Markdown 渲染方案
+
+推荐使用 **marked.js CDN**（零后端依赖）：
+
+```html
+<!-- 在 report.html 中 -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+fetch('/api/report/{{ scan_id }}?format=markdown')
+  .then(r => r.text())
+  .then(md => { document.getElementById('report-content').innerHTML = marked.parse(md); });
+</script>
+```
+
+备选方案：新增 Python `markdown` 可选依赖，在服务端渲染。
+
+### 样式要求
+
+- **专业安全工具风格**：深色主题（可选切换）、清晰的信息层级
+- **响应式**：桌面端和移动端均可使用
+- **中文友好**：合适的字体栈（`"PingFang SC", "Microsoft YaHei", sans-serif`）
+- **状态色彩**：completed=绿色、failed=红色、partial=橙色、running=蓝色
+- **风险等级色彩**：CRITICAL=深红、HIGH=红色、MEDIUM=橙色、LOW=黄色、INFO=灰色
+
+### 合规约束
+
+- **R2**：扫描面板的目标输入框应做前端校验（拒绝明显 CIDR/URL），但最终校验由 API 层完成
+- **R4**：扫描面板的"确认所有权"复选框默认不勾选，提示文字说明合规要求
+- 无攻击代码，无 exploit/payload/attack 相关内容
+- Session cookie 由 Flask 自动管理，前端无需额外处理
+
+### 验收标准
+
+1. `lightshield serve` 启动后浏览器访问 `http://127.0.0.1:5000` 可看到登录页
+2. 登录 → 仪表板 → 新建扫描 → 查看进度 → 查看报告 全流程可用
+3. 未登录访问 `/dashboard` 自动跳转到登录页
+4. 报告页面正确渲染 Markdown（表格、标题、代码块）
+5. 扫描历史列表从 SQLite 加载并正确展示
+6. 所有页面中文显示正常
+7. 不引入超过 2 个新依赖（可选 markdown 库除外）
+8. 现有 559 条测试全量通过（不修改现有测试）
+
+### 启动提示词（直接复制到 Codex）
+
+```
+你是 LightShield 项目的高级开发工程师，使用 GPT-5.5 模型。
+
+## 项目背景
+LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Python 3.10+。
+路径：E:/Github Project/LightShield/
+
+## 任务：实现 Web 仪表板前端（v0.0.28）
+
+### 前置条件
+v0.0.27 Flask API 骨架已就绪。后端 5 个端点全部可用：
+- POST /api/login — 用户登录（Session 鉴权）
+- POST /api/logout — 用户登出
+- POST /api/scan — 提交扫描任务（需登录，R2 校验）
+- GET /api/scan/<id> — 查询任务状态（需登录）
+- GET /api/report/<id>?format=markdown — 获取扫描报告（需登录）
+
+现有文件（你可参考/修改）：
+  lightshield/web/app.py           → create_app(config) Flask 工厂
+  lightshield/web/routes.py        → api_bp（/api/* 端点）
+  lightshield/web/auth.py          → Session 鉴权（login_required / login / logout）
+  lightshield/core.py              → submit_scan() / get_scan_status()
+  lightshield/repository/           → SqliteRepository（list_recent / get / list_by_target）
+
+### 核心需求
+
+创建 Web 仪表板，让用户通过浏览器完成 scan → view report 全流程。
+
+### 你要创建/修改的文件
+
+**新建：**
+1. lightshield/web/pages.py — 页面路由蓝图（GET /, /dashboard, /report/<scan_id>）
+2. lightshield/web/templates/base.html — Jinja2 基础布局
+3. lightshield/web/templates/login.html — 登录页面
+4. lightshield/web/templates/dashboard.html — 仪表板（扫描面板 + 历史列表）
+5. lightshield/web/templates/report.html — 报告查看器
+6. lightshield/web/static/style.css — 全局样式表
+
+**修改：**
+7. lightshield/web/app.py — 注册 pages_bp 蓝图 + 配置模板/静态目录
+
+### 页面功能要求
+
+**1. 登录页面 (GET /)**
+- 用户名密码表单，提交到 POST /api/login（AJAX fetch）
+- 登录成功 → window.location = "/dashboard"
+- 登录失败 → 显示红色错误提示
+- 已登录（session 存在）→ 直接重定向到 /dashboard
+
+**2. 仪表板主页 (GET /dashboard)**
+- 顶部导航栏：标题 "LightShield 轻盾" + 当前用户名 + 登出按钮
+- 扫描面板：
+  - 目标地址输入框（前端校验：拒绝空值和明显 CIDR/URL，但最终由 API 校验）
+  - 扫描类型下拉框：全量扫描 / 资产扫描 / 漏洞扫描
+  - "我确认拥有目标所有权"复选框（未勾选时显示 R4 合规提示）
+  - "开始扫描"按钮 → AJAX POST /api/scan → 显示 task_id → 轮询 GET /api/scan/<id> 直到 completed/partial/failed
+  - 扫描进度条或状态文字（蓝色=running, 绿色=completed, 红色=failed, 橙色=partial）
+  - 扫描完成后显示"查看报告"链接
+- 扫描历史列表（从后端加载）：
+  - 调用仓库 list_recent(limit=20) 获取数据 → 通过后端接口或直接在 pages.py 中调用
+  - 表格列：扫描ID（截断显示）、目标、状态（彩色标签）、端口数、漏洞数、时间
+  - 每行有"查看报告"按钮 → 跳转 /report/<scan_id>
+- 登出按钮 → fetch POST /api/logout → window.location = "/"
+
+**3. 报告查看器 (GET /report/<scan_id>)**
+- 顶部导航栏 + 返回按钮
+- 扫描元信息：scan_id、目标、状态、时间
+- 报告内容区：
+  - 使用 fetch GET /api/report/<scan_id>?format=markdown 获取原始 markdown
+  - 使用 marked.js CDN 渲染为 HTML
+  - 加载时显示加载动画
+  - 错误时显示错误提示
+
+### 技术约束
+
+1. **Flask 原生模板**：Jinja2，不引入 React/Vue
+2. **CSS**：纯 CSS 或 Pico.css CDN（推荐），不加构建工具链
+3. **Markdown 渲染**：marked.js CDN（<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>）
+4. **零构建步骤**：lightshield serve 启动即可用
+5. **Session 复用**：页面登录使用已有 /api/login，Session cookie 浏览器自动携带
+6. **不引入新 Python 依赖**（marked.js 是前端 CDN，不需要 pip install）
+
+### 样式要求
+
+- **安全工具风格**：深色主题（推荐 #1a1a2e 底色 + #e94560 强调色 或自行设计）
+- **中文友好**：字体栈 "PingFang SC", "Microsoft YaHei", sans-serif
+- **状态色彩**：completed=#2ecc71, failed=#e74c3c, partial=#f39c12, running=#3498db
+- **风险等级色彩**：critical=#8e44ad, high=#e74c3c, medium=#f39c12, low=#f1c40f, info=#95a5a6
+- **响应式**：桌面端和移动端均可使用
+
+### pages.py 接口契约
+
+```python
+from flask import Blueprint, render_template, redirect, session
+
+pages_bp = Blueprint("pages", __name__)  # 无 url_prefix
+
+@pages_bp.route("/")
+def index():
+    """首页：已登录→仪表板，否则→登录页"""
+    if "user" in session:
+        return redirect("/dashboard")
+    return render_template("login.html")
+
+@pages_bp.route("/dashboard")
+def dashboard():
+    """仪表板：需登录，否则跳转首页"""
+    if "user" not in session:
+        return redirect("/")
+    from lightshield.repository.base import get_repository
+    try:
+        repo = get_repository("sqlite", db_url="data/lightshield.db")
+        history = repo.list_recent(limit=20)
+    except Exception:
+        history = []
+    return render_template("dashboard.html", history=history, username=session.get("user", "?"))
+
+@pages_bp.route("/report/<scan_id>")
+def view_report(scan_id):
+    """报告查看器：需登录"""
+    if "user" not in session:
+        return redirect("/")
+    return render_template("report.html", scan_id=scan_id)
+```
+
+### app.py 修改
+
+在 create_app() 中注册 pages 蓝图（添加到 api_bp 注册之后）：
+```python
+from lightshield.web.pages import pages_bp
+app.register_blueprint(pages_bp)
+```
+
+### 合规约束
+- R4：扫描面板的"确认所有权"复选框默认不勾选，勾选后才允许提交
+- 无攻击代码，无 exploit/payload/attack 相关内容
+- 所有中文文本正确显示
+
+### 验收标准
+1. lightshield serve 启动后浏览器访问 http://127.0.0.1:5000 看到登录页
+2. 登录→仪表板→新建扫描→查看进度→查看报告 全流程可用
+3. 未登录访问 /dashboard 自动跳转到登录页
+4. 报告页面正确渲染 Markdown（表格、标题、代码块、颜色标签）
+5. 扫描历史列表从 SQLite 加载并正确展示
+6. 所有页面中文显示正常（UTF-8）
+7. 现有 559 条测试不受影响（不修改 tests/ 目录下任何文件）
+
+### 输出文件清单
+1. lightshield/web/pages.py
+2. lightshield/web/templates/base.html
+3. lightshield/web/templates/login.html
+4. lightshield/web/templates/dashboard.html
+5. lightshield/web/templates/report.html
+6. lightshield/web/static/style.css
+7. 修改 lightshield/web/app.py（注册 pages_bp）
+```
+
+---
+
+## 十五、v0.0.29 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.0.27 Flask API + v0.0.28 Web 仪表板已就绪。用户现在可以通过浏览器完成 scan → view report 全流程。
+v0.0.29 需要在此基础上添加 **加固页面**——让用户在 Web 端查看加固建议、一键生成加固/回滚脚本。
+
+### 依赖就绪
+
+```
+lightshield/web/pages.py          ✅ 页面路由（/、/dashboard、/report/<scan_id>）
+lightshield/web/templates/         ✅ base.html + login + dashboard + report
+lightshield/web/static/style.css   ✅ 深色安全工具主题
+lightshield/core.py                ✅ generate_hardening(target, findings, recommendations, output_dir, os_platform)
+lightshield/harden/linux_harden.py ✅ LinuxHardener（生成 .sh + rollback.sh）
+lightshield/harden/win_harden.py   ✅ WinHardener（生成 .ps1 + rollback.ps1）
+lightshield/rules/engine.py        ✅ recommend_hardening(findings) → list[dict]
+lightshield/web/routes.py          ✅ API 端点（/api/scan、/api/report）
+```
+
+### 核心需求
+
+1. **加固建议面板** — 扫描完成后展示加固建议列表（从 `RuleEngine.recommend_hardening()` 获取）
+2. **一键生成脚本** — 选择操作系统 → 调用 `core.generate_hardening()` → 下载加固+回滚脚本
+3. **Web R4 所有权确认** — 加固脚本生成前再次确认（Web 表单 + Session 记录）
+4. **CSRF 防护** — 为所有 POST 端点添加 CSRF token 校验
+
+### 文件计划
+
+**新建：**
+1. `lightshield/web/csrf.py` — CSRF 保护模块（token 生成/校验/装饰器）
+2. `lightshield/web/templates/harden.html` — 加固建议页面
+
+**修改：**
+3. `lightshield/web/pages.py` — 新增 `/harden/<scan_id>` 路由
+4. `lightshield/web/app.py` — CSRF `before_request` 钩子 + 注入 `csrf_token()` 到模板上下文
+5. `lightshield/web/templates/dashboard.html` — 扫描完成/历史列表添加"加固"按钮
+6. `lightshield/web/templates/report.html` — 报告底部添加"加固建议"操作入口
+7. `lightshield/web/static/style.css` — 加固页面样式
+8. `lightshield/web/templates/base.html` — 所有 POST 表单添加 CSRF hidden input
+
+### 页面设计
+
+#### 加固建议页面 (`GET /harden/<scan_id>`)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  LightShield 轻盾                    [admin] [退出]       │
+│  ← 返回报告                                                 │
+├──────────────────────────────────────────────────────────┤
+│  加固操作建议                                               │
+│  扫描: LS-20260614-...  目标: 192.168.1.1                  │
+│                                                          │
+│  ┌─ 加固建议列表 ──────────────────────────────────────┐  │
+│  │  #  严重度  操作          目标        原因           │  │
+│  │  1  HIGH    关闭高危端口   23/telnet   Telnet 明文传输 │  │
+│  │  2  MEDIUM  禁用不必要服务 旧式 telnet  无需远程管理    │  │
+│  │  3  HIGH    升级老旧组件   OpenSSH     CVE-2023-38408 │  │
+│  │  ...                                                │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                                                          │
+│  ┌─ 生成加固脚本 ──────────────────────────────────────┐  │
+│  │  目标操作系统: [Linux ▾]                              │  │
+│  │  ☐ 我确认拥有目标所有权并授权执行加固操作 （R4）       │  │
+│  │  ⚠️ 加固脚本仅生成不自动执行，请审阅后手动运行         │  │
+│  │  [生成加固脚本] [生成回滚脚本]                         │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                                                          │
+│  ┌─ 生成结果 ─────────────────────────────────────────┐  │
+│  │  ✅ 加固脚本已生成                                    │  │
+│  │  加固脚本: harden-20260614-xxx.sh (3.2 KB)            │  │
+│  │  回滚脚本: rollback-20260614-xxx.sh (1.8 KB)          │  │
+│  │  [下载加固脚本] [下载回滚脚本]                         │  │
+│  └─────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+```
+
+### CSRF 防护设计
+
+```python
+# lightshield/web/csrf.py
+
+import secrets
+from functools import wraps
+from flask import session, request, jsonify, current_app
+
+def generate_csrf_token():
+    """生成 CSRF token 并存入 session。"""
+    if "_csrf_token" not in session:
+        session["_csrf_token"] = secrets.token_hex(32)
+    return session["_csrf_token"]
+
+def validate_csrf():
+    """校验请求中的 CSRF token。"""
+    token = request.headers.get("X-CSRF-Token") or request.form.get("_csrf_token")
+    if not token or token != session.get("_csrf_token"):
+        return False
+    return True
+
+def csrf_protect(f):
+    """装饰器：为 POST/PUT/DELETE 请求校验 CSRF token。"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+            if not validate_csrf():
+                return jsonify({"error": True, "message": "CSRF 校验失败，请刷新页面后重试", "code": 403}), 403
+        return f(*args, **kwargs)
+    return decorated
+```
+
+**app.py 集成：**
+- `before_request` 钩子：对 POST/PUT/DELETE API 请求校验 CSRF（AJAX 请求通过 `X-CSRF-Token` header）
+- 模板全局注入：`@app.context_processor` 注入 `csrf_token()` 函数，所有模板可用 `{{ csrf_token() }}`
+- 页面表单：所有 `<form method="POST">` 添加 `<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">`
+
+### pages.py 新增路由
+
+```python
+@pages_bp.route("/harden/<scan_id>")
+def harden_page(scan_id: str):
+    """加固建议页面：需登录"""
+    if "user" not in session:
+        return redirect(url_for("pages.index"))
+
+    from lightshield.repository.base import get_repository
+
+    config = current_app.config.get("LIGHTSHIELD_CONFIG")
+    db_url = getattr(config, "db_url", "") or "data/lightshield.db"
+
+    try:
+        repo = get_repository("sqlite", db_url=db_url)
+        scan_data = repo.get(scan_id)
+    except Exception:
+        scan_data = None
+
+    if scan_data is None:
+        return render_template("harden.html", scan_id=scan_id, error="扫描记录不存在", show_nav=True, username=session.get("user", "?"))
+
+    raw = scan_data.get("raw_result", scan_data)
+    findings_data = raw.get("findings", [])
+
+    # 调用规则引擎获取加固建议（基于扫描结果中的 findings）
+    from lightshield.rules.engine import RuleEngine
+    from lightshield.adapters.base import VulnFinding
+    from lightshield.utils.constants import RiskLevel
+
+    findings = []
+    for f in findings_data:
+        try:
+            severity = RiskLevel(f.get("severity", "info"))
+        except ValueError:
+            severity = RiskLevel.INFO
+        findings.append(VulnFinding(
+            vuln_type=f.get("vuln_type", "unknown"),
+            severity=severity,
+            title=f.get("title", ""),
+            description=f.get("description", ""),
+            remediation=f.get("remediation", ""),
+            port=f.get("port"),
+            cve_id=f.get("cve_id"),
+            cvss_score=f.get("cvss_score"),
+            evidence=f.get("evidence"),
+        ))
+
+    engine = RuleEngine()
+    engine.load_rules()
+    recommendations = engine.recommend_hardening(findings)
+
+    return render_template(
+        "harden.html",
+        scan_id=scan_id,
+        scan_data=scan_data,
+        recommendations=recommendations,
+        findings_count=len(findings),
+        show_nav=True,
+        username=session.get("user", "?"),
+    )
+```
+
+### API 端点需求（新增或修改）
+
+你需要在 `lightshield/web/routes.py` 中新增一个 API 端点：
+
+```python
+# POST /api/harden/<scan_id> — 生成加固脚本（需登录 + CSRF）
+@api_bp.route("/harden/<scan_id>", methods=["POST"])
+@login_required
+def api_generate_harden(scan_id: str):
+    """生成加固和回滚脚本，返回下载链接。"""
+    data = request.get_json(silent=True) or {}
+    os_platform = data.get("os_platform", "linux")
+    if os_platform not in ("linux", "windows"):
+        return jsonify({"error": True, "message": "不支持的操作系统，请选择 linux 或 windows", "code": 400}), 400
+
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    config = current_app.config["LIGHTSHIELD_CONFIG"]
+
+    # 从仓库加载扫描数据，重建 findings
+    from lightshield.repository.base import get_repository
+    db_url = getattr(config, "db_url", "") or "data/lightshield.db"
+    repo = get_repository("sqlite", db_url=db_url)
+    scan_data = repo.get(scan_id)
+    if scan_data is None:
+        return jsonify({"error": True, "message": f"扫描记录不存在: {scan_id}", "code": 404}), 404
+
+    raw = scan_data.get("raw_result", scan_data)
+    findings_data = raw.get("findings", [])
+
+    from lightshield.adapters.base import VulnFinding
+    from lightshield.utils.constants import RiskLevel
+
+    findings = []
+    for f in findings_data:
+        try:
+            severity = RiskLevel(f.get("severity", "info"))
+        except ValueError:
+            severity = RiskLevel.INFO
+        findings.append(VulnFinding(
+            vuln_type=f.get("vuln_type", "unknown"),
+            severity=severity,
+            title=f.get("title", ""),
+            description=f.get("description", ""),
+            remediation=f.get("remediation", ""),
+            port=f.get("port"),
+            cve_id=f.get("cve_id"),
+            cvss_score=f.get("cvss_score"),
+            evidence=f.get("evidence"),
+        ))
+
+    # 获取加固建议
+    from lightshield.rules.engine import RuleEngine
+    engine = RuleEngine()
+    engine.load_rules()
+    recommendations = engine.recommend_hardening(findings)
+
+    if not recommendations:
+        return jsonify({"error": True, "message": "未发现需要加固的风险项", "code": 200, "generated": False}), 200
+
+    # 生成加固脚本
+    try:
+        result = core.generate_hardening(
+            scan_data.get("target", "unknown"),
+            findings=findings,
+            recommendations=recommendations,
+            output_dir=config.report_output_dir,
+            os_platform=os_platform,
+        )
+    except Exception as exc:
+        return jsonify({"error": True, "message": f"脚本生成失败：{exc}", "code": 500}), 500
+
+    return jsonify({
+        "success": True,
+        "generated": True,
+        "action_count": result.action_count,
+        "script_path": result.script_path,
+        "rollback_path": result.rollback_path,
+        "status": result.status.value if hasattr(result.status, "value") else str(result.status),
+        "message": f"已生成 {result.action_count} 条加固操作",
+    }), 200
+```
+
+### 合规约束
+
+- **R4**：加固脚本生成前必须再次确认所有权（Web 表单复选框 + Session 记录确认时间）
+- **CSRF**：所有 POST 端点（/api/scan、/api/harden/<id>）必须校验 CSRF token
+- 加固脚本**仅生成不执行**——与 CLI harden 命令行为一致
+- 下载的脚本包含 R4 所有权确认交互门（脚本内 `read -r -p` / `Read-Host`）
+- 前端提示："请审阅脚本后手动执行，LightShield 不会自动运行加固命令"
+
+### 验收标准
+
+1. 从报告页面点击"加固建议"→ 进入 `/harden/<scan_id>` 页面
+2. 加固建议列表正确展示（行动、目标、严重度、原因）
+3. 选择操作系统 + 确认所有权 → 点击生成 → 获取脚本路径
+4. CSRF token 在所有 POST 请求中校验（缺少 token → 403）
+5. CSRF token 通过模板 `{{ csrf_token() }}` 和 AJAX header `X-CSRF-Token` 两种方式传递
+6. 所有页面（login/dashboard/report/harden）的 POST 表单携带 CSRF hidden input
+7. 未登录访问 `/harden/<scan_id>` → 重定向到登录页
+8. `ruff check lightshield/web/` 零违规
+9. `mypy lightshield/web/` 零错误
+10. 现有 566 条测试全量通过
+
+### 启动提示词（直接复制到 Codex）
+
+```
+你是 LightShield 项目的高级开发工程师，使用 GPT-5.5 模型。
+
+## 项目背景
+LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Python 3.10+。
+路径：E:/Github Project/LightShield/
+
+## 任务：实现加固页面 + CSRF 防护（v0.0.29）
+
+### 前置条件
+v0.0.27 Flask API + v0.0.28 Web 仪表板已就绪。用户可以通过浏览器完成 scan → view report 全流程。
+
+现有文件（你可参考/修改）：
+  lightshield/web/app.py            → create_app(config)，已注册 api_bp + pages_bp
+  lightshield/web/routes.py         → API 端点（/api/scan、/api/report/<id>、/api/scan/<id>）
+  lightshield/web/pages.py          → 页面路由（/、/dashboard、/report/<scan_id>）
+  lightshield/web/auth.py           → Session 鉴权
+  lightshield/web/templates/         → base.html + login.html + dashboard.html + report.html
+  lightshield/web/static/style.css   → 深色安全工具主题（673行）
+  lightshield/core.py                → generate_hardening(target, findings, recommendations, output_dir, os_platform)
+  lightshield/harden/linux_harden.py → LinuxHardener（生成 .sh + rollback.sh）
+  lightshield/harden/win_harden.py   → WinHardener（生成 .ps1 + rollback.ps1）
+  lightshield/rules/engine.py        → RuleEngine.recommend_hardening(findings) → list[dict]
+
+### 核心需求
+
+1. **加固建议面板** — 扫描完成后展示加固建议列表（从 RuleEngine 获取）
+2. **一键生成脚本** — 选择操作系统 → 调用 core.generate_hardening() → 返回脚本路径
+3. **Web R4 所有权确认** — 加固生成前再次确认（复选框）
+4. **CSRF 防护** — 所有 POST 端点添加 CSRF token 校验
+
+### 你要创建/修改的文件
+
+**新建：**
+1. lightshield/web/csrf.py — CSRF 保护模块（token 生成/校验/装饰器）
+2. lightshield/web/templates/harden.html — 加固建议页面
+
+**修改：**
+3. lightshield/web/routes.py — 新增 POST /api/harden/<scan_id> 端点
+4. lightshield/web/pages.py — 新增 GET /harden/<scan_id> 路由
+5. lightshield/web/app.py — CSRF before_request 钩子 + context_processor
+6. lightshield/web/templates/dashboard.html — 扫描完成/历史列表添加"加固"按钮
+7. lightshield/web/templates/report.html — 报告底部添加"加固建议"入口
+8. lightshield/web/templates/base.html — POST 表单添加 CSRF hidden input
+9. lightshield/web/static/style.css — 加固页面样式
+
+### CSRF 防护设计
+
+csrf.py 接口契约：
+```python
+import secrets
+from functools import wraps
+from flask import session, request, jsonify
+
+def generate_csrf_token() -> str:
+    """生成 CSRF token 并存入 session（每个 session 一个 token）。"""
+
+def validate_csrf() -> bool:
+    """校验请求中的 CSRF token（支持 X-CSRF-Token header 和 _csrf_token form 字段）。"""
+
+def csrf_protect(f):
+    """装饰器：POST/PUT/DELETE/PATCH 请求校验 CSRF token，失败返回 403 JSON。"""
+```
+
+app.py 集成：
+- `@app.before_request`：对 `/api/` 路径的 POST/PUT/DELETE 请求调用 `validate_csrf()`，失败返回 403 JSON
+- `@app.context_processor`：注入 `csrf_token` 函数，模板中 `{{ csrf_token() }}` 可用
+
+base.html 修改：
+- 全局 JS 逻辑：读取 CSRF token 注入到所有 fetch 请求的 `X-CSRF-Token` header
+- 所有 `<form method="POST">` 添加 hidden input：`<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">`
+
+CSRF 豁免（公开端点不校验）：
+- POST /api/login
+- POST /api/logout
+- GET 请求（所有）
+
+### POST /api/harden/<scan_id> 端点设计
+
+请求体：
+```json
+{
+    "os_platform": "linux"  // "linux" 或 "windows"
+}
+```
+
+响应 200（生成成功）：
+```json
+{
+    "success": true,
+    "generated": true,
+    "action_count": 3,
+    "script_path": "./reports/harden-20260614-xxx.sh",
+    "rollback_path": "./reports/rollback-20260614-xxx.sh",
+    "status": "generated",
+    "message": "已生成 3 条加固操作"
+}
+```
+
+响应 200（无需加固）：
+```json
+{
+    "error": true,
+    "message": "未发现需要加固的风险项",
+    "code": 200,
+    "generated": false
+}
+```
+
+### 加固页面 (`GET /harden/<scan_id>`) 功能要求
+
+1. 从仓库加载扫描数据 → 重建 VulnFinding 列表 → 调用 RuleEngine.recommend_hardening()
+2. 展示加固建议列表（表格：序号、严重度彩色标签、操作、目标、原因）
+3. 操作系统选择下拉框：Linux / Windows
+4. R4 所有权确认复选框（未勾选时"生成加固脚本"按钮禁用）
+5. "生成加固脚本"按钮 → AJAX POST /api/harden/<scan_id>（携带 CSRF token）
+6. 生成结果显示：脚本路径、操作数量、"请审阅后手动执行"提示
+7. 空建议时显示"目标当前状态良好，无需加固"
+
+### dashboard.html 修改
+
+- 扫描完成后（status=completed/partial）：结果区增加"加固建议"按钮 → 跳转 `/harden/<task_id>`
+- 历史记录表：每行增加"加固"操作链接 → `/harden/<scan_id>`
+
+### report.html 修改
+
+- 报告底部（"四、加固操作建议"区域后）增加操作按钮："生成加固脚本" → 跳转 `/harden/<scan_id>`
+- 如果报告已包含加固建议段（"四、加固操作建议"），按钮文案为"执行加固 →"
+
+### 合规约束
+- R4：加固生成前必须确认所有权（前端复选框 + 提示文字）
+- 加固脚本仅生成不执行（与 CLI harden 行为一致）
+- 生成的脚本包含 R4 所有权确认交互门（脚本本身有 read/Read-Host 确认）
+- CSRF token 在登录前不生成（避免 session 固定攻击）
+- 无攻击代码，无 exploit/payload/attack
+
+### 验收标准
+1. 从报告页点击"加固建议"→ 进入 /harden/<scan_id> 页面
+2. 加固建议列表正确展示（行动、目标、严重度、原因）
+3. 选择操作系统 + 确认所有权 → 点击生成 → 获取脚本路径 JSON
+4. 未登录访问 /harden/<scan_id> → 重定向到登录页
+5. POST 请求缺少 CSRF token → 403 JSON 错误
+6. POST 请求携带正确 CSRF token → 正常处理
+7. CSRF token 通过模板 {{ csrf_token() }} 和 AJAX X-CSRF-Token header 双通道
+8. dashboard 和 report 页面有通往 harden 页面的入口
+9. ruff check lightshield/web/ 零违规
+10. mypy lightshield/web/ 零错误
+11. 现有 566 条测试全量通过（不修改 tests/ 目录下任何文件）
+
+### 输出文件清单
+1. lightshield/web/csrf.py（新建）
+2. lightshield/web/templates/harden.html（新建）
+3. lightshield/web/routes.py（修改：+ POST /api/harden/<scan_id>）
+4. lightshield/web/pages.py（修改：+ GET /harden/<scan_id>）
+5. lightshield/web/app.py（修改：+ CSRF before_request + context_processor）
+6. lightshield/web/templates/dashboard.html（修改：+ 加固按钮）
+7. lightshield/web/templates/report.html（修改：+ 加固入口）
+8. lightshield/web/templates/base.html（修改：+ CSRF hidden input + JS header 注入）
+9. lightshield/web/static/style.css（修改：+ 加固页面样式）
 ```

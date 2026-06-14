@@ -119,10 +119,11 @@ graphify affected "validator.py"  # 变更影响分析
 | Task ID | 版本 | 范围 | 重点 | 状态 |
 |---------|:--:|------|------|:--:|
 | LS-008 | Phase1 | 全量代码审查 | LS-001~007 合规+质量双审 | ✅ |
-| CW-023 | v0.0.23 | C90 重构 | scan() 拆分正确性 / 5 helper 逻辑等价性 / 新测试质量 | 🟢 当前 |
-| CW-024 | v0.0.24 | CVE 扩充 | CVE 数据准确性 / 格式一致性 / 组件覆盖率 |
+| CW-023 | v0.0.23 | C90 重构 | scan() 拆分正确性 / 5 helper 逻辑等价性 / 新测试质量 | ✅ |
+| CW-024 | v0.0.24 | CVE 扩充 | CVE 数据准确性 / 格式一致性 / 组件覆盖率 | ✅ |
+| CW-030 | v0.0.30 | 全量代码审查 | v0.0.21-29 全部变更 / web 模块安全 / R1-R6 终审 | 🟢 当前 |
 
-## 十、CW-023 + CW-024 详细任务 + 启动提示词 🟢 当前任务
+## 十、CW-023 + CW-024 详细任务（已完成 ✅）
 
 ### 背景
 
@@ -241,3 +242,167 @@ v0.0.23 将 scan() 从 205 行单体拆为 1 编排器 + 5 helper：
 - CVE 抽查 ≥ 3 条
 - R1-R6 全部标记 PASS/FAIL
 - 范围漂移检测（REQUESTED vs EXTRA）
+
+---
+
+## 十一、CW-030 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.0.21-29 全部交付完毕。阶段一（质量深化）、阶段二（内容增长）、阶段三（GUI 铺路）全部完成。
+现在是发布 v0.3.0 前的**终审**——CodeWhale 需要对这 10 个版本的全部变更进行独立审查。
+
+### 变更范围（v0.0.21 → v0.0.29）
+
+| 版本 | 功能 | Agent | 关键文件 |
+|:--:|------|:--:|------|
+| v0.0.21 | mypy 收紧 | CC | pyproject.toml, 多个 lightshield/*.py |
+| v0.0.22 | CLI/core 测试 | Reasonix | tests/test_cli.py, tests/test_core.py |
+| v0.0.23 | C90 重构 | CC | component_checker.py, pyproject.toml |
+| v0.0.24 | CVE 扩充 | Codex | component_checker.py (28→70 CVE) |
+| v0.0.25 | SQLite repo | CC | lightshield/repository/sqlite_repo.py |
+| v0.0.26 | 规则引擎增强 | CC | lightshield/rules/engine.py, cli.py |
+| v0.0.27 | Flask API 骨架 | CC | lightshield/web/{app,auth,routes,__init__}.py |
+| v0.0.28 | Web 仪表板 | Codex | web/pages.py + templates/{base,login,dashboard,report}.html + style.css |
+| v0.0.29 | 加固页面+CSRF | Codex | web/csrf.py + templates/harden.html + routes.py + app.py + pages.py |
+
+### 审查重点（按优先级）
+
+#### 一、Web 模块安全审查（最高优先级——全新代码，从未经过 CodeWhale 审查）
+
+审查 `lightshield/web/` 全部 6 个 Python 文件 + 5 个模板：
+
+**csrf.py (60L)**：
+- `secrets.compare_digest` 是否正确使用（时序攻击防护）？
+- `csrf_exempt` 是否被正确应用于 login/logout 端点？
+- `is_csrf_exempt()` 是否正确读取 view function 的 `_csrf_exempt` 属性？
+- `UNSAFE_METHODS` 是否覆盖了所有写操作（POST/PUT/DELETE/PATCH）？
+
+**auth.py (70L)**：
+- 凭证比较是否使用常量时间比较（或至少无短路径攻击）？
+- `login_required` 装饰器是否在所有受保护端点正确应用？
+- Session 是否被正确清除（`session.pop` vs `session.clear`）？
+
+**routes.py (350L)**：
+- `POST /api/scan`：R2 校验是否对 API 请求生效？`scan_types` 是否有注入风险？
+- `POST /api/harden/<scan_id>`：R4 所有权确认是否正确？`os_platform` 是否有注入风险？
+- `GET /api/report/<scan_id>`：report 格式参数是否有路径遍历风险？
+- `_reconstruct_findings`：反序列化是否异常安全？
+
+**app.py (123L)**：
+- `secret_key` 默认值 `os.urandom(24)` 是否足够随机？
+- CORS `Access-Control-Allow-Origin: *` 在生产环境的风险（标注为 v1.0.0 待处理即可）
+- CSRF `before_request` 钩子是否正确绑定了 `"user" in session` 条件？
+
+**pages.py (128L)**：
+- `harden_page` 的 `_reconstruct_findings` 与 `routes.py` 的版本是否存在逻辑重复/不一致？
+- 模板变量是否存在 XSS 风险（`{{ variable }}` Jinja2 默认转义是否覆盖所有用户输入）？
+
+**templates/*.html (5 文件)**：
+- 是否有内联事件处理器（`onclick=`/`onerror=`）——潜在 XSS？
+- `report.html` 的 `sanitizeReportHtml` 是否完整（script/iframe/object/embed/link/style/on* 属性 + `javascript:` URL）？
+- `marked.js` 从 CDN 加载是否有 SRI hash（Subresource Integrity）？
+
+#### 二、合规 R1-R6 逐条终审
+
+| 红线 | 审查要点 |
+|------|------|
+| R1 | 全量 grep `exploit\|payload\|attack\|pwn\|hack` ——确认无攻击向代码 |
+| R2 | `validator.py` + `routes.py api_submit_scan` ——确认 CIDR/IP段/URL 被拒绝 |
+| R3 | 全量 grep `bind_shell\|reverse_shell\|backdoor\|trojan\|keylog` ——确认零出现 |
+| R4 | `cli.py` + `dashboard.html` + `harden.html` ——三种入口是否都有所有权确认 |
+| R5 | `msf_adapter.py` 的白名单——是否未被绕过 |
+| R6 | `config.py` 的 `max_concurrent_scans=20` / `scan_interval=5.0` ——是否未被绕过 |
+
+#### 三、接口一致性（Gate D）
+
+- `pages.py._reconstruct_findings()` vs `routes.py._reconstruct_findings()`：两个实现是否行为一致？
+- `core.submit_scan()` 和 `core.get_scan_status()`：CLI 和 Web 两种调用路径是否一致？
+- `core.generate_hardening()`：CLI harden 和 Web `/api/harden/<id>` 的调用参数是否一致？
+
+#### 四、测试覆盖质量
+
+- `test_web.py` (34 tests) + `test_web_pages.py` (9 tests)：是否覆盖了关键安全路径？
+- CSRF 拒绝/放行/豁免是否都有测试？
+- 报告端点错误路径（404/409）是否覆盖？
+
+#### 五、范围忠实度（Gate B）
+
+- v0.0.27-29 是否引入了计划外的文件/变更？
+- Codex 任务产出是否严格遵守了文件清单？
+- CC 在集成过程中是否夹带了计划外的修改？
+
+### 启动提示词（直接复制到 CodeWhale）
+
+```
+你是 LightShield 项目的代码审查专员（DeepSeek-V4 模型）。
+这是 v0.0.30 发布前的全量终审——v0.0.21-29 全部 10 个版本的变更。
+
+## 项目背景
+LightShield 是开源安全自检工具，Python 3.10+，路径：E:/Github Project/LightShield/
+v0.3.0 即将发布。你作为双审机制中独立于 Claude Code 的审查者，需要对所有代码进行最后的安全+质量+合规验证。
+
+## 审查范围
+
+### 重点审查：Web 模块（全新代码，6 个 Python 文件）
+1. lightshield/web/csrf.py — CSRF token 生成/校验/豁免
+2. lightshield/web/auth.py — Session 鉴权
+3. lightshield/web/routes.py — API 端点（login/scan/status/report/harden）
+4. lightshield/web/app.py — Flask 工厂
+5. lightshield/web/pages.py — 页面路由
+6. tests/test_web.py + tests/test_web_pages.py — 43 条测试
+
+### 模板检查：5 个 HTML 文件
+7. lightshield/web/templates/base.html
+8. lightshield/web/templates/login.html
+9. lightshield/web/templates/dashboard.html
+10. lightshield/web/templates/report.html
+11. lightshield/web/templates/harden.html
+12. lightshield/web/static/style.css
+
+### 基础设施：CLI + 仓库 + 规则
+13. lightshield/cli.py — serve 子命令
+14. lightshield/repository/sqlite_repo.py
+15. lightshield/rules/engine.py
+
+## 审查维度
+
+### 一、安全（最高优先级）
+- CSRF 防护：token 是否时序安全（secrets.compare_digest）？豁免端点是否正确（login/logout）？
+- 认证：凭证比较机制是否安全？session 清除是否完整？
+- 注入：scan_types/os_platform 是否有注入风险？report format 参数是否有路径遍历？
+- XSS：Jinja2 自动转义是否覆盖所有用户输入？sanitizeReportHtml 是否完整？
+- marked.js CDN：是否有 SRI hash 防篡改？
+
+### 二、合规 R1-R6 逐条
+| 红线 | 审查方法 |
+|------|------|
+| R1 | grep exploit/payload/attack/hack — 确认无攻击向代码出现在新增文件中 |
+| R2 | 验证 validator.validate() 在 Web API 和 CLI 双路径都被正确调用 |
+| R3 | grep bind_shell/reverse_shell/backdoor/trojan — 确认零出现 |
+| R4 | 验证 CLI(scan/harden) + Web(dashboard/harden) 四种入口都有所有权确认 |
+| R5 | 确认 MSF 白名单未被绕过 |
+| R6 | 确认扫描频率限制在 Web API 路径下也生效 |
+
+### 三、接口一致性（Gate D）
+- pages.py 和 routes.py 各有一个 _reconstruct_findings()——行为是否一致？
+- CLI scan 和 Web POST /api/scan 调用 core 的参数路径是否一致？
+
+### 四、测试质量
+- 43 条 Web 测试是否覆盖了 CSRF 拒绝/放行/豁免三种场景？
+- 报告端点 404/409 错误是否都有测试？
+
+### 五、范围忠实度（Gate B）
+- 检查是否有计划外新增文件
+- 检查 Codex 产出是否严格遵守了 CODEX.md 的文件清单
+
+## 输出
+审查报告写入 docs/review-v030-codewhale.md，格式：
+  - 审查摘要（审查文件数 + 发现总数 + 结论：Approved / Changes Requested）
+  - 🔴 Blocker 清单（文件:行号 + 风险 + 修复建议）
+  - 🟡 Suggestion 清单
+  - Web 模块安全专项评估
+  - R1-R6 逐个核查表（全部标记 PASS/FAIL + 证据引用）
+  - 接口一致性检查结果
+  - 范围忠实度评估（REQUESTED vs EXTRA）
+```

@@ -51,6 +51,11 @@ def create_parser() -> argparse.ArgumentParser:
     history_parser.add_argument("--limit", type=int, default=20, help="最大显示条数，默认 20")
     history_parser.add_argument("--format", choices=["table", "json"], default="table", help="输出格式，默认 table")
 
+    serve_parser = subparsers.add_parser("serve", help="启动 Web API 服务")
+    serve_parser.add_argument("--host", help="监听地址（默认使用配置中的 web_host）")
+    serve_parser.add_argument("--port", type=int, help="监听端口（默认使用配置中的 web_port）")
+    serve_parser.add_argument("--debug", action="store_true", help="开启 Flask 调试模式")
+
     subparsers.add_parser("version", help="显示版本号")
     return parser
 
@@ -72,6 +77,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "history":
         return run_history_command(args)
+
+    if args.command == "serve":
+        return run_serve_command(args)
 
     parser.print_help()
     return 1
@@ -283,6 +291,45 @@ def run_harden_command(args: argparse.Namespace) -> int:
         if args.verbose:
             raise
         return 1
+
+
+def run_serve_command(args: argparse.Namespace) -> int:
+    """启动 Flask Web API 服务。
+
+    在生产部署前，请务必修改默认登录凭证（环境变量 LS_WEB_USERNAME / LS_WEB_PASSWORD）。
+
+    Returns:
+        int: 0 表示正常退出，1 表示异常
+    """
+    try:
+        from lightshield.web.app import create_app  # noqa: F811 — 延迟导入，Flask 为可选依赖
+    except ImportError:
+        print("[错误] Web API 需要安装 Flask。请运行: pip install lightshield[web]")
+        return 1
+
+    from lightshield.config import get_config
+
+    config = get_config()
+
+    # 尝试加载配置文件（不存在则使用默认值）
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        config.load("lightshield.yaml")
+
+    host = args.host or config.web_host
+    port = args.port or config.web_port
+
+    app = create_app(config=config)
+
+    print(f"LightShield 轻盾 Web API v{__version__}")
+    print(f"监听地址: http://{host}:{port}")
+    print("鉴权状态: 已启用（Session 签名 cookie）")
+    print("默认凭证: admin / lightshield（请通过环境变量 LS_WEB_USERNAME / LS_WEB_PASSWORD 修改）")
+    print("按 Ctrl+C 停止服务")
+
+    app.run(host=host, port=port, debug=args.debug)
+    return 0
 
 
 def run_history_command(args: argparse.Namespace) -> int:

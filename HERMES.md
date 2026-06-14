@@ -89,7 +89,7 @@ graphify explain "requirements.txt" --graph graphify-out/graph.json
 hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-XXX.md)"
 ```
 
-## 八、Hermes 版本任务总览（全 20 版本）
+## 八、Hermes 版本任务总览
 
 ### v0.0.01-10（已完成）
 
@@ -98,13 +98,14 @@ hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-XXX.md)"
 | v0.0.01 | 项目骨架 (7 __init__.py + .gitignore) | ✅ | ✅ |
 | v0.0.02 | constants.py + requirements.txt | ✅ | ✅ |
 
-### v0.0.11-20（新任务）
+### v0.0.11-30
 
 | 版本 | 模块 | 说明 | 状态 | 验收 |
 |:--:|------|------|:--:|:--:|
 | **v0.0.11** | `pyproject.toml` + 依赖更新 | 现代化打包配置 + 依赖清单对齐 | ✅ | ✅ |
 | **v0.0.18** | `deploy_linux.sh` + `deploy_win.ps1` | 一键部署脚本 | ✅ | ✅ 171+239行 |
-| **v0.0.20** | `LICENSE` + docs 骨架 | MIT + INSTALL/USAGE/FAQ 占位 | ✅ | ✅ CC 填充了 4 条 FAQ TODO + CHANGELOG 完整版 + README 架构细节 |
+| **v0.0.20** | `LICENSE` + docs 骨架 | MIT + INSTALL/USAGE/FAQ 占位 | ✅ | ✅ CC 填充 |
+| **v0.0.30** | 文档更新（Web 章节） | INSTALL/USAGE/FAQ/CHANGELOG 补充 Web 内容 | 🟢 当前 | ⬜ |
 
 ### Hermes 全任务完成统计
 
@@ -115,10 +116,10 @@ v0.0.11  pyproject.toml + 依赖更新            ✅
 v0.0.18  deploy_linux.sh + deploy_win.ps1    ✅
 v0.0.20  LICENSE + docs 骨架                 ✅ (CC 填充)
 ──────────────────────────────────────────────
-         5/5 完成，0 个待执行 ✅
+         5/6 完成，1 个待执行 🟢
 ```
 
-> 当前状态：**全部任务完成，零剩余。** 等待 v0.3.0 新任务分配。
+> 当前状态：**v0.0.30 文档更新已分配，等待执行。**
 
 ---
 
@@ -242,7 +243,159 @@ v0.1.0 MVP 已完成（14 模块），v0.0.11 正在添加 CLI。
 pyproject.toml + requirements.txt（覆盖）+ __init__.py（更新 __all__）
 ```
 
-## 九、代码规范
+## 九、v0.0.30 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.0.27-29 已交付完整的 Web 仪表板能力：
+- `lightshield serve` — 启动 Flask Web API + 仪表板
+- 浏览器访问 `http://127.0.0.1:5000` → 登录 → 扫描 → 报告 → 加固，全流程可用
+- 新增可选依赖：`pip install lightshield[web]`
+
+现有文档（docs/）是 v0.2.0 CLI-only 时期的版本，缺少 Web 面板相关内容。
+
+### 任务：更新文档，补充 Web 仪表板内容
+
+修改以下 4 个文件：
+
+#### 1. docs/INSTALL.md — 补充 Web 依赖安装
+
+在现有安装步骤后追加：
+
+```markdown
+## Web 仪表板（可选，v0.3.0+）
+
+如需使用浏览器管理扫描任务，安装 Web 可选依赖：
+
+```bash
+pip install lightshield[web]
+```
+
+启动 Web 服务：
+
+```bash
+lightshield serve
+```
+
+默认监听 http://127.0.0.1:5000，可通过 --host/--port 参数自定义。
+首次使用请修改默认登录凭证（环境变量 LS_WEB_USERNAME / LS_WEB_PASSWORD）。
+```
+
+#### 2. docs/USAGE.md — 新增 Web 仪表板章节
+
+在现有 CLI 命令参考后追加完整的 Web 使用说明：
+
+- 启动服务：`lightshield serve [--host 0.0.0.0] [--port 8080] [--debug]`
+- 登录：默认凭证 admin / lightshield，通过环境变量覆盖
+- 新建扫描：输入目标地址 → 选择扫描类型（全量/资产/漏洞）→ 确认所有权 → 开始
+- 查看报告：扫描完成后点击"查看报告"，Markdown 格式渲染
+- 加固建议：在报告页或历史列表点击"加固"→ 查看建议列表 → 选择操作系统 → 确认后生成脚本
+- 扫描历史：仪表板右侧展示最近 20 条扫描记录
+
+#### 3. docs/FAQ.md — 新增 Web 相关问答
+
+新增 3 条 FAQ：
+
+```markdown
+### Q: Web 仪表板和 CLI 有什么区别？
+Web 仪表板提供浏览器端的可视化操作界面，适合不熟悉命令行的用户。
+CLI 和 Web 共享同一套后端（LightShieldCore），扫描能力完全相同。
+Web 仪表板额外提供 Markdown 报告渲染和扫描历史管理。
+
+### Q: Web 仪表板安全吗？可以暴露到公网吗？
+v0.3.0 的 Web 仪表板设计用于本地或内网访问。
+内置 Session 鉴权和 CSRF 防护，但生产环境部署到公网前应：
+- 修改默认登录凭证（环境变量 LS_WEB_USERNAME / LS_WEB_PASSWORD）
+- 配置反向代理（Nginx/Caddy）提供 HTTPS
+- 考虑 IP 白名单或 VPN 限制访问
+
+### Q: 加固脚本生成后会自动执行吗？
+不会。与 CLI 的 harden 命令一致，Web 端仅生成加固和回滚脚本。
+你需要审阅脚本内容后，在目标服务器上手动执行。
+脚本内置了所有权二次确认机制（交互式提示）。
+```
+
+#### 4. CHANGELOG.md — 追加 v0.3.0 条目
+
+在文件顶部（`## [0.2.0]` 之前）插入：
+
+```markdown
+## [0.3.0] - 2026-06-14
+
+### 新增
+- Web 仪表板：Flask REST API + 浏览器端管理面板
+- 5 个 API 端点：登录/登出/扫描提交/状态查询/报告获取/加固脚本生成
+- 3 个 Web 页面：登录页 / 仪表板（扫描面板+历史列表）/ 报告查看器（Markdown 渲染）/ 加固建议页
+- Session 鉴权（环境变量 LS_WEB_USERNAME / LS_WEB_PASSWORD 配置凭证）
+- CSRF 防护（双通道：表单 hidden input + AJAX X-CSRF-Token header）
+- `lightshield serve` CLI 子命令
+- 可选依赖 `[web]`：Flask>=3.0
+
+### 变更
+- 版本号 0.1.0 → 0.3.0
+- 测试从 534 → 575 条
+
+### 修复
+- (无)
+```
+
+### 启动提示词（直接复制到 Hermes）
+
+```
+你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
+
+## 项目背景
+LightShield 轻盾 v0.3.0 即将发布。v0.0.27-29 新增了完整的 Web 仪表板能力：
+- `lightshield serve` 启动 Flask Web API + 浏览器管理面板
+- `pip install lightshield[web]` 安装 Web 可选依赖
+- 5 个 API 端点 + 3 个 Web 页面（登录/仪表板/报告/加固）
+- 默认凭证 admin/lightshield，通过环境变量覆盖
+
+现有 docs/ 文档是 v0.2.0 CLI-only 版本，需要补充 Web 内容。
+
+## 任务：更新 4 个文档文件
+
+### 1. docs/INSTALL.md — 补充 Web 依赖安装步骤
+在现有安装步骤后追加 Web 仪表板安装说明：
+- pip install lightshield[web]
+- lightshield serve 启动
+- 默认监听 http://127.0.0.1:5000
+- 提醒修改默认凭证
+
+### 2. docs/USAGE.md — 新增「Web 仪表板」章节
+在现有 CLI 命令参考之后追加完整 Web 使用说明，覆盖：
+- 启动服务（lightshield serve 参数）
+- 登录（默认凭证 + 环境变量覆盖）
+- 新建扫描（目标→类型→所有权→提交→进度）
+- 查看报告（Markdown 渲染）
+- 加固建议（建议列表→OS选择→确认→生成脚本）
+- 扫描历史（最近 20 条记录）
+
+### 3. docs/FAQ.md — 新增 3 条 Web FAQ
+- Q: Web 仪表板和 CLI 有什么区别？
+- Q: Web 仪表板安全吗？可以暴露到公网吗？
+- Q: 加固脚本生成后会自动执行吗？
+
+### 4. CHANGELOG.md — 新增 v0.3.0 条目
+在文件顶部（[0.2.0] 之前）插入 [0.3.0] 条目：
+- 新增：Web 仪表板、Flask REST API、Session 鉴权、CSRF 防护、lightshield serve
+- 变更：版本 0.1.0→0.3.0、测试 534→575
+
+## 约束
+- 中文文档，Markdown 格式
+- 不要修改已有内容的章节标题和结构（仅在末尾追加或插入新条目）
+- 使用 Flash 模型（-m deepseek-v4-flash），只做样板填充，不做复杂创作
+- 不确定的细节标注 <!-- TODO: 待确认 --> 而不是编造
+
+## 输出
+4 个文件（修改已有文件，非新建）：
+1. docs/INSTALL.md（追加 Web 安装章节）
+2. docs/USAGE.md（追加 Web 仪表板章节）
+3. docs/FAQ.md（追加 3 条 FAQ）
+4. CHANGELOG.md（插入 [0.3.0] 条目）
+```
+
+## 十、代码规范
 
 - 生成的 `__init__.py` 包含中文 docstring 和 `__all__`
 - `requirements.txt` 每个依赖注明版本范围和用途（中文注释）
