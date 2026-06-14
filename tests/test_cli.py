@@ -112,6 +112,14 @@ class TestCreateParser:
         args = parser.parse_args(["scan", "127.0.0.1", "--output-format", "text"])
         assert args.output_format == "text"
 
+    def test_pdf_output_format_option(self):
+        """scan/harden 均支持 PDF 输出格式。"""
+        parser = create_parser()
+        scan_args = parser.parse_args(["scan", "127.0.0.1", "--output-format", "pdf"])
+        harden_args = parser.parse_args(["harden", "127.0.0.1", "--output-format", "pdf"])
+        assert scan_args.output_format == "pdf"
+        assert harden_args.output_format == "pdf"
+
     def test_output_dir_option(self):
         """--output-dir 选项正确解析"""
         parser = create_parser()

@@ -299,6 +299,20 @@ class TestReportAPI:
         assert resp.status_code == 200
         assert "text/plain" in resp.content_type
 
+    def test_get_report_pdf(self, auth_client, mock_repo):
+        """format=pdf 应返回 PDF 字节流。"""
+        with patch("lightshield.web.routes.ReportGenerator") as mock_reporter_cls:
+            reporter = MagicMock()
+            reporter.generate.return_value = b"%PDF-1.4\nfake\n%%EOF"
+            mock_reporter_cls.return_value = reporter
+
+            resp = auth_client.get("/api/report/LS-20260614-120000-a1b2c3?format=pdf")
+
+        assert resp.status_code == 200
+        assert "application/pdf" in resp.content_type
+        assert resp.get_data().startswith(b"%PDF")
+        reporter.generate.assert_called_once()
+
     def test_get_report_not_found(self, auth_client, mock_repo):
         """不存在的 scan_id 应返回 404。"""
         mock_repo.get.return_value = None

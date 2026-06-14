@@ -121,7 +121,15 @@ graphify affected "config.py"
 | **v0.0.16** | 审查 `linux_harden.py` | ✅ | 审查报告已产出（见 `docs/review-v016-codex.md`） |
 | **v0.0.24** | CVE 知识库扩充 | ✅ | 28→70 条 CVE，11→22 组件，新增 mongodb/django/laravel/magento/bind/exim |
 | **v0.0.28** | Web 仪表板 | ✅ | 7 文件 / 7 测试 / CC 验收通过 — 扫描面板 + 报告查看器 + 历史记录列表 |
-| **v0.0.29** | 加固页面 + 安全加固 | 🟢 当前任务 | 加固建议面板 + 一键生成脚本 + Web R4 所有权确认 + CSRF 防护 |
+| **v0.0.29** | 加固页面 + CSRF 防护 | ✅ | 9 文件 / 9 测试 / CC 验收通过 |
+
+### v0.3.x（新阶段——能力扩展）
+
+| 版本 | 模块 | 状态 | Claude Code 验收 |
+|:--:|------|:--:|:--:|
+| **v0.3.4** | PDF 报告导出 | ✅ | `PdfReportWriter`（`fpdf2` + 中文字体）、Web 下载、CLI `--output-format pdf` |
+| **v0.3.5** | CVE 100+ + 自动更新 | ✅ | CVE 70→105（26 组件）+ `fetch_latest_cves()` NVD API 2.0 |
+| **v0.3.7** | Web UI 增强 | ⬜ | 脚本下载按钮、SSE 进度推送、主题切换、搜索筛选 |
 
 ---
 
@@ -139,11 +147,12 @@ v0.0.24  CVE 知识库扩充         ✅  28→70 条 / 11→22 组件
 v0.0.28  Web 仪表板              ✅  7 文件 / 7 测试 / CC 验收通过
 v0.0.29  加固页面 + CSRF 防护      ✅  9 文件 / 9 测试 / CC 验收通过
 ──────────────────────────────────────
-        10/10 全部完成 🎉
+        12/13 完成，1 个待执行 🟢
 ```
 
-> 当前状态：**全部任务完成！等待 v0.0.30 集成发布（CC + Hermes + CodeWhale）**
-> 上一任务：v0.0.29 加固页面 + CSRF 防护（已完成 ✅，CC 验收通过）
+> 当前状态：**v0.3.7 Web UI 增强等待执行。**
+> 上一任务：v0.3.5 CVE 100+（已完成 ✅，CC 验收通过）
+> 基线就绪：580 tests / ruff + mypy 全零
 
 ---
 
@@ -1848,3 +1857,314 @@ CSRF 豁免（公开端点不校验）：
 8. lightshield/web/templates/base.html（修改：+ CSRF hidden input + JS header 注入）
 9. lightshield/web/static/style.css（修改：+ 加固页面样式）
 ```
+
+---
+
+## 十六、v0.3.4 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.3.0 支持 Markdown 和纯文本两种报告格式。企业用户需要 PDF 格式用于合规归档。
+v0.3.4 新增 PDF 输出——使用 `fpdf2` 库（纯 Python，无需系统依赖），支持中文嵌入。
+
+### 依赖就绪
+
+```
+lightshield/report/reporter.py    ✅ ReportGenerator.generate() 支持 fmt="markdown"|"text"
+lightshield/web/routes.py          ✅ GET /api/report/<id>?format=markdown
+lightshield/web/templates/         ✅ report.html 已有下载入口区域
+lightshield/cli.py                 ✅ --output-format 参数已支持 markdown|text
+```
+
+### 任务：实现 PDF 报告生成 + Web/CLI 集成
+
+**新建 1 个文件：**
+
+#### `lightshield/report/pdf_writer.py` — PDF 生成器
+
+使用 `fpdf2` 库生成中文 PDF 报告：
+
+```python
+from fpdf import FPDF
+
+class PdfReportWriter:
+    """中文 PDF 安全检测报告生成器（v0.3.4）。"""
+
+    def __init__(self, font_dir: str | None = None):
+        """初始化 PDF 写入器。自动搜索系统中文字体。"""
+
+    def generate(
+        self,
+        scan_result: ScanResult,
+        findings: list[VulnFinding],
+        harden_recommendations: list[dict] | None = None,
+        output_path: str | None = None,
+    ) -> bytes:
+        """生成 PDF 报告，返回 PDF 字节数据。"""
+```
+
+要求：
+- 使用 `fpdf2` 库（`pip install fpdf2`，纯 Python，零系统依赖）
+- 中文字体：优先使用 `C:/Windows/Fonts/msyh.ttc`（微软雅黑，Windows）或 `/usr/share/fonts/`（Linux），找不到则使用 fpdf2 内置字体（仅英文/ASCII）
+- PDF 结构：封面（标题+目标+时间+版本）→ 资产概览表 → 风险摘要表 → 漏洞详情（按严重度排序）→ 加固建议表 → 页脚
+- 严重度颜色标签：CRITICAL=紫色、HIGH=红色、MEDIUM=橙色、LOW=黄色、INFO=灰色
+- 表格自动分页（`fpdf2` 的 `multi_cell` + 手动分页控制）
+- 页脚显示页码和报告生成时间
+
+**修改文件：**
+
+#### 2. `lightshield/report/reporter.py` — 集成 PDF
+
+在 `ReportGenerator.generate()` 中添加 `fmt="pdf"` 分支：
+
+```python
+def generate(self, scan_result, findings, harden=None, fmt="markdown"):
+    if fmt == "pdf":
+        return self._generate_pdf(scan_result, findings, harden)
+    ...
+```
+
+新增 `_generate_pdf()` 方法 + `generate_and_save()` 支持 `.pdf` 扩展名。
+
+#### 3. `pyproject.toml` — 添加 fpdf2 依赖
+
+```toml
+[project.optional-dependencies]
+web = ["Flask>=3.0,<4.0", "fpdf2>=2.8,<3.0"]  # PDF 报告生成
+```
+
+同时添加到 `dev` extras。
+
+#### 4. `lightshield/web/templates/report.html` — 添加下载 PDF 按钮
+
+在报告查看器顶部（"加固建议"按钮旁）添加：
+
+```html
+<a class="ghost-button" href="/api/report/{{ scan_id }}?format=pdf" download>下载 PDF</a>
+```
+
+#### 5. `lightshield/cli.py` — 注册 pdf 输出格式
+
+`--output-format` 的 `choices` 从 `["markdown", "text"]` 扩展为 `["markdown", "text", "pdf"]`。
+
+### 约束
+
+- `fpdf2` 作为可选依赖（放入 `[web]` extras），不进入核心依赖
+- 中文字体发现逻辑：Windows → msyh.ttc / simhei.ttf，Linux → 遍历 `/usr/share/fonts/` 找 CJK 字体
+- 找不到中文字体时降级为英文 PDF（标注警告日志 "未找到中文字体，PDF 仅含英文"）
+- PDF 报告与 Markdown 报告内容结构一致（四章 + 风险表）
+- CLI 和 Web 共用同一套 PDF 生成逻辑
+
+### 验收标准
+
+1. `lightshield scan 127.0.0.1 --output-format pdf --confirm-ownership` 生成 .pdf 文件
+2. Web 报告页点击"下载 PDF" → 浏览器下载 .pdf 文件
+3. PDF 包含中文标题/描述/表格（中文环境）
+4. PDF 包含封面 + 资产概览 + 风险摘要 + 漏洞详情 + 加固建议
+5. 严重度有颜色标签区分
+6. `ruff check lightshield/report/` 零违规
+7. 现有 575 条测试全量通过
+
+### 启动提示词（直接复制到 Codex）
+
+```
+你是 LightShield 项目的高级开发工程师，使用 GPT-5.5 模型。
+
+## 项目背景
+LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Python 3.10+。
+路径：E:/Github Project/LightShield/
+
+## 任务：实现 PDF 报告导出（v0.3.4）
+
+### 前置条件
+- ReportGenerator 已支持 markdown/text 双格式，generate(scan_result, findings, fmt) 接口
+- Web dashboard 已有报告查看器（report.html）
+- CLI 已有 --output-format 参数（choices: markdown, text）
+
+### 你要创建/修改的文件
+
+**新建：**
+1. lightshield/report/pdf_writer.py — PDF 生成器（fpdf2 + 中文字体）
+
+**修改：**
+2. lightshield/report/reporter.py — generate() 增加 fmt="pdf" 分支
+3. pyproject.toml — [web] 增加 fpdf2>=2.8 依赖
+4. lightshield/web/templates/report.html — 增加"下载 PDF"按钮
+5. lightshield/cli.py — --output-format choices 增加 pdf
+
+### pdf_writer.py 要求
+
+- 使用 fpdf2 库（纯 Python，pip install fpdf2）
+- 中文字体自动发现：Windows → C:/Windows/Fonts/msyh.ttc，Linux → /usr/share/fonts/
+- 找不到中文字体时降级为英文（标注警告日志）
+- PDF 结构：封面 → 资产概览表 → 风险摘要表 → 漏洞详情（按严重度排列）→ 加固建议表 → 页脚（页码+时间）
+- 严重度颜色：CRITICAL=紫 HIGH=红 MEDIUM=橙 LOW=黄 INFO=灰
+- 表格自动分页
+
+### reporter.py 改动
+
+- generate() 中 fmt="pdf" → 调用 _generate_pdf(scan_result, findings, harden)
+- generate_and_save() 中 pdf 格式用 .pdf 扩展名
+
+### report.html 改动
+
+- 导航栏增加"下载 PDF"按钮：href="/api/report/{{ scan_id }}?format=pdf" download
+
+### cli.py 改动
+
+- --output-format choices=["markdown", "text", "pdf"]
+
+### 约束
+- fpdf2 放 [web] optional-deps，不进入核心依赖
+- 中文字体缺失 → 优雅降级 + 日志警告
+- PDF 内容结构对齐 Markdown 报告（四章）
+- CLI 和 Web 共用 PdfReportWriter
+
+### 验收
+1. lightshield scan 127.0.0.1 --output-format pdf 生成 .pdf
+2. Web 报告页"下载 PDF"按钮可下载
+3. PDF 含中文标题/描述/表格/颜色标签
+4. ruff 零违规 + 575 条测试全量通过
+
+### 输出
+5 个文件：pdf_writer.py（新）+ reporter.py + pyproject.toml + report.html + cli.py
+
+---
+
+## 十七、v0.3.5 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.0.24 将 CVE 知识库从 28 条扩充到 70 条，覆盖 22 个组件。但仍有缺口：
+- 缺少 Jenkins、Elasticsearch、Kubernetes、HAProxy 等 DevOps 关键组件
+- 部分组件覆盖不足（nginx 3条、mysql 3条、redis 3条）
+- 无法从 NVD 自动获取最新 CVE，依赖手动更新
+
+v0.3.5 目标：CVE 70→100+，新增 4 个组件，实现 `--cve-update` CLI 自动拉取 NVD。
+
+### 依赖就绪
+
+```
+lightshield/scanners/component_checker.py  ✅ CVE_DATABASE 70 条 / 22 组件 / CveEntry dataclass
+lightshield/cli.py                          ✅ --rules-url 远程导入模式可复用
+```
+
+### 任务：CVE 知识库扩充 + NVD 自动更新
+
+**修改 1 个文件：** `lightshield/scanners/component_checker.py`
+
+#### 任务A：CVE 条目扩充（70 → 100+）
+
+新增 ~30 条高质量 CVE，覆盖以下组件：
+
+**新增组件（需创建别名映射）：**
+| 组件 | 目标条目 | 建议 CVE |
+|------|:--:|------|
+| `jenkins` | 3+ | CVE-2024-23897（CLI 任意文件读取 9.8）/ CVE-2023-35177（XSS）/ CVE-2022-29047（CSRF） |
+| `elasticsearch` | 3+ | CVE-2023-46673（权限绕过 7.5）/ CVE-2022-23710（XSS）/ CVE-2021-22145（信息泄露） |
+| `kubernetes` | 2+ | CVE-2023-5044（Ingress 注入 8.8）/ CVE-2022-3172（API Server SSRF） |
+| `haproxy` | 2+ | CVE-2023-40225（HTTP/2 请求走私 7.5）/ CVE-2023-0836（信息泄露） |
+
+**已有组件补充：**
+| 组件 | 当前 | 目标 | 建议 |
+|------|:--:|:--:|------|
+| `nginx` | 3 | 5+ | CVE-2024-7344 / CVE-2022-41741 |
+| `mysql` | 3 | 5+ | CVE-2024-21096 / CVE-2023-22084 |
+| `redis` | 2 | 4+ | CVE-2024-31449 / CVE-2022-24834 |
+| `postgresql` | 2 | 4+ | CVE-2024-4317 / CVE-2023-5869 |
+| `apache_tomcat` | 2 | 4+ | CVE-2024-34750 / CVE-2023-46589 |
+| `nodejs` | 2 | 4+ | CVE-2024-27980 / CVE-2023-46809 |
+| `openssl` | 2 | 3+ | CVE-2023-5363 |
+| `apache_httpd` | 3 | 5+ | CVE-2024-4084 / CVE-2023-45802 |
+| `php` | 3 | 5+ | CVE-2024-2961 / CVE-2023-3824 |
+| `wordpress` | 3 | 4+ | CVE-2024-4439 |
+| `mariadb` | 2 | 3+ | CVE-2023-51531 |
+| `drupal` | 2 | 3+ | CVE-2024-21512 |
+
+#### 任务B：NVD API 自动更新（`--cve-update`）
+
+在 `component_checker.py` 中新增函数：
+
+```python
+def fetch_latest_cves(api_key: str | None = None, max_results: int = 20) -> list[CveEntry]:
+    """从 NVD API 2.0 拉取最新 CVE 条目。
+
+    Args:
+        api_key: NVD API key（可选，无 key 则限速 5 req/30s）
+        max_results: 最多拉取条数
+
+    Returns:
+        CveEntry 列表（使用已有组件名映射，无法映射的跳过）
+    """
+```
+
+配合 CLI 参数 `--cve-update`（可选 `--nvd-api-key`）。
+
+### 约束
+
+1. **CVE 编号必须真实存在**于 NVD（nvd.nist.gov），优先 2022-2025 年 CVSS≥7.5 的高价值 CVE
+2. **版本范围必须精确**：`min_version` / `max_affected` 必须与 CPE 匹配
+3. **CVSS 分数准确**：使用 CVSS v3.x Base Score
+4. **中文描述**：title/description/remediation 全部中文化，防御者视角
+5. **格式严格**：`CveEntry` dataclass 字段完整
+6. **NVD API**：使用 `requests`（已依赖），遵守 NVD rate limit（无 key=5req/30s，有 key=50req/30s）
+7. **组件别名映射**：`_COMPONENT_ALIASES` 中 CPE vendor/product 到组件名的映射
+
+### 验收标准
+
+1. CVE_DATABASE 总条目 ≥ 100
+2. 覆盖组件 ≥ 26（新增 4 个）
+3. Jenkins/Elasticsearch/K8s/HAProxy 各有 ≥2 条 CVE
+4. 原有 10 个组件至少 +1 条
+5. `CveEntry` 格式无语法错误
+6. `--cve-update` 可从 NVD API 拉取最新 CVE（需联网）
+7. 现有 580 条测试全量通过
+8. ruff 零违规
+
+### 启动提示词（直接复制到 Codex）
+
+```
+你是 LightShield 项目的高级开发工程师，使用 GPT-5.5 模型。
+
+## 项目背景
+LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Python 3.10+。
+路径：E:/Github Project/LightShield/
+
+## 任务：CVE 知识库扩充 + NVD 自动更新（v0.3.5）
+
+### 前置条件
+- lightshield/scanners/component_checker.py 已有 70 条 CVE / 22 组件 / CveEntry dataclass / _COMPONENT_ALIASES
+- 项目已依赖 requests（NVD API 调用用）
+
+### 修改 1 个文件
+
+**lightshield/scanners/component_checker.py**
+
+#### 任务A：CVE 扩充（70 → 100+）
+
+新增 ~30 条 CVE：
+- 新组件：jenkins(3+), elasticsearch(3+), kubernetes(2+), haproxy(2+) — 需添加组件别名映射
+- 已有组件补充：nginx/mysql/redis/postgresql/tomcat/nodejs/openssl/httpd/php/wordpress/mariadb/drupal 各 +1~2 条
+
+#### 任务B：NVD API 自动更新
+
+新增函数 fetch_latest_cves(api_key=None, max_results=20) → list[CveEntry]
+- 调用 NVD API 2.0: https://services.nvd.nist.gov/rest/json/cves/2.0
+- 添加 CLI --cve-update 参数（可选 --nvd-api-key）
+- 遵守 NVD rate limit
+
+## 约束
+- CVE 编号必须真实存在于 NVD（nvd.nist.gov）
+- 版本范围精确 / CVSS 准确 / 中文描述
+- CveEntry 格式严格 / 组件别名映射正确
+- NVD API 限速（无 key=5req/30s）
+
+## 验收
+1. CVE_DATABASE ≥ 100 条，组件 ≥ 26
+2. 4 个新组件各 ≥2 条
+3. 原有 10 组件各 +1 条
+4. --cve-update 可拉取最新 CVE
+5. 580 tests pass / ruff 零违规
+
+## 输出
+只修改 1 个文件：lightshield/scanners/component_checker.py

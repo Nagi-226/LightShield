@@ -111,6 +111,8 @@ def test_report_page_loads_marked_and_fetches_markdown(auth_client):
     html = response.get_data(as_text=True)
     assert "marked.min.js" in html
     assert f"/api/report/{scan_id}?format=markdown" in html
+    assert f"/api/report/{scan_id}?format=pdf" in html
+    assert "download" in html
     assert f"/harden/{scan_id}" in html
     assert "report-content" in html
 

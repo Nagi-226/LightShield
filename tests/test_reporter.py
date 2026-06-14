@@ -14,7 +14,9 @@
 
 import os
 import shutil
+import sys
 import tempfile
+import types
 from unittest.mock import patch
 
 import pytest
@@ -22,6 +24,66 @@ import pytest
 from lightshield.adapters.base import ScanResult, VulnFinding
 from lightshield.report.reporter import ReportGenerator
 from lightshield.utils.constants import RiskLevel, ScanStatus
+
+
+class FakeFPDF:
+    """Small fpdf2 stand-in used to test PdfReportWriter without the optional dependency."""
+
+    def __init__(self):
+        self.calls: list[tuple] = []
+        self.page_no_value = 0
+
+    def set_auto_page_break(self, *args, **kwargs):
+        self.calls.append(("set_auto_page_break", args, kwargs))
+
+    def alias_nb_pages(self):
+        self.calls.append(("alias_nb_pages",))
+
+    def add_font(self, *args, **kwargs):
+        self.calls.append(("add_font", args, kwargs))
+
+    def set_font(self, *args, **kwargs):
+        self.calls.append(("set_font", args, kwargs))
+
+    def add_page(self):
+        self.page_no_value += 1
+        self.calls.append(("add_page",))
+
+    def set_fill_color(self, *args):
+        self.calls.append(("set_fill_color", args))
+
+    def set_text_color(self, *args):
+        self.calls.append(("set_text_color", args))
+
+    def cell(self, *args, **kwargs):
+        self.calls.append(("cell", args, kwargs))
+
+    def multi_cell(self, *args, **kwargs):
+        self.calls.append(("multi_cell", args, kwargs))
+
+    def ln(self, *args):
+        self.calls.append(("ln", args))
+
+    def set_y(self, *args):
+        self.calls.append(("set_y", args))
+
+    def page_no(self):
+        return self.page_no_value
+
+    def get_y(self):
+        return 20
+
+    def output(self, dest="S"):
+        self.calls.append(("output", dest))
+        return bytearray(b"%PDF-1.4\nfake\n%%EOF")
+
+
+@pytest.fixture
+def fake_fpdf_module(monkeypatch):
+    """Install a fake fpdf module for tests that exercise the PDF writer."""
+    module = types.SimpleNamespace(FPDF=FakeFPDF)
+    monkeypatch.setitem(sys.modules, "fpdf", module)
+    return module
 
 
 @pytest.fixture
@@ -178,6 +240,32 @@ class TestGenerateText:
 
 
 # =============================================================================
+# generate — PDF
+# =============================================================================
+
+
+class TestGeneratePdf:
+    """generate(..., fmt="pdf")"""
+
+    def test_pdf_writer_returns_pdf_bytes(self, sample_scan_result, sample_findings, sample_harden, fake_fpdf_module):
+        """PdfReportWriter 应返回 PDF bytes。"""
+        from lightshield.report.pdf_writer import PdfReportWriter
+
+        writer = PdfReportWriter()
+        data = writer.write(sample_scan_result, sample_findings, sample_harden)
+        assert isinstance(data, bytes)
+        assert data.startswith(b"%PDF")
+
+    def test_generate_pdf_returns_bytes(
+        self, reporter, sample_scan_result, sample_findings, sample_harden, fake_fpdf_module
+    ):
+        """ReportGenerator 的 pdf 分支应返回 bytes。"""
+        report = reporter.generate(sample_scan_result, sample_findings, sample_harden, fmt="pdf")
+        assert isinstance(report, bytes)
+        assert report.startswith(b"%PDF")
+
+
+# =============================================================================
 # save
 # =============================================================================
 
@@ -237,6 +325,16 @@ class TestGenerateAndSave:
         """Text 格式生成 .txt 文件"""
         path = reporter.generate_and_save(sample_scan_result, sample_findings, sample_harden, fmt="text")
         assert path.endswith(".txt")
+
+    def test_pdf_format_generates_pdf(
+        self, reporter, sample_scan_result, sample_findings, sample_harden, fake_fpdf_module
+    ):
+        """PDF 格式生成 .pdf 文件。"""
+        path = reporter.generate_and_save(sample_scan_result, sample_findings, sample_harden, fmt="pdf")
+        assert path.endswith(".pdf")
+        assert os.path.exists(path)
+        with open(path, "rb") as f:
+            assert f.read(4) == b"%PDF"
 
 
 # =============================================================================

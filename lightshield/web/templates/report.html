@@ -3,6 +3,7 @@
 {% block title %}报告 - LightShield 轻盾{% endblock %}
 
 {% block nav_actions %}
+<a class="ghost-button" href="{{ url_for('api.api_get_report', scan_id=scan_id, format='pdf') }}" download>下载 PDF</a>
 <a class="ghost-button" href="{{ url_for('pages.harden_page', scan_id=scan_id) }}">加固建议</a>
 <a class="ghost-button" href="{{ url_for('pages.dashboard') }}">返回</a>
 {% endblock %}
@@ -30,6 +31,7 @@
   </article>
 
   <div class="report-actions">
+    <a class="report-cta" href="{{ url_for('api.api_get_report', scan_id=scan_id, format='pdf') }}" download>下载 PDF 报告</a>
     <a class="report-cta" href="{{ url_for('pages.harden_page', scan_id=scan_id) }}">查看加固建议</a>
   </div>
 </section>

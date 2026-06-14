@@ -105,7 +105,8 @@ hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-XXX.md)"
 | **v0.0.11** | `pyproject.toml` + 依赖更新 | 现代化打包配置 + 依赖清单对齐 | ✅ | ✅ |
 | **v0.0.18** | `deploy_linux.sh` + `deploy_win.ps1` | 一键部署脚本 | ✅ | ✅ 171+239行 |
 | **v0.0.20** | `LICENSE` + docs 骨架 | MIT + INSTALL/USAGE/FAQ 占位 | ✅ | ✅ CC 填充 |
-| **v0.0.30** | 文档更新（Web 章节） | INSTALL/USAGE/FAQ/CHANGELOG 补充 Web 内容 | 🟢 当前 | ⬜ |
+| **v0.0.30** | 文档更新（Web 章节） | INSTALL/USAGE/FAQ/CHANGELOG 补充 Web 内容 | ✅ | ✅ |
+| **v0.3.3** | Docker 部署 | Dockerfile + docker-compose.yml + 数据卷持久化 | 🟢 当前 | ⬜ |
 
 ### Hermes 全任务完成统计
 
@@ -115,15 +116,16 @@ v0.0.02  constants.py + requirements.txt     ✅
 v0.0.11  pyproject.toml + 依赖更新            ✅
 v0.0.18  deploy_linux.sh + deploy_win.ps1    ✅
 v0.0.20  LICENSE + docs 骨架                 ✅ (CC 填充)
+v0.0.30  文档更新（Web 章节）                 ✅
 ──────────────────────────────────────────────
-         5/6 完成，1 个待执行 🟢
+         6/7 完成，1 个待执行 🟢
 ```
 
-> 当前状态：**v0.0.30 文档更新已分配，等待执行。**
+> 当前状态：**v0.3.3 Docker 部署已分配，等待执行。**
 
 ---
 
-### v0.0.20 启动提示词（当前任务，直接复制给 Hermes）
+### v0.0.20 启动提示词（已完成 ✅）
 
 ```
 你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
@@ -395,7 +397,152 @@ LightShield 轻盾 v0.3.0 即将发布。v0.0.27-29 新增了完整的 Web 仪�
 4. CHANGELOG.md（插入 [0.3.0] 条目）
 ```
 
-## 十、代码规范
+---
+
+## 十、v0.3.3 详细任务 + 启动提示词 🟢 当前任务
+
+### 背景
+
+v0.3.0 已发布。LightShield 现在有完整的 CLI + Web 仪表板能力。
+当前部署方式需要手动安装 Python 3.10+、Nmap、pip install 等依赖。
+v0.3.3 需要提供 Docker 一键部署方案，让用户无需手动配置环境。
+
+### 任务：创建 Docker 部署方案
+
+**新建 2 个文件：**
+
+#### 1. `Dockerfile` — 多阶段构建
+
+需求：
+- 基础镜像：`python:3.12-slim`（轻量，~50MB）
+- 安装系统依赖：`nmap`（网络扫描核心）、`curl`（健康检查）
+- 安装 Python 依赖：`lightshield[web]`（Flask API + 仪表板）
+- 创建非 root 用户 `lightshield`（安全最佳实践）
+- 暴露端口：`5000`（Web 仪表板）
+- 数据卷：`/data`（SQLite 数据库 + 报告持久化）
+- 启动命令：`lightshield serve --host 0.0.0.0 --port 5000`
+- 健康检查：`curl -f http://localhost:5000/api/login` 或 `lightshield version`
+
+```dockerfile
+# ---- 构建阶段 ----
+FROM python:3.12-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends nmap
+COPY . /build
+WORKDIR /build
+RUN pip install --no-cache-dir -e ".[web]"
+
+# ---- 运行阶段 ----
+FROM python:3.12-slim
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nmap curl && \
+    rm -rf /var/lib/apt/lists/*
+RUN useradd --create-home --shell /bin/bash lightshield
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /build /app
+WORKDIR /app
+RUN pip install --no-deps -e ".[web]"
+RUN mkdir -p /data/reports /data/logs && chown -R lightshield:lightshield /data /app
+USER lightshield
+EXPOSE 5000
+VOLUME ["/data"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl -f http://localhost:5000/static/style.css || exit 1
+CMD ["lightshield", "serve", "--host", "0.0.0.0", "--port", "5000"]
+```
+
+#### 2. `docker-compose.yml` — 一键启动
+
+需求：
+- 服务名：`lightshield`
+- 构建：`.`（当前目录的 Dockerfile）
+- 端口映射：`"127.0.0.1:5000:5000"`（默认仅本地访问，安全）
+- 环境变量：`LS_WEB_USERNAME` / `LS_WEB_PASSWORD`（默认 admin/lightshield）
+- 数据卷：`./data:/data`（持久化 SQLite + 报告）
+- 重启策略：`unless-stopped`
+- 注释说明如何暴露到局域网/公网
+
+```yaml
+version: "3.9"
+services:
+  lightshield:
+    build: .
+    container_name: lightshield
+    ports:
+      - "127.0.0.1:5000:5000"   # 仅本地访问。暴露到局域网改为 "5000:5000"
+    environment:
+      - LS_WEB_USERNAME=admin
+      - LS_WEB_PASSWORD=lightshield    # 生产环境请修改
+    volumes:
+      - ./data:/data              # SQLite + 报告持久化
+    restart: unless-stopped
+```
+
+### 约束
+
+- 中文注释 Dockerfile 的每个阶段
+- Dockerfile 必须多阶段构建（减小最终镜像体积）
+- 非 root 用户运行（安全最佳实践）
+- docker-compose.yml 默认仅绑定 127.0.0.1（安全）
+- 环境变量注释要提醒用户修改默认凭证
+- 镜像大小目标：<300MB
+
+### 验收标准
+
+1. `docker compose up` 一键启动 Web 仪表板
+2. `curl http://127.0.0.1:5000` 返回登录页面 HTML
+3. 数据在 `./data/` 目录持久化（重启不丢失扫描历史）
+4. 容器以非 root 用户运行（`docker exec lightshield whoami` → `lightshield`）
+5. 健康检查生效（`docker ps` 显示 healthy）
+
+### 启动提示词（直接复制到 Hermes）
+
+```
+你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
+
+## 项目背景
+LightShield 轻盾 v0.3.0 已发布。项目有完整的 CLI + Web 仪表板（Flask）。
+路径：E:/Github Project/LightShield/
+
+当前部署依赖手动安装 Python/Nmap/pip，需要 Docker 一键部署方案。
+
+## 任务：创建 Docker 部署方案（2 个新文件）
+
+### 1. Dockerfile（多阶段构建）
+- 基础镜像 python:3.12-slim
+- 系统依赖：nmap、curl
+- Python 依赖：pip install lightshield[web]
+- 非 root 用户 lightshield 运行
+- 暴露端口 5000
+- 数据卷 /data（SQLite + 报告）
+- 启动命令：lightshield serve --host 0.0.0.0 --port 5000
+- 健康检查：curl 本地 /static/style.css
+- 目标：镜像 < 300MB
+
+### 2. docker-compose.yml
+- 服务名 lightshield
+- 端口 127.0.0.1:5000:5000（默认仅本地）
+- 环境变量 LS_WEB_USERNAME / LS_WEB_PASSWORD
+- 数据卷 ./data:/data
+- 重启策略 unless-stopped
+- 中文注释
+
+## 约束
+- 中文注释，Flash 模型 (-m deepseek-v4-flash)
+- 多阶段构建减小镜像
+- 非 root 运行
+- 默认仅监听本地（安全），注释说明如何开放
+
+## 验收
+1. docker compose up 一键启动
+2. curl http://127.0.0.1:5000 返回登录页
+3. ./data/ 持久化
+4. 非 root 运行
+5. 健康检查 healthy
+
+## 输出
+2 个新文件：Dockerfile + docker-compose.yml
+```
+
+## 十一、代码规范
 
 - 生成的 `__init__.py` 包含中文 docstring 和 `__all__`
 - `requirements.txt` 每个依赖注明版本范围和用途（中文注释）

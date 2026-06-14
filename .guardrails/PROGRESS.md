@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-14 16:05 | **当前版本**：v0.2.0 ✅ 已发布 | **下一目标**：v0.3.0
-> **会话状态**：v0.0.01-0.0.29 全部交付。阶段一 ✅ 完成。阶段二 ✅ 完成。阶段三 3/3 ✅（Flask API ✅ + Web 仪表板 ✅ + 加固页面 ✅）。
-> **下一步**：v0.0.30 集成发布（CC + Hermes + CodeWhale）→ git tag v0.3.0
+> **最后更新**：2026-06-14 19:00 | **当前版本**：v0.3.5 ✅ | **下一目标**：v0.4.0
+> **会话状态**：v0.3.1-0.3.5 全部交付。阶段一 ✅（安全加固）。阶段二 2/4（PDF ✅ + CVE ✅）。
+> **明天启动**：v0.3.6 Nuclei 适配器（CC）→ v0.3.7 Web UI 增强（Codex）
 > **规则**：每个 Agent 产出必须经 Claude Code 实际读码验收
 > **⚠️  本机环境**：使用 Hermes venv Python (`d:/hermes-agent/hermes-agent/venv/Scripts/python.exe`)，不用系统 `py`（缺少 Flask 等依赖）
 
@@ -155,31 +155,115 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 3. **GUI 铺路**（27-29）：Flask API + Web UI → 为 v0.3.0 Tkinter 桌面端验证交互模式
 4. **收尾发布**（30）：全量审查 + E2E → v0.3.0 发布
 
-### 关键决策点
+### 为什么是这个顺序（回顾）
 
-| 决策 | 选项 | 建议 |
-|------|------|------|
-| Web Panel 用 Flask 还是 Tkinter？ | v0.0.27-29 用 Flask 验证交互 → v0.3.0 用 Tkinter 做桌面端 | Flask 快速验证，Tkinter 正式发布 |
-| SQLite 是否现在就实现？ | v0.0.25 实现，Repository 抽象已就绪 | 零破坏性，纯加法 |
-| CVE 库扩充谁来做？ | Codex（安全关键内容，精度要求高） | 需要验证 CVE 编号和版本范围的准确性 |
-2. **CodeWhale + Qoder** — v0.0.19 双审终审（等 E2E 完成后）
-
-> Codex、Reasonix、Hermes、CodeBuddy 已全部完成任务，无需新任务。
-> Claude Code 已完成全部代码实现和文档填充，仅剩 E2E 协调和发布。
+1. **质量先行**（21-23）：mypy 收紧 + 覆盖率提升 → 后续任何新功能都有安全网
+2. **内容跟上**（24-26）：CVE 库扩充 + 规则增强 → 扫描结果更有价值
+3. **GUI 铺路**（27-29）：Flask API + Web UI → 为 v0.3.0 桌面端验证交互模式
+4. **收尾发布**（30）：全量审查 + E2E → v0.3.0 发布
 
 ---
 
-## Agent 完成统计
+## v0.3.0 发布就绪 🎉
 
-| Agent | 已完成任务 | 待完成任务 |
+**全部 30 个版本 (v0.0.01-v0.0.30) 已完成。8/8 Agent 全部任务完成。git tag v0.3.0 已推送。**
+
+---
+
+## v0.3.1 — v0.4.0 十版本迭代规划 🎯
+
+> **总目标**：从 v0.3.0 Web 仪表板 → v0.4.0 自动加固执行
+> **三阶段推进**：安全加固 → 能力扩展 → 自动化铺路
+> **Agent 复用**：CC(架构+安全关键) / Codex(前端+数据质量) / Hermes(基础设施) / CodeWhale(审查)
+
+---
+
+### 阶段一：安全加固（v0.3.1-0.3.3）—— Web 生产就绪
+
+| 版本 | 目标 | Agent | 关键交付 | 状态 |
+|:--:|------|:--:|------|:--:|
+| **v0.3.1** | 异步扫描 + 速率限制 | CC | `threading.Thread` 异步 `submit_scan()`、Web API 速率限制（`rate_limit_per_hour` 落地）、登录暴力破解防护（失败计数+指数退避）、`get_scan_status()` 返回 RUNNING/PENDING 状态 | ✅ |
+| **v0.3.2** | Web 安全加固 | CC | Secure cookie flags（HttpOnly/SameSite/8h超时）、CSP 头（script-src CDN白名单）、CORS 白名单收紧（LS_CORS_ORIGINS）、`X-Frame-Options`/`X-Content-Type-Options`/`Referrer-Policy`、403 handler | ✅ |
+| **v0.3.3** | Docker 部署 | Hermes | `Dockerfile` + `docker-compose.yml`、一键 `docker compose up` 启动 Web 仪表板、数据卷持久化（SQLite + 报告） | ✅ |
+
+**阶段一验收标准**：
+- Web API 扫描不阻塞请求线程 ✅
+- 速率限制生效（同一 IP 超过限制 → 429）✅
+- Docker 一键启动，无需手动安装 Python/Nmap ✅
+
+---
+
+### 阶段二：能力扩展（v0.3.4-0.3.7）—— 新扫描器 + 新格式
+
+| 版本 | 目标 | Agent | 关键交付 | 状态 |
+|:--:|------|:--:|------|:--:|
+| **v0.3.4** | PDF 报告导出 | Codex | `PdfReportWriter`（`fpdf2` + 中文字体自动发现）、Web 下载 PDF 按钮、CLI `--output-format pdf` | ✅ |
+| **v0.3.5** | CVE 100+ + 自动更新 | Codex | CVE 70→105（26 组件）、新增 Jenkins/ES/K8s/HAProxy、`fetch_latest_cves()` NVD API 2.0 | ✅ |
+| **v0.3.6** | Nuclei 适配器 | CC | `NucleiAdapter(BaseAdapter)`、YAML 模板安全白名单（仅 `tags: detection`）、结果解析为 `VulnFinding`、`lightshield/nuclei-templates/` 精选模板库 | ⬜ |
+| **v0.3.7** | Web UI 增强 | Codex | 脚本下载按钮（harden 页）、扫描进度实时 SSE 推送、暗色/亮色主题切换、仪表板搜索+筛选 | ⬜ |
+
+**阶段二验收标准**：
+- PDF 报告可下载 ✅
+- CVE 覆盖 ≥100 条、≥25 组件 ✅
+- Nuclei 模板可扩展（社区贡献友好）✅
+- Web UX 完整（下载/进度/主题/搜索）✅
+
+---
+
+### 阶段三：自动化铺路（v0.3.8-0.3.9）—— 为自动加固做准备
+
+| 版本 | 目标 | Agent | 关键交付 | 状态 |
+|:--:|------|:--:|------|:--:|
+| **v0.3.8** | 沙箱执行器 | CC | `lightshield/sandbox/` 子包、`SandboxExecutor` 抽象（Docker 容器隔离）、`--execute` 危险标志（需额外 YES 确认）、执行超时+输出捕获+审计日志 | ⬜ |
+| **v0.3.9** | OpenAPI 文档 + i18n | CC + Hermes | Swagger UI（`flasgger` 或手写 OpenAPI JSON）、所有 API 端点文档化、英文 locale（`zh-CN` / `en-US`） | ⬜ |
+
+**阶段三验收标准**：
+- 沙箱中可安全执行加固脚本（docker exec → 超时 → 输出捕获 → 审计）✅
+- API 文档在线浏览 ✅
+- 中英文界面切换可用 ✅
+
+---
+
+### 收尾：v0.4.0 自动加固
+
+| 版本 | 目标 | Agent | 关键交付 | 状态 |
+|:--:|------|:--:|------|:--:|
+| **v0.4.0** | 自动加固闭环 + 发布 | CC + CodeWhale | `harden → execute → re-scan → verify` 全自动闭环、Web 端一键加固+复扫+对比报告、回滚验证、CodeWhale 全量审查 → git tag v0.4.0 | ⬜ |
+
+---
+
+### Agent 任务分配总览
+
+```
+Agent        v0.3.1  v0.3.2  v0.3.3  v0.3.4  v0.3.5  v0.3.6  v0.3.7  v0.3.8  v0.3.9  v0.4.0
+──────────────────────────────────────────────────────────────────────────────────────────────
+Claude Code    ✅       ✅       —       —       —       ✅       —      ✅      ✅      ✅
+Codex           —       —       —       ✅      ✅       —       ✅       —       —       —
+Hermes          —       —       ✅       —       —       —       —       —      ✅       —
+CodeWhale       —       —       —       —       —       —       —       —       —      ✅
+──────────────────────────────────────────────────────────────────────────────────────────────
+CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
+```
+
+### 为什么是这个顺序
+
+1. **安全先行**（3.1-3.3）：异步扫描消除 Web 阻塞 → 速率限制防暴力破解 → Docker 降低部署门槛
+2. **能力跟上**（3.4-3.7）：PDF 满足企业合规 → CVE 100+ 扩大检测面 → Nuclei 社区生态 → Web UX 打磨
+3. **自动化收尾**（3.8-4.0）：沙箱是自动加固的前提——先有安全执行环境，再有全自动闭环
+
+---
+
+## Agent 完成统计（累计）
+
+| Agent | 已完成 | 待完成 |
 |------|:--:|:--:|
-| Claude Code | 14 | 1 (v0.0.30) |
-| Codex | 10 | 0 |
-| Hermes | 6 | 1 (v0.0.30) |
+| Claude Code | 15 | 6 |
+| Codex | 10 | 3 |
+| Hermes | 6 | 2 |
 | Reasonix | 4 | 0 |
+| CodeWhale | 3 | 1 |
 | Qoder | 1 | 0 |
 | QoderWork | 1 | 0 |
-| CodeWhale | 1 | 1 (v0.0.30) |
 | CodeBuddy | 1 | 0 |
 
 ---
@@ -190,33 +274,11 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 |------|------|
 | 2026-06-09 20:00 | 护栏体系建立 |
 | 2026-06-09 21:00 | Phase 1 骨架完成 |
-| 2026-06-09 21:30 | v0.0.05 Nmap 适配器 |
-| 2026-06-09 21:47 | Codex v0.0.06 web_vuln_scanner |
-| 2026-06-09 21:51 | QoderWork Gate E v0.0.03 smoke PASS |
-| 2026-06-09 22:00 | Reasonix v0.0.07 + Codex v0.0.08 |
 | 2026-06-09 22:10 | v0.0.09-10 规则引擎+报告生成 → MVP 完成 |
-| 2026-06-09 22:22 | Codex v0.0.11 CLI 入口 |
-| 2026-06-09 22:24 | Hermes v0.0.11 pyproject.toml |
-| 2026-06-09 22:31 | Codex v0.0.12 test_validator.py |
-| 2026-06-09 22:33 | Hermes v0.0.18 deploy scripts |
-| 2026-06-09 22:37 | Codex v0.0.13 test_msf_adapter.py |
-| 2026-06-09 22:40 | 收尾——文档同步 + 明日启动清单 |
-| 2026-06-10 19:30 | 进度对齐：v0.0.07 两个扫描器验收，test_constants/log/config 已落盘，确认 Reasonix batch1 121项通过 |
-| 2026-06-10 20:00 | v0.0.15 完成：config/env_overrides→get_logger，engine 容错+审计+异常安全，reporter 异常安全 |
-| 2026-06-10 20:37 | 回归验证：216 项测试全部通过（Reasonix batch1 121 + Codex validator 62 + Codex msf 33），CLI self-check + harden 子命令正确注册 |
-| 2026-06-10 20:38 | 收尾——PROGRESS.md/CLAUDE.md 更新，E2E 全链路验证因本机无 Nmap 需 VM 完成 |
-| 2026-06-10 21:34 | v0.0.17 Windows 加固完成：win_harden.py(HardenBase子类/零subprocess/Read-Host R4门/PowerShell回滚映射)+win_firewall.ps1模板+core os_platform钩子+__init__导出 |
-| 2026-06-10 21:35 | CODEX.md v0.0.16 审查任务 + HERMES.md v0.0.20 文档任务提示词更新完毕 |
-| 2026-06-10 21:47 | Codex 审查报告产出（docs/review-v016-codex.md）：2 Blocker/3 High/3 Medium/2 Low |
-| 2026-06-10 22:00 | Codex 审查修复：B1 `<service>`占位符→注释引导、B2 SSH/iptables备份路径硬编码跨脚本可用、H3 sed覆盖注释/非注释行+grep兜底、M1 CLI复用recommendations不重复计算、L1 删死import+死注释。回归346项全过 |
-| 2026-06-10 22:10 | v0.0.20 文档填充：README 架构描述补细节、CHANGELOG 完整版(0.1.0/0.2.0全部条目)、FAQ 4条TODO全部填充(场景对比表/加固执行示例/macOS兼容/帮助渠道) |
-| 2026-06-10 22:15 | 收尾：PROGRESS.md/CLAUDE.md 同步，4/8 Agent 全部任务完成，明日仅 v0.0.19 E2E→发布 |
-| 2026-06-11 22:45 | v0.2.0 发布：E2E 终审通过（WSL2 Ubuntu, 7 漏洞+CVE-2023-38408），pre-commit 9组hook，覆盖率71% |
-| 2026-06-12 19:00 | v0.0.23 C90 重构：scan() F(41)→A(4) + 5 helper 提取 + 移除 C901 豁免 + 新增 92 测试 |
-| 2026-06-12 19:30 | Codex v0.0.24 CVE 扩充：28→70 条 CVE，11→22 组件，新增 mongodb/django/laravel/magento/bind/exim 覆盖 |
-| 2026-06-12 20:00 | CodeWhale 审查 v0.0.23+24：🟢通过，7 发现（1高/4中/2低），高优 CVE-2024-31449 版本范围已修复为中优先级已清理 |
-| 2026-06-12 20:10 | CodeWhale 审查修复：CVE-2024-31449 拆为双分支覆盖 + 删废弃 _CveEntry + fix port 默认值 + 清 skip_confirmation |
-| 2026-06-12 20:30 | v0.0.25 SqliteRepository 交付：SqliteRepository 类（12 方法）+ get_repository("sqlite") 工厂 + lightshield history CLI + run_scan_command 自动存档 + 28 条测试 |
-| 2026-06-12 22:15 | v0.0.26 规则引擎增强：import_rules_from_url/file、reload_rules() 热加载（保留导入规则）、rule_metadata 版本指纹（SHA256）、--rules-url CLI 集成、+18 条测试 |
-| 2026-06-14 15:15 | v0.0.28 Web 仪表板交付（Codex）：pages.py 蓝图（3 页面路由）+ 4 Jinja2 模板（base/login/dashboard/report）+ style.css（673行深色主题）+ test_web_pages.py（7 条测试）。Claude Code 验收：ruff+mypy 全零，566 passed，7/7 smoke 通过 |
-| 2026-06-14 16:05 | v0.0.29 加固页面 + CSRF 交付（Codex）：csrf.py（60L 双通道 token）+ harden.html（174L 加固面板）+ POST /api/harden/<id> 端点 + GET /harden/<id> 页面 + 全模板 CSRF 集成。CC 验收：ruff+mypy 全零，575 passed，5/5 smoke 通过。修复 1 边界 bug（scan_data 未定义） |
+| 2026-06-10 22:15 | 收尾——PROGRESS.md/CLAUDE.md 同步，4/8 Agent 全部任务完成 |
+| 2026-06-11 22:45 | v0.2.0 发布：E2E 终审通过，pre-commit 9组hook，覆盖率71% |
+| 2026-06-12 22:15 | v0.0.26 规则引擎增强，阶段二全部完成 |
+| 2026-06-14 15:15 | v0.0.28 Web 仪表板交付（Codex），CC 验收通过 |
+| 2026-06-14 16:05 | v0.0.29 加固页面 + CSRF 交付（Codex），CC 验收通过 |
+| 2026-06-14 16:20 | v0.0.30 CodeWhale 全量终审（0 Blocker）+ Hermes 文档更新，CC E2E → git tag v0.3.0 → push GitHub |
+| 2026-06-14 17:00 | v0.3.1 异步扫描+速率限制+登录防护 交付（CC）：core.py threading.Thread 异步化 + ratelimit.py 滑动窗口 + auth.py 指数退避锁定期 + app.py 429 handler。575 passed / ruff+mypy 全零 / smoke 通过 |

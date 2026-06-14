@@ -448,7 +448,7 @@ def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("target", help="自有目标 IP、域名或 localhost")
     parser.add_argument(
         "--output-format",
-        choices=["markdown", "text"],
+        choices=["markdown", "text", "pdf"],
         default="markdown",
         help="报告格式，默认 markdown",
     )
@@ -472,7 +472,7 @@ def _add_scan_arguments(parser: argparse.ArgumentParser, default_scan_types: str
     parser.add_argument("target", help="自有目标 IP、域名或 localhost")
     parser.add_argument(
         "--output-format",
-        choices=["markdown", "text"],
+        choices=["markdown", "text", "pdf"],
         default="markdown",
         help="报告格式，默认 markdown",
     )

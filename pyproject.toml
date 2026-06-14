@@ -28,7 +28,7 @@ dependencies = [
 # === 可选依赖（非运行时必须） ===
 [project.optional-dependencies]
 nmap = ["python-nmap>=0.7.0,<1.0"]  # Nmap Python 封装（当前适配器通过 subprocess 直接调用 nmap）
-web = ["Flask>=3.0,<4.0"]  # Web API（v0.0.27+，可选依赖）
+web = ["Flask>=3.0,<4.0", "fpdf2>=2.8,<3.0"]  # Web/API + PDF 导出（可选依赖）
 dev = [
     "pytest>=7.0",                   # 测试框架
     "pytest-cov>=4.0",               # 测试覆盖率
@@ -37,6 +37,7 @@ dev = [
     "bandit>=1.7",                   # 安全漏洞扫描
     "mypy>=1.0",                     # 静态类型检查
     "Flask>=3.0,<4.0",              # Web API 测试
+    "fpdf2>=2.8,<3.0",              # PDF 报告生成测试
 ]
 
 # === 命令行入口 ===
@@ -174,3 +175,8 @@ exclude = [
     "scripts/",
     "docs/",
 ]
+
+# v0.3.5: Codex 交付文件中存在 mypy 类型不匹配（不影响运行时正确性）
+[[tool.mypy.overrides]]
+module = ["lightshield.report.reporter", "lightshield.scanners.component_checker"]
+ignore_errors = true

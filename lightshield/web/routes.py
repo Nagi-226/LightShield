@@ -164,10 +164,10 @@ def api_get_report(scan_id: str):
     """获取扫描报告。
 
     Query params:
-        format: "markdown"（默认）或 "text"
+        format: "markdown"（默认）、"text" 或 "pdf"
 
     Response 200:
-        报告纯文本 (Content-Type: text/plain; charset=utf-8)
+        报告内容 (Markdown/Text: text/plain; PDF: application/pdf)
     Response 404:
         {"error": true, "message": "扫描记录不存在: LS-xxx", "code": 404}
     Response 409:
@@ -208,7 +208,7 @@ def api_get_report(scan_id: str):
 
     # 生成报告
     fmt = request.args.get("format", "markdown")
-    if fmt not in ("markdown", "text"):
+    if fmt not in ("markdown", "text", "pdf"):
         fmt = "markdown"
 
     reporter = ReportGenerator(output_dir=config.report_output_dir)
@@ -216,6 +216,16 @@ def api_get_report(scan_id: str):
         report = reporter.generate(scan_result, findings=findings, fmt=fmt)
     except Exception as exc:
         return jsonify({"error": True, "message": f"报告生成失败：{exc}", "code": 500}), 500
+
+    if fmt == "pdf":
+        return (
+            report,
+            200,
+            {
+                "Content-Type": "application/pdf",
+                "Content-Disposition": f'attachment; filename="lightshield-{scan_id}.pdf"',
+            },
+        )
 
     return report, 200, {"Content-Type": "text/plain; charset=utf-8"}
 

@@ -14,6 +14,7 @@ import os
 from datetime import datetime
 
 from lightshield.adapters.base import ScanResult, VulnFinding
+from lightshield.report.pdf_writer import PdfReportWriter
 from lightshield.utils.constants import RiskLevel
 from lightshield.utils.logger import get_logger
 
@@ -46,19 +47,21 @@ class ReportGenerator:
         findings: list[VulnFinding] | None = None,
         harden_recommendations: list[dict] | None = None,
         fmt: str = "markdown",
-    ) -> str:
+    ) -> str | bytes:
         """生成安全报告
 
         Args:
             scan_result: 扫描结果
             findings: 所有漏洞发现（扫描器 + 规则引擎的汇总）
             harden_recommendations: 加固策略推荐
-            fmt: 输出格式 "markdown" 或 "text"
+            fmt: 输出格式 "markdown"、"text" 或 "pdf"
 
         Returns:
             报告全文
         """
-        if fmt == "text":
+        if fmt == "pdf":
+            report = self._generate_pdf(scan_result, findings, harden_recommendations)
+        elif fmt == "text":
             report = self._generate_text(scan_result, findings, harden_recommendations)
         else:
             report = self._generate_markdown(scan_result, findings, harden_recommendations)
@@ -282,6 +285,15 @@ class ReportGenerator:
 
         return "\n".join(lines)
 
+    def _generate_pdf(
+        self,
+        result: ScanResult,
+        findings: list[VulnFinding] | None,
+        harden: list[dict] | None,
+    ) -> bytes:
+        """生成 PDF 格式报告。"""
+        return PdfReportWriter().write(result, findings, harden)
+
     # =========================================================================
     # 工具
     # =========================================================================
@@ -297,7 +309,7 @@ class ReportGenerator:
         summary["total"] = sum(summary.values())
         return summary
 
-    def save(self, report: str, filename: str = None) -> str:
+    def save(self, report: str | bytes, filename: str | None = None) -> str:
         """保存报告到文件
 
         Args:
@@ -315,8 +327,12 @@ class ReportGenerator:
         try:
             # 兜底：构造时若目录创建失败，这里再尝试一次
             os.makedirs(self._output_dir, exist_ok=True)
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(report)
+            if isinstance(report, bytes):
+                with open(filepath, "wb") as f:
+                    f.write(report)
+            else:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(report)
         except OSError as e:
             self._logger.error("report", f"报告保存失败：{filepath}", exception=e)
             raise OSError(f"报告保存失败：{filepath}（{e}）") from e
@@ -337,7 +353,7 @@ class ReportGenerator:
             报告文件路径
         """
         report = self.generate(scan_result, findings, harden, fmt)
-        ext = ".md" if fmt == "markdown" else ".txt"
+        ext = ".pdf" if fmt == "pdf" else ".md" if fmt == "markdown" else ".txt"
         return self.save(report, f"report-{datetime.now().strftime('%Y%m%d-%H%M%S')}{ext}")
 
 

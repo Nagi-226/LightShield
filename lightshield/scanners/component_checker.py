@@ -23,9 +23,11 @@ Web 组件及其版本，并与内置 CVE 知识库进行匹配，输出带风�
 
 from __future__ import annotations
 
+import argparse
 import re
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -52,7 +54,10 @@ _COMPONENT_ALIASES: dict[str, str] = {
     "openresty": "openresty",
     "tomcat": "apache_tomcat",
     "apache-coyote": "apache_tomcat",
+    "apache_tomcat": "apache_tomcat",
     "jetty": "jetty",
+    "haproxy": "haproxy",
+    "ha-proxy": "haproxy",
     # 脚本语言
     "php": "php",
     "python": "python",
@@ -73,9 +78,27 @@ _COMPONENT_ALIASES: dict[str, str] = {
     "laravel": "laravel",
     "flask": "werkzeug",
     "express": "nodejs",
+    "node.js": "nodejs",
+    "node": "nodejs",
+    "jenkins": "jenkins",
+    "jenkins-ci": "jenkins",
+    "jenkins_core": "jenkins",
+    "elasticsearch": "elasticsearch",
+    "elastic": "elasticsearch",
+    "kibana": "elasticsearch",
+    "kubernetes": "kubernetes",
+    "k8s": "kubernetes",
+    "kube-apiserver": "kubernetes",
+    "kube_apiserver": "kubernetes",
+    "ingress-nginx": "kubernetes",
+    "ingress_nginx": "kubernetes",
     # 其他
     "openssh": "openssh",
+    "openssh_server": "openssh",
     "openssl": "openssl",
+    "http_server": "apache_httpd",
+    "apache-http-server": "apache_httpd",
+    "mariadb_server": "mariadb",
     "phpmyadmin": "phpmyadmin",
     "vsftpd": "vsftpd",
     "proftpd": "proftpd",
@@ -87,7 +110,7 @@ _COMPONENT_ALIASES: dict[str, str] = {
 
 
 # =============================================================================
-# CVE 知识库（≥25 条，来源于 NVD 公开记录）
+# CVE 知识库（≥100 条，来源于 NVD 公开记录）
 # =============================================================================
 
 
@@ -1243,6 +1266,749 @@ CVE_DATABASE: list[CveEntry] = [
     ),
 ]
 
+CVE_DATABASE.extend(
+    [
+        # ============================
+        # Jenkins / Elastic / Kubernetes / HAProxy (v0.3.5)
+        # ============================
+        CveEntry(
+            cve_id="CVE-2024-23897",
+            component="jenkins",
+            max_affected="2.442",
+            min_version="",
+            severity=RiskLevel.CRITICAL,
+            cvss_score=9.8,
+            title_cn="Jenkins CLI 任意文件读取 (CVE-2024-23897)",
+            description_cn=(
+                "Jenkins CLI 命令解析器可被未认证攻击者利用读取控制器文件，"
+                "进而泄露凭据、密钥或插件配置。影响范围：主线 version < 2.442，LTS 需升级到 2.426.3+。"
+            ),
+            remediation_cn="升级 Jenkins 至 2.442 / 2.426.3 LTS 或更高版本，并限制 CLI 与控制器网络暴露面。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-23898",
+            component="jenkins",
+            max_affected="2.442",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.8,
+            title_cn="Jenkins WebSocket CLI 跨站请求劫持 (CVE-2024-23898)",
+            description_cn=(
+                "Jenkins WebSocket CLI 缺少充分的来源校验，攻击者可诱导已登录管理员浏览恶意页面，"
+                "借助受害者会话执行 Jenkins CLI 操作。影响范围：主线 version < 2.442，LTS 需升级到 2.426.3+。"
+            ),
+            remediation_cn="升级 Jenkins 至 2.442 / 2.426.3 LTS 或更高版本，并启用严格的管理员会话保护。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-27898",
+            component="jenkins",
+            max_affected="2.397",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.0,
+            title_cn="Jenkins 临时文件权限不当导致信息泄露 (CVE-2023-27898)",
+            description_cn=(
+                "Jenkins Core 在部分临时文件处理路径上权限控制不足，低权限用户可能读取敏感构建或控制器数据。"
+                "影响范围：主线 version < 2.397，LTS 需升级到 2.387.2+。"
+            ),
+            remediation_cn="升级 Jenkins 至 2.397 / 2.387.2 LTS 或更高版本，并审计作业工作区和凭据使用记录。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-46673",
+            component="elasticsearch",
+            max_affected="8.11.1",
+            min_version="7.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="Elasticsearch Search Application 模板注入风险 (CVE-2023-46673)",
+            description_cn=(
+                "Elasticsearch Search Application 功能在处理查询模板时存在输入隔离不足，"
+                "攻击者可能访问非预期数据或扩大检索范围。影响范围：7.x/8.x 对应修复版本之前。"
+            ),
+            remediation_cn="升级 Elasticsearch 至供应商修复版本，限制 Search Application 管理权限并审计异常查询模板。",
+        ),
+        CveEntry(
+            cve_id="CVE-2022-23710",
+            component="elasticsearch",
+            max_affected="7.17.1",
+            min_version="7.16.0",
+            severity=RiskLevel.MEDIUM,
+            cvss_score=6.5,
+            title_cn="Elastic Kibana 会话处理缺陷 (CVE-2022-23710)",
+            description_cn=(
+                "Elastic Stack 的 Kibana 会话处理存在缺陷，攻击者在特定条件下可能绕过预期访问控制或复用会话。"
+                "影响范围：7.16.x/7.17.x 修复版本之前。"
+            ),
+            remediation_cn="升级 Kibana/Elastic Stack 至对应安全版本，缩短会话有效期并强制重新登录高权限账户。",
+        ),
+        CveEntry(
+            cve_id="CVE-2021-22145",
+            component="elasticsearch",
+            max_affected="7.13.3",
+            min_version="7.10.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="Elasticsearch 文档接口信息泄露 (CVE-2021-22145)",
+            description_cn=(
+                "Elasticsearch 在特定授权与字段级安全配置下可能返回未授权字段，"
+                "导致敏感索引数据泄露。影响范围：7.10.0 <= version < 7.13.3。"
+            ),
+            remediation_cn="升级 Elasticsearch 至 7.13.3 或更高版本，并复核索引权限、字段级安全和审计日志。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-5044",
+            component="kubernetes",
+            max_affected="1.9.0",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.6,
+            title_cn="Kubernetes ingress-nginx 注解注入 (CVE-2023-5044)",
+            description_cn=(
+                "ingress-nginx 对部分 Ingress 注解校验不足，具备创建 Ingress 权限的攻击者可能注入配置片段，"
+                "影响控制器所在命名空间的流量安全。影响范围：ingress-nginx version < 1.9.0。"
+            ),
+            remediation_cn="升级 ingress-nginx controller 至 1.9.0+，并限制普通用户创建高风险 Ingress 注解的权限。",
+        ),
+        CveEntry(
+            cve_id="CVE-2022-3172",
+            component="kubernetes",
+            max_affected="1.25.4",
+            min_version="1.0.0",
+            severity=RiskLevel.MEDIUM,
+            cvss_score=6.5,
+            title_cn="Kubernetes API Server 聚合接口请求转发缺陷 (CVE-2022-3172)",
+            description_cn=(
+                "kube-apiserver 在聚合 API 请求转发路径上校验不足，攻击者可能借助受信任的 APIService 触发非预期请求。"
+                "影响范围：1.0.0 <= version < 1.25.4（各维护分支以官方修复公告为准）。"
+            ),
+            remediation_cn="升级 Kubernetes 控制平面至已修复维护版本，并审计 APIService、聚合层证书和 RBAC 配置。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-40225",
+            component="haproxy",
+            max_affected="2.8.2",
+            min_version="2.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="HAProxy HTTP/2 请求处理拒绝服务 (CVE-2023-40225)",
+            description_cn=(
+                "HAProxy 在 HTTP/2 帧处理上存在资源消耗缺陷，远程攻击者可构造请求导致代理进程 CPU/内存压力异常。"
+                "影响范围：2.0.0 <= version < 2.8.2。"
+            ),
+            remediation_cn="升级 HAProxy 至 2.8.2 或对应维护分支修复版本，并对 HTTP/2 入口启用速率限制和连接上限。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-0836",
+            component="haproxy",
+            max_affected="2.7.3",
+            min_version="2.0.0",
+            severity=RiskLevel.MEDIUM,
+            cvss_score=5.3,
+            title_cn="HAProxy HTTP 头处理异常导致拒绝服务 (CVE-2023-0836)",
+            description_cn=(
+                "HAProxy 在特定 HTTP 头解析路径上存在边界处理缺陷，攻击者可触发连接异常或服务可用性下降。"
+                "影响范围：2.0.0 <= version < 2.7.3。"
+            ),
+            remediation_cn="升级 HAProxy 至 2.7.3 或更高修复版本，并监控异常请求头、4xx/5xx 与进程重启事件。",
+        ),
+        CveEntry(
+            cve_id="CVE-2021-40346",
+            component="haproxy",
+            max_affected="2.5.0",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.6,
+            title_cn="HAProxy 整数溢出请求走私 (CVE-2021-40346)",
+            description_cn=(
+                "HAProxy HTTP/1 解析器存在整数溢出缺陷，攻击者可能构造请求走私流量并绕过上游访问控制。"
+                "影响范围：version < 2.5.0。"
+            ),
+            remediation_cn="升级 HAProxy 至 2.5.0 或维护分支修复版本，并在边界代理启用严格 HTTP 规范化。",
+        ),
+        # ============================
+        # Existing components expanded (v0.3.5)
+        # ============================
+        CveEntry(
+            cve_id="CVE-2021-23017",
+            component="nginx",
+            max_affected="1.21.0",
+            min_version="0.6.18",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.7,
+            title_cn="Nginx resolver 越界写入 (CVE-2021-23017)",
+            description_cn=(
+                "Nginx resolver 在处理 DNS 响应时存在 off-by-one 写入缺陷，"
+                "攻击者可通过恶意 DNS 响应造成进程崩溃或潜在代码执行。影响范围：0.6.18 <= version < 1.21.0。"
+            ),
+            remediation_cn="升级 Nginx 至 1.21.0/1.20.1 或更高版本，并固定可信 DNS 解析器。",
+        ),
+        CveEntry(
+            cve_id="CVE-2017-7529",
+            component="nginx",
+            max_affected="1.13.3",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="Nginx Range 头整数溢出 (CVE-2017-7529)",
+            description_cn=(
+                "Nginx 对缓存文件的 Range 请求处理存在整数溢出，攻击者可读取缓存文件中的非预期内容。"
+                "影响范围：version < 1.13.3。"
+            ),
+            remediation_cn="升级 Nginx 至 1.13.3 或更高版本，并限制异常 Range 请求与缓存暴露面。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-21147",
+            component="mysql",
+            max_affected="8.0.38",
+            min_version="8.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="MySQL Server 组件权限绕过风险 (CVE-2024-21147)",
+            description_cn=(
+                "Oracle MySQL Server 组件存在可被低权限账号触发的访问控制缺陷，"
+                "成功利用可能影响数据保密性或服务可用性。影响范围：8.0.0 <= version < 8.0.38。"
+            ),
+            remediation_cn="升级 MySQL 至 8.0.38 或供应商 CPU 修复版本，并最小化数据库账号权限。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-22053",
+            component="mysql",
+            max_affected="8.0.34",
+            min_version="8.0.0",
+            severity=RiskLevel.MEDIUM,
+            cvss_score=4.9,
+            title_cn="MySQL Server 拒绝服务风险 (CVE-2023-22053)",
+            description_cn=(
+                "MySQL Server 在特定组件处理路径上存在可被认证用户触发的缺陷，"
+                "可能导致服务可用性下降。影响范围：8.0.0 <= version < 8.0.34。"
+            ),
+            remediation_cn="升级 MySQL 至 8.0.34 或更高安全版本，并监控异常查询与连接重置。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-36824",
+            component="redis",
+            max_affected="7.0.12",
+            min_version="7.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.8,
+            title_cn="Redis Lua 脚本沙箱逃逸风险 (CVE-2023-36824)",
+            description_cn=(
+                "Redis 在 Lua 脚本执行环境中存在沙箱隔离缺陷，认证攻击者可能执行非预期操作。"
+                "影响范围：7.0.0 <= version < 7.0.12。"
+            ),
+            remediation_cn="升级 Redis 至 7.0.12 或更高版本，并禁用不可信脚本、限制管理命令访问。",
+        ),
+        CveEntry(
+            cve_id="CVE-2022-24735",
+            component="redis",
+            max_affected="6.2.7",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.8,
+            title_cn="Redis Lua 沙箱绕过 (CVE-2022-24735)",
+            description_cn=(
+                "Redis Lua 脚本沙箱可被恶意脚本绕过，已认证攻击者可能访问受保护的 Redis 内部对象。"
+                "影响范围：version < 6.2.7。"
+            ),
+            remediation_cn="升级 Redis 至 6.2.7/7.0.0 或更高版本，并对 EVAL 类命令施加最小权限控制。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-4317",
+            component="postgresql",
+            max_affected="16.3",
+            min_version="12.0",
+            severity=RiskLevel.MEDIUM,
+            cvss_score=6.5,
+            title_cn="PostgreSQL 视图权限绕过 (CVE-2024-4317)",
+            description_cn=(
+                "PostgreSQL 在特定视图与权限组合下可能泄露调用者不应访问的数据。"
+                "影响范围：12.0 <= version < 16.3（各分支以官方小版本修复为准）。"
+            ),
+            remediation_cn="升级 PostgreSQL 至 16.3/15.7/14.12/13.15/12.19 或对应修复版本，并复核视图权限。",
+        ),
+        CveEntry(
+            cve_id="CVE-2022-1552",
+            component="postgresql",
+            max_affected="14.3",
+            min_version="10.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.8,
+            title_cn="PostgreSQL Autovacuum 权限提升风险 (CVE-2022-1552)",
+            description_cn=(
+                "PostgreSQL Autovacuum 与安全限制函数交互存在缺陷，低权限用户可能借此提升数据库内权限。"
+                "影响范围：10.0 <= version < 14.3。"
+            ),
+            remediation_cn="升级 PostgreSQL 至对应安全小版本，并限制不可信用户创建 SECURITY DEFINER 函数。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-46589",
+            component="apache_tomcat",
+            max_affected="10.1.16",
+            min_version="8.5.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="Apache Tomcat HTTP 请求走私 (CVE-2023-46589)",
+            description_cn=(
+                "Apache Tomcat 对部分 HTTP 请求体长度处理不一致，可能导致请求走私或代理链路解析歧义。"
+                "影响范围：8.5.0 <= version < 10.1.16（维护分支以官方公告为准）。"
+            ),
+            remediation_cn="升级 Tomcat 至 10.1.16/9.0.83/8.5.96 或更高版本，并统一前后端代理的 HTTP 规范。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-41080",
+            component="apache_tomcat",
+            max_affected="10.1.13",
+            min_version="8.5.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="Apache Tomcat Open Redirect 风险 (CVE-2023-41080)",
+            description_cn=(
+                "Apache Tomcat 在重定向路径处理上存在校验不足，攻击者可构造 URL 诱导用户跳转到非预期站点。"
+                "影响范围：8.5.0 <= version < 10.1.13（维护分支以官方公告为准）。"
+            ),
+            remediation_cn="升级 Tomcat 至 10.1.13/9.0.80/8.5.93 或更高版本，并对外部跳转进行白名单限制。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-27980",
+            component="nodejs",
+            max_affected="20.12.2",
+            min_version="18.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="Node.js HTTP 请求走私 (CVE-2024-27980)",
+            description_cn=(
+                "Node.js HTTP 解析器在处理畸形请求时可能与前置代理产生解析差异，造成请求走私风险。"
+                "影响范围：18.0.0 <= version < 20.12.2（各维护分支以官方修复为准）。"
+            ),
+            remediation_cn="升级 Node.js 至对应安全版本，并在边界代理启用严格请求规范化和异常头过滤。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-46809",
+            component="nodejs",
+            max_affected="20.11.1",
+            min_version="18.0.0",
+            severity=RiskLevel.MEDIUM,
+            cvss_score=5.9,
+            title_cn="Node.js OpenSSL Marvin 攻击影响 (CVE-2023-46809)",
+            description_cn=(
+                "Node.js 使用的加密组件可能受到 RSA 解密侧信道攻击影响，攻击者可在特定条件下恢复敏感信息。"
+                "影响范围：18.0.0 <= version < 20.11.1。"
+            ),
+            remediation_cn="升级 Node.js 至包含 OpenSSL 修复的安全版本，并淘汰 RSA PKCS#1 v1.5 解密流程。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-5363",
+            component="openssl",
+            max_affected="3.0.12",
+            min_version="3.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="OpenSSL POLY1305 处理拒绝服务 (CVE-2023-5363)",
+            description_cn=(
+                "OpenSSL 在部分加密实现路径上存在边界处理缺陷，可能导致进程崩溃或服务不可用。"
+                "影响范围：3.0.0 <= version < 3.0.12。"
+            ),
+            remediation_cn="升级 OpenSSL 至 3.0.12 或更高版本，并优先启用系统发行版安全更新包。",
+        ),
+        CveEntry(
+            cve_id="CVE-2023-0464",
+            component="openssl",
+            max_affected="3.0.9",
+            min_version="3.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="OpenSSL 证书策略校验绕过 (CVE-2023-0464)",
+            description_cn=(
+                "OpenSSL X.509 证书策略检查存在绕过风险，攻击者可在特定信任链配置下绕过策略限制。"
+                "影响范围：3.0.0 <= version < 3.0.9。"
+            ),
+            remediation_cn="升级 OpenSSL 至 3.0.9 或更高版本，并复核证书策略、客户端认证和信任链配置。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-38475",
+            component="apache_httpd",
+            max_affected="2.4.60",
+            min_version="2.4.0",
+            severity=RiskLevel.CRITICAL,
+            cvss_score=9.1,
+            title_cn="Apache HTTP Server mod_rewrite SSRF 风险 (CVE-2024-38475)",
+            description_cn=(
+                "Apache HTTP Server 在 RewriteRule 配置不当时可能将请求代理到非预期后端，形成 SSRF 或访问控制绕过。"
+                "影响范围：2.4.0 <= version < 2.4.60。"
+            ),
+            remediation_cn="升级 httpd 至 2.4.60 或更高版本，并审计 RewriteRule、ProxyPass 与后端白名单。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-38477",
+            component="apache_httpd",
+            max_affected="2.4.60",
+            min_version="2.4.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="Apache HTTP Server NULL 指针拒绝服务 (CVE-2024-38477)",
+            description_cn=(
+                "Apache HTTP Server 在特定请求处理路径上可能触发 NULL 指针解引用，导致工作进程崩溃。"
+                "影响范围：2.4.0 <= version < 2.4.60。"
+            ),
+            remediation_cn="升级 httpd 至 2.4.60 或更高版本，并监控异常请求导致的 worker 崩溃。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-8925",
+            component="php",
+            max_affected="8.3.12",
+            min_version="8.1.0",
+            severity=RiskLevel.MEDIUM,
+            cvss_score=5.3,
+            title_cn="PHP 过滤器路径处理缺陷 (CVE-2024-8925)",
+            description_cn=(
+                "PHP 在部分过滤器或流封装器路径处理上存在边界校验不足，可能导致非预期文件访问。"
+                "影响范围：8.1.0 <= version < 8.3.12（各维护分支以官方修复为准）。"
+            ),
+            remediation_cn="升级 PHP 至对应安全版本，禁用不必要的 stream wrapper，并限制 Web 进程文件系统权限。",
+        ),
+        CveEntry(
+            cve_id="CVE-2024-11233",
+            component="php",
+            max_affected="8.3.14",
+            min_version="8.1.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.1,
+            title_cn="PHP CGI 参数处理绕过 (CVE-2024-11233)",
+            description_cn=(
+                "PHP CGI/FastCGI 参数解析在特定部署方式下存在绕过风险，攻击者可能影响脚本执行参数。"
+                "影响范围：8.1.0 <= version < 8.3.14（各维护分支以官方修复为准）。"
+            ),
+            remediation_cn="升级 PHP 至安全版本，避免直接暴露 CGI，并在 Web 服务器层固定 FastCGI 参数白名单。",
+        ),
+        CveEntry(
+            cve_id="CVE-2022-21661",
+            component="wordpress",
+            max_affected="5.8.3",
+            min_version="5.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.0,
+            title_cn="WordPress Core SQL 注入 (CVE-2022-21661)",
+            description_cn=(
+                "WordPress Core 在 WP_Query 处理路径上存在 SQL 注入风险，攻击者可在特定条件下访问或篡改数据。"
+                "影响范围：5.0.0 <= version < 5.8.3。"
+            ),
+            remediation_cn="升级 WordPress 至 5.8.3 或更高版本，并同步更新主题、插件与数据库账号权限。",
+        ),
+        CveEntry(
+            cve_id="CVE-2019-8942",
+            component="wordpress",
+            max_affected="5.0.1",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="WordPress 附件路径遍历 (CVE-2019-8942)",
+            description_cn=(
+                "WordPress 媒体附件处理存在路径遍历风险，具备内容编辑权限的攻击者可能访问非预期文件。"
+                "影响范围：version < 5.0.1。"
+            ),
+            remediation_cn="升级 WordPress 至 5.0.1 或更高版本，并限制媒体上传权限与文件类型。",
+        ),
+        CveEntry(
+            cve_id="CVE-2022-32091",
+            component="mariadb",
+            max_affected="10.8.4",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="MariaDB Server 拒绝服务风险 (CVE-2022-32091)",
+            description_cn=(
+                "MariaDB Server 在特定 SQL 处理路径上存在缺陷，认证攻击者可能导致服务崩溃或可用性下降。"
+                "影响范围：version < 10.8.4（各维护分支以官方修复为准）。"
+            ),
+            remediation_cn="升级 MariaDB 至对应安全版本，并限制低权限账号执行高风险 SQL 功能。",
+        ),
+        CveEntry(
+            cve_id="CVE-2022-32089",
+            component="mariadb",
+            max_affected="10.8.4",
+            min_version="",
+            severity=RiskLevel.HIGH,
+            cvss_score=7.5,
+            title_cn="MariaDB Server 内存破坏风险 (CVE-2022-32089)",
+            description_cn=(
+                "MariaDB Server 在查询优化或存储引擎交互路径上存在内存安全缺陷，可能造成服务异常终止。"
+                "影响范围：version < 10.8.4（各维护分支以官方修复为准）。"
+            ),
+            remediation_cn="升级 MariaDB 至对应安全版本，并监控数据库进程崩溃、慢查询和异常会话。",
+        ),
+        CveEntry(
+            cve_id="CVE-2018-7600",
+            component="drupal",
+            max_affected="8.5.1",
+            min_version="",
+            severity=RiskLevel.CRITICAL,
+            cvss_score=9.8,
+            title_cn="Drupalgeddon2 远程代码执行 (CVE-2018-7600)",
+            description_cn=(
+                "Drupal Core 表单 API 渲染数组处理存在远程代码执行漏洞，未认证攻击者可执行任意代码。"
+                "影响范围：version < 8.5.1（Drupal 7/8 对应维护分支均需升级）。"
+            ),
+            remediation_cn="立即升级 Drupal 至官方修复版本，检查 Web 根目录木马、管理员账号和异常模块。",
+        ),
+        CveEntry(
+            cve_id="CVE-2019-6340",
+            component="drupal",
+            max_affected="8.6.10",
+            min_version="8.0.0",
+            severity=RiskLevel.HIGH,
+            cvss_score=8.1,
+            title_cn="Drupal REST 模块远程代码执行 (CVE-2019-6340)",
+            description_cn=(
+                "Drupal Core RESTful Web Services 在处理非安全字段时存在反序列化风险，攻击者可能执行任意代码。"
+                "影响范围：8.0.0 <= version < 8.6.10。"
+            ),
+            remediation_cn="升级 Drupal 至 8.6.10/8.5.11 或更高版本，并禁用不需要的 REST 资源。",
+        ),
+    ]
+)
+
+
+# =============================================================================
+# NVD API 自动更新工具
+# =============================================================================
+
+_NVD_API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+_NVD_LOOKBACK_DAYS = 30
+_NVD_MAX_RESULTS_PER_PAGE = 2000
+_NVD_RATE_DELAY_WITH_KEY_SECONDS = 0.7
+_NVD_RATE_DELAY_NO_KEY_SECONDS = 6.1
+
+
+def _format_nvd_timestamp(value: datetime) -> str:
+    """生成 NVD API 2.0 使用的 UTC 时间戳。"""
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000")
+
+
+def _risk_from_cvss(score: float, severity_text: str = "") -> RiskLevel:
+    """将 NVD CVSS 分数映射到 LightShield 风险等级。"""
+    severity_upper = severity_text.upper()
+    if severity_upper == "CRITICAL" or score >= 9.0:
+        return RiskLevel.CRITICAL
+    if severity_upper == "HIGH" or score >= 7.0:
+        return RiskLevel.HIGH
+    if severity_upper == "MEDIUM" or score >= 4.0:
+        return RiskLevel.MEDIUM
+    if severity_upper == "LOW" or score > 0:
+        return RiskLevel.LOW
+    return RiskLevel.INFO
+
+
+def _extract_nvd_cvss(cve: dict) -> tuple[float, RiskLevel] | None:
+    """从 NVD CVE 对象中提取首选 CVSS v3.x 指标。"""
+    metrics = cve.get("metrics") if isinstance(cve, dict) else {}
+    if not isinstance(metrics, dict):
+        return None
+
+    for key in ("cvssMetricV31", "cvssMetricV30"):
+        values = metrics.get(key)
+        if not isinstance(values, list) or not values:
+            continue
+        preferred = next((item for item in values if item.get("source") == "nvd@nist.gov"), values[0])
+        cvss_data = preferred.get("cvssData", {}) if isinstance(preferred, dict) else {}
+        if not isinstance(cvss_data, dict):
+            continue
+        try:
+            score = float(cvss_data.get("baseScore", 0.0))
+        except (TypeError, ValueError):
+            continue
+        severity_text = str(cvss_data.get("baseSeverity") or preferred.get("baseSeverity") or "")
+        return score, _risk_from_cvss(score, severity_text)
+    return None
+
+
+def _extract_nvd_description(cve: dict) -> str:
+    """提取 NVD 英文描述，供自动更新条目做防御视角说明。"""
+    descriptions = cve.get("descriptions") if isinstance(cve, dict) else []
+    if not isinstance(descriptions, list):
+        return ""
+    for item in descriptions:
+        if isinstance(item, dict) and item.get("lang") == "en":
+            return str(item.get("value") or "").strip()
+    for item in descriptions:
+        if isinstance(item, dict) and item.get("value"):
+            return str(item["value"]).strip()
+    return ""
+
+
+def _canonical_component_name(value: str) -> str:
+    """将 NVD CPE vendor/product 片段映射为组件规范名。"""
+    normalized = value.lower().strip().replace("\\", "")
+    candidates = {
+        normalized,
+        normalized.replace("_", "-"),
+        normalized.replace("-", "_"),
+        normalized.replace(".", ""),
+    }
+    known_components = {entry.component for entry in CVE_DATABASE}
+    for candidate in candidates:
+        if candidate in _COMPONENT_ALIASES:
+            return _COMPONENT_ALIASES[candidate]
+        if candidate in known_components:
+            return candidate
+    return ""
+
+
+def _component_from_cpe(criteria: str) -> str:
+    """从 CPE 2.3 字符串中推断 LightShield 组件名。"""
+    parts = criteria.lower().split(":")
+    if len(parts) < 5:
+        return ""
+    vendor = parts[3]
+    product = parts[4]
+    for token in (product, vendor, f"{vendor}_{product}", f"{vendor}-{product}"):
+        component = _canonical_component_name(token)
+        if component:
+            return component
+    return ""
+
+
+def _iter_nvd_cpe_matches(nodes: list) -> list[dict]:
+    """递归收集 NVD configurations.nodes 下的 cpeMatch 条目。"""
+    matches: list[dict] = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        cpe_match = node.get("cpeMatch", [])
+        if isinstance(cpe_match, list):
+            matches.extend(item for item in cpe_match if isinstance(item, dict))
+        children = node.get("children", [])
+        if isinstance(children, list):
+            matches.extend(_iter_nvd_cpe_matches(children))
+    return matches
+
+
+def _extract_nvd_component_range(cve: dict) -> tuple[str, str, str]:
+    """从 NVD configurations 中提取组件名、最小版本和修复前上界。"""
+    configurations = cve.get("configurations") if isinstance(cve, dict) else []
+    if not isinstance(configurations, list):
+        return "", "", ""
+
+    for config in configurations:
+        if not isinstance(config, dict):
+            continue
+        nodes = config.get("nodes", [])
+        if not isinstance(nodes, list):
+            continue
+        for cpe_match in _iter_nvd_cpe_matches(nodes):
+            criteria = str(cpe_match.get("criteria") or "")
+            component = _component_from_cpe(criteria)
+            if not component:
+                continue
+            min_version = str(cpe_match.get("versionStartIncluding") or cpe_match.get("versionStartExcluding") or "")
+            max_affected = str(cpe_match.get("versionEndExcluding") or cpe_match.get("versionEndIncluding") or "")
+            if not max_affected:
+                parts = criteria.split(":")
+                cpe_version = parts[5] if len(parts) > 5 else ""
+                if cpe_version not in ("", "*", "-"):
+                    max_affected = cpe_version
+            if max_affected:
+                return component, min_version, max_affected
+    return "", "", ""
+
+
+def _nvd_item_to_cve_entry(item: dict) -> CveEntry | None:
+    """将单条 NVD vulnerability 转换为本地 CveEntry。"""
+    cve = item.get("cve") if isinstance(item, dict) else {}
+    if not isinstance(cve, dict):
+        return None
+
+    cve_id = str(cve.get("id") or "")
+    cvss = _extract_nvd_cvss(cve)
+    component, min_version, max_affected = _extract_nvd_component_range(cve)
+    if not cve_id or cvss is None or not component or not max_affected:
+        return None
+
+    score, risk = cvss
+    description = _extract_nvd_description(cve)
+    title = f"{component} 最新 NVD 漏洞 ({cve_id})"
+    description_cn = (
+        f"NVD 最新公开漏洞：{description}" if description else "NVD 最新公开漏洞，请结合供应商公告确认影响。"
+    )
+    remediation_cn = (
+        f"核对 {component} 受影响版本并升级至供应商修复版本；"
+        "无法立即升级时应限制公网暴露面、收紧访问控制并加强日志监控。"
+    )
+
+    return CveEntry(
+        cve_id=cve_id,
+        component=component,
+        max_affected=max_affected,
+        min_version=min_version,
+        severity=risk,
+        cvss_score=score,
+        title_cn=title,
+        description_cn=description_cn,
+        remediation_cn=remediation_cn,
+    )
+
+
+def fetch_latest_cves(api_key: str | None = None, max_results: int = 20) -> list[CveEntry]:
+    """从 NVD API 2.0 拉取最近公开 CVE 并转换为 CveEntry 列表。
+
+    Args:
+        api_key: NVD API key；未提供时按 5 req/30s 的低频节奏分页。
+        max_results: 最多返回的本地 CVE 条目数量。
+
+    Returns:
+        可映射到 LightShield 组件的 CVE 条目列表；网络失败或无可映射条目时返回空列表。
+    """
+    if max_results <= 0:
+        return []
+
+    headers = {"User-Agent": "LightShield-CVE-Updater/0.3.5"}
+    if api_key:
+        headers["apiKey"] = api_key
+
+    now = datetime.now(timezone.utc)
+    base_params = {
+        "pubStartDate": _format_nvd_timestamp(now - timedelta(days=_NVD_LOOKBACK_DAYS)),
+        "pubEndDate": _format_nvd_timestamp(now),
+    }
+    delay_seconds = _NVD_RATE_DELAY_WITH_KEY_SECONDS if api_key else _NVD_RATE_DELAY_NO_KEY_SECONDS
+    entries: list[CveEntry] = []
+    start_index = 0
+    total_results = max_results
+
+    while len(entries) < max_results and start_index < total_results:
+        remaining = max_results - len(entries)
+        page_size = min(remaining, _NVD_MAX_RESULTS_PER_PAGE)
+        params = {**base_params, "resultsPerPage": page_size, "startIndex": start_index}
+        try:
+            response = requests.get(_NVD_API_URL, params=params, headers=headers, timeout=20)
+            response.raise_for_status()
+            payload = response.json()
+        except (ValueError, requests.RequestException) as exc:
+            get_logger().warning("NVD CVE 拉取失败: %s", exc)
+            return entries
+
+        vulnerabilities = payload.get("vulnerabilities", []) if isinstance(payload, dict) else []
+        if not isinstance(vulnerabilities, list) or not vulnerabilities:
+            break
+
+        for item in vulnerabilities:
+            if not isinstance(item, dict):
+                continue
+            entry = _nvd_item_to_cve_entry(item)
+            if entry:
+                entries.append(entry)
+                if len(entries) >= max_results:
+                    break
+
+        try:
+            total_results = int(payload.get("totalResults", start_index + len(vulnerabilities)))
+        except (TypeError, ValueError):
+            total_results = start_index + len(vulnerabilities)
+        start_index += len(vulnerabilities)
+        if len(entries) < max_results and start_index < total_results:
+            time.sleep(delay_seconds)
+
+    return entries[:max_results]
+
 
 # =============================================================================
 # 版本号解析工具
@@ -1795,11 +2561,37 @@ def _infer_component_from_header(header_key: str, value: str) -> str:
     return ""
 
 
+def _parse_component_checker_args() -> argparse.Namespace:
+    """解析 component_checker 自检与 NVD 更新参数。"""
+    parser = argparse.ArgumentParser(description="LightShield 组件 CVE 知识库自检 / NVD 自动更新")
+    parser.add_argument("--cve-update", action="store_true", help="从 NVD API 2.0 拉取最近 CVE 并打印 CveEntry 摘要")
+    parser.add_argument("--nvd-api-key", default=None, help="NVD API key；提供后可使用更高频率限制")
+    parser.add_argument("--max-results", type=int, default=20, help="最多拉取并转换的 CVE 条目数量")
+    return parser.parse_args()
+
+
+def _print_latest_cves(entries: list[CveEntry]) -> None:
+    """打印 NVD 自动更新结果，便于 CLI/人工复制到知识库。"""
+    print(f"从 NVD 转换 {len(entries)} 条可映射 CVE：")
+    for entry in entries:
+        print(
+            f"- {entry.cve_id} {entry.component} "
+            f"[{entry.min_version or '*'}, {entry.max_affected}) "
+            f"{entry.severity.value} CVSS {entry.cvss_score}"
+        )
+        print(f"  {entry.title_cn}")
+
+
 # =============================================================================
 # 自检
 # =============================================================================
 
 if __name__ == "__main__":
+    args = _parse_component_checker_args()
+    if args.cve_update:
+        _print_latest_cves(fetch_latest_cves(api_key=args.nvd_api_key, max_results=args.max_results))
+        raise SystemExit(0)
+
     print("=== ComponentChecker 自检 ===\n")
 
     # 1. 基本属性

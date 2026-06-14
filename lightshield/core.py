@@ -17,7 +17,10 @@
 import datetime
 import os
 import sys as _sys
+import threading
 import time
+import uuid
+from dataclasses import dataclass
 
 # Allow direct script execution (python lightshield/core.py)
 if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os.path.abspath(__file__))):
@@ -28,6 +31,28 @@ from lightshield.config import get_config
 from lightshield.harden.base import HardenResult
 from lightshield.utils.constants import ScanStatus
 from lightshield.utils.validator import TargetValidator
+
+# =============================================================================
+# 异步任务信息（v0.3.1: threading.Thread 异步扫描）
+# =============================================================================
+
+
+@dataclass
+class _TaskInfo:
+    """异步扫描任务的内部状态追踪。
+
+    v0.3.1: Thread 异步，task_id 立即返回，状态可通过 get_scan_status() 轮询。
+    v1.0.0: 可迁移至 concurrent.futures.ThreadPoolExecutor。
+    v2.0.0: 可迁移至 Celery + Redis。
+    """
+
+    status: ScanStatus  # PENDING → RUNNING → COMPLETED / PARTIAL / FAILED
+    target: str
+    created_at: str  # ISO8601
+    thread: threading.Thread | None = None
+    result: ScanResult | None = None
+    error: str | None = None
+
 
 # =============================================================================
 # 主调度器
@@ -51,7 +76,7 @@ class LightShieldCore:
         """
         self._config = config or get_config()
         self._adapters: dict[str, BaseAdapter] = {}
-        self._task_results: dict[str, ScanResult] = {}  # v0.2.0: 内存缓存, v1.0: 线程池, v2.0: Redis
+        self._task_results: dict[str, _TaskInfo] = {}  # v0.3.1: Thread 异步, v1.0: 线程池, v2.0: Redis
         self._scan_log: list[dict] = []
 
     # =========================================================================
@@ -315,11 +340,12 @@ class LightShieldCore:
         confirm_ownership: bool = False,
         **kwargs,
     ) -> str:
-        """提交扫描任务，返回 task_id。
+        """提交扫描任务，立即返回 task_id（v0.3.1: threading.Thread 异步）。
 
-        当前版本（v0.2.0）同步执行——提交即完成。
-        v1.0.0：线程池异步执行，task_id 用于轮询状态。
-        v2.0.0：Celery 任务入队，task_id 对应 Redis 中的任务状态。
+        v0.2.0: 同步执行——提交即完成。
+        v0.3.1: Thread 异步——task_id 立即返回，通过 get_scan_status() 轮询。
+        v1.0.0: 线程池 → ThreadPoolExecutor。
+        v2.0.0: Celery → Redis。
 
         Args:
             target: 扫描目标
@@ -330,24 +356,64 @@ class LightShieldCore:
         Returns:
             task_id: 格式 "LS-YYYYMMDD-HHMMSS-xxxxxx"
         """
-        import uuid
-        from datetime import datetime
+        now = datetime.datetime.now()
+        task_id = f"LS-{now.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
 
-        task_id = f"LS-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+        task = _TaskInfo(
+            status=ScanStatus.PENDING,
+            target=target,
+            created_at=now.isoformat(),
+        )
+        self._task_results[task_id] = task
 
-        # v0.2.0: 同步执行，结果直接缓存到内存
-        # v1.0.0: 线程池 → self._task_results[task_id] = future
-        # v2.0.0: Celery → redis.set(task_id, task_data)
-        result = self.run_scan(target, scan_types=scan_types, confirm_ownership=confirm_ownership, **kwargs)
-        self._task_results[task_id] = result
+        thread = threading.Thread(
+            target=self._run_scan_async,
+            args=(task_id, target, scan_types, confirm_ownership),
+            kwargs=kwargs,
+            daemon=True,
+            name=f"lightshield-scan-{task_id}",
+        )
+        task.thread = thread
+        thread.start()
 
         return task_id
+
+    def _run_scan_async(
+        self,
+        task_id: str,
+        target: str,
+        scan_types: list[str] | None,
+        confirm_ownership: bool,
+        **kwargs,
+    ) -> None:
+        """在独立线程中执行扫描并更新任务状态。
+
+        不直接抛出异常——所有错误记录在 task.error 中。
+        """
+        task = self._task_results.get(task_id)
+        if task is None:
+            return  # 任务已被移除（极少见）
+
+        task.status = ScanStatus.RUNNING
+        try:
+            task.result = self.run_scan(
+                target,
+                scan_types=scan_types,
+                confirm_ownership=confirm_ownership,
+                **kwargs,
+            )
+            task.status = task.result.status
+            if task.result.error:
+                task.error = task.result.error
+        except Exception as exc:
+            task.status = ScanStatus.FAILED
+            task.error = str(exc)
 
     def get_scan_status(self, task_id: str) -> dict:
         """查询扫描任务状态。
 
-        v0.2.0：任务已完成（同步），直接返回结果摘要。
-        v1.0.0：查线程池 Future → PENDING / RUNNING / COMPLETED。
+        v0.3.1：查 Thread 任务 → PENDING / RUNNING / COMPLETED / PARTIAL / FAILED。
+        v1.0.0：查线程池 Future。
         v2.0.0：查 Redis → 支持分布式查询。
 
         Args:
@@ -356,18 +422,20 @@ class LightShieldCore:
         Returns:
             {"task_id": str, "status": str, "target": str, "findings": int, ...}
         """
-        result = self._task_results.get(task_id)
-        if result is None:
+        task = self._task_results.get(task_id)
+        if task is None:
             return {"task_id": task_id, "status": "not_found"}
 
+        result = task.result
         return {
             "task_id": task_id,
-            "status": result.status.value,
-            "target": result.target,
-            "ports": len(result.ports),
-            "findings": len(result.findings),
-            "duration_seconds": result.duration_seconds,
-            "error": result.error,
+            "status": task.status.value,
+            "target": task.target,
+            "created_at": task.created_at,
+            "ports": len(result.ports) if result else 0,
+            "findings": len(result.findings) if result else 0,
+            "duration_seconds": result.duration_seconds if result else 0,
+            "error": task.error,
         }
 
     def generate_hardening(

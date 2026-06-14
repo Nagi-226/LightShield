@@ -1,65 +1,41 @@
-# =============================================================================
-# LightShield v0.0.19 E2E — Docker Compose 双容器编排
-# =============================================================================
-# 网络: lightshield-e2e (isolated bridge)
-# 靶机: target 容器（5 个漏洞服务）
-# 扫描器: scanner 容器（LightShield + Nmap）
-#
-# 执行: docker compose up --build --abort-on-container-exit
-# 清理: docker compose down -v
-# =============================================================================
+# ============================================================
+# LightShield 轻盾 — Docker Compose 部署
+# 使用方式：
+#   docker compose up -d         # 后台启动
+#   docker compose logs -f       # 查看日志
+#   docker compose down          # 停止并删除容器
+# ============================================================
 
 services:
-  # ===========================================================================
-  # 靶机 — 预置漏洞的测试目标
-  # ===========================================================================
-  target:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.target
-    container_name: lightshield-target
-    hostname: target
-    networks:
-      - e2e-net
-    healthcheck:
-      test: ["CMD", "bash", "-c", "ss -tlnp | grep -q ':22 '"]
-      interval: 5s
-      timeout: 3s
-      retries: 6
-      start_period: 15s
-    cap_add:
-      - NET_ADMIN  # 允许 iptables（加固脚本需要）
+  lightshield:
+    # 使用项目根目录的 Dockerfile 构建
+    build: .
+    # 也可直接使用预构建镜像（待发布后启用）
+    # image: lightshield/lightshield:latest
 
-  # ===========================================================================
-  # 扫描器 — LightShield + Nmap
-  # ===========================================================================
-  scanner:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.scanner
-    container_name: lightshield-scanner
-    hostname: scanner
-    networks:
-      - e2e-net
-    volumes:
-      # 挂载项目代码（实时同步，无需重建镜像）
-      - .:/app
-      # 报告输出目录
-      - ./reports:/app/reports
-    depends_on:
-      target:
-        condition: service_healthy
+    # 默认仅监听本地回环地址（安全），外部不可访问
+    # 如需公网/局域网访问，将 127.0.0.1:5000 改为 0.0.0.0:5000
+    ports:
+      - "127.0.0.1:5000:5000"
+
+    # 环境变量：覆盖 Web 仪表板默认凭证
+    # 不设置则使用代码内置默认值（admin / lightshield）
     environment:
-      - LS_TARGET=target
-      - LS_REPORT_OUTPUT_DIR=/app/reports
-      - LS_LOG_DIR=/app/logs
-      - LS_SCAN_TIMEOUT=30
-      - PYTHONUNBUFFERED=1
+      - LS_WEB_USERNAME=${LS_WEB_USERNAME:-admin}
+      - LS_WEB_PASSWORD=${LS_WEB_PASSWORD:-lightshield}
 
-# =============================================================================
-# 网络
-# =============================================================================
-networks:
-  e2e-net:
-    name: lightshield-e2e
-    driver: bridge
+    # 数据持久化：SQLite 数据库 + 扫描报告
+    # ./data/ 目录会自动创建在 docker-compose.yml 同层
+    volumes:
+      - ./data:/data
+
+    # 容器崩溃或宿主机重启后自动拉起
+    restart: unless-stopped
+
+    # 健康检查（与 Dockerfile HEALTHCHECK 一致，Compose 层可覆盖）
+    # healthcheck:
+    #   test: ["CMD", "curl", "-sf", "http://127.0.0.1:5000/static/style.css"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 10s
