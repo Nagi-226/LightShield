@@ -4,10 +4,10 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-14 19:00 — v0.0.35 CVE 105 条交付，阶段二 2/4 完成。
->   - 质量基线：**580 tests** / 0 fail / ruff + mypy 全零违规
->   - 阶段一 ✅✅✅ 安全加固 | 阶段二 ✅✅⬜⬜ 能力扩展 | 阶段三 ⬜⬜⬜ 自动化铺路
->   - 明天启动：v0.0.36 Nuclei 适配器（CC）+ v0.0.37 Web UI 增强（Codex）可并行
+> **上次会话**：2026-06-15 23:30 — v0.0.36 + v0.0.37 全部交付，阶段二 4/4 完成 🎉。
+>   - 质量基线：**632 tests** / 0 fail / ruff + mypy 全零违规
+>   - 阶段一 ✅✅✅ 安全加固 | 阶段二 ✅✅✅✅ 能力扩展 | 阶段三 ⬜⬜⬜ 自动化铺路
+>   - 明天启动：v0.0.38 沙箱执行器（CC）+ v0.0.39 OpenAPI/i18n
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
@@ -96,7 +96,7 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 |------|-----|
 | **项目名** | LightShield（轻盾） |
 | **一句话定位** | 面向初创企业 & 个人站长的开源轻量化安全自检 + 防御加固工具 |
-| **当前阶段** | v0.0.36 — 阶段二 3/4，632 tests / ruff+mypy 零违规 |
+| **当前阶段** | v0.0.37 — 阶段二 4/4 完成，632 tests / ruff+mypy 零违规 |
 | **开源协议** | MIT |
 | **主语言** | Python 3.10+ |
 | **辅助语言** | Shell（部署脚本）、PowerShell（Windows 适配） |
@@ -111,7 +111,7 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 LightShield 只使用一套版本号: v0.0.XX（纯线性增长）
 
   v0.0.01 → v0.0.02 → ... → v0.0.10 (MVP) → ... → v0.0.20 → ... → v0.0.30 → ...
-  当前: v0.0.36   下一: v0.0.37
+  当前: v0.0.37   下一: v0.0.38
 
 里程碑（仅用于 GitHub Release，本质仍是 v0.0.XX，不是独立 tag 格式）:
   v0.0.10 = MVP 完成    v0.0.20 = CLI 发布    v0.0.30 = Web 面板发布    v0.0.40 = 自动加固发布
@@ -460,9 +460,9 @@ Phase 10: 合规审计           → 全量代码审查
 
 ## 九、可扩展性（为"重盾"预留）
 
-| 扩展点 | 当前轻盾做法 (v0.0.20) | 未来重盾方向 | 切换机制 | 预留状态 |
+| 扩展点 | 当前轻盾做法 (v0.0.37) | 未来重盾方向 | 切换机制 | 预留状态 |
 |--------|------------------------|-------------|:--:|:--:|
-| 扫描引擎 | Nmap + 自研脚本 | + OpenVAS / Nuclei / ZAP | 新增 Adapter 即可 | ✅ BaseAdapter 抽象 |
+| 扫描引擎 | Nmap + 自研脚本 + MSF scanner + Nuclei | + OpenVAS / ZAP | 新增 Adapter 即可 | ✅ BaseAdapter 抽象 |
 | MSF 集成度 | 仅 auxiliary/scanner | 可扩展至 auxiliary/server/ | 白名单配置文件控制 | ✅ 常量定义已就绪 |
 | 规则引擎 | 本地 JSON | + 远程规则订阅 / STIX/TAXII | 数据源接口抽象 | ✅ engine.py 可插拔 |
 | 报告格式 | Markdown/纯文本 | + PDF/HTML/JSON API | 报告渲染器可插拔 | ✅ reporter 可扩展 |

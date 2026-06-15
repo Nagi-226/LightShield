@@ -45,7 +45,7 @@
 | v0.0.17 | Win 加固 | CC | ✅ | ✅ win_harden.py+win_firewall.ps1+__init__+core os_platform钩子。脚本生成器模式，零subprocess。自检9断言全过，回归346项全过 |
 | v0.0.19 | E2E + 合规终审 | WSL2 Docker→CC | ✅ | ✅ WSL2 Ubuntu 24.04 替代 VM 执行：scan(61端口/7漏洞/CVE-2023-38408)→harden(11条建议+harden.sh+rollback.sh)→R2 拦截→R1-R6 全通过。报告：docs/e2e-v019-report.md |
 | v0.0.20 | 文档骨架 | Hermes | ✅ | ✅ LICENSE+README.md(134行)+CHANGELOG.md(49行)+INSTALL(162行)+USAGE(173行)+FAQ(71行) 已落盘 |
-| v0.0.20 | 文档填充（清TODO+补真实数据） | CC | ✅ | ✅ CHANGELOG 完整版(0.1.0/0.2.0)、FAQ 4条TODO全部填充(场景对比/加固执行示例/macOS/帮助渠道)、README 架构描述补细节 |
+| v0.0.20 | 文档填充（清TODO+补真实数据） | CC | ✅ | ✅ CHANGELOG 完整版(v0.0.10/v0.0.20)、FAQ 4条TODO全部填充(场景对比/加固执行示例/macOS/帮助渠道)、README 架构描述补细节 |
 
 ---
 
