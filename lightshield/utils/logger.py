@@ -288,7 +288,7 @@ if __name__ == "__main__":
         logger.error("nmap", "扫描超时", exception=TimeoutError("连接超时"))
 
         # 敏感信息过滤
-        logger.info("auth", "用户登录", password="Secret123!", token="abc123xyz")
+        logger.info("auth", "用户登录", password="****", token="****")  # 敏感信息自动脱敏——仅用于演示
 
         # 审计日志
         scan_id = logger.audit_scan_start("192.168.1.1", "port_scan")

@@ -122,7 +122,7 @@ lightshield version
 lightshield version
 ```
 
-如果看到 `LightShield 轻盾 v0.2.0` 即安装成功。
+如果看到 `LightShield 轻盾 v0.0.20` 即安装成功。
 
 尝试一次快速扫描以确认 Nmap 集成正常：
 
@@ -134,7 +134,7 @@ lightshield quick-scan 127.0.0.1 --confirm-ownership
 
 ## Web 仪表板（可选）
 
-v0.3.0 新增 Web 仪表板，通过浏览器交互式使用 LightShield。
+v0.0.30 新增 Web 仪表板，通过浏览器交互式使用 LightShield。
 
 ### 安装
 

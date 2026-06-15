@@ -6,7 +6,7 @@
 覆盖：
   - 适配器注册与管理
   - _validate_request R2 防线
-  - submit_scan / get_scan_status v0.2.0 异步接口
+  - submit_scan / get_scan_status v0.0.20 异步接口
   - 合规确认 _confirm_ownership
   - 无适配器时优雅降级
 """
@@ -135,12 +135,12 @@ class TestValidateRequest:
 
 
 # =============================================================================
-# submit_scan + get_scan_status — v0.2.0 异步接口
+# submit_scan + get_scan_status — v0.0.20 异步接口
 # =============================================================================
 
 
 class TestAsyncInterface:
-    """v0.2.0 新增 submit_scan / get_scan_status"""
+    """v0.0.20 新增 submit_scan / get_scan_status"""
 
     def test_submit_scan_returns_task_id(self, core, mock_adapter):
         """submit_scan 返回格式正确的 task_id"""

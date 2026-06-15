@@ -71,7 +71,7 @@ bash ./reports/rollback_192_168_1_1_*.sh
 | Windows (10+ / Server 2016+) | ✅ | ✅ `.ps1` | ✅ `deploy_win.ps1` |
 | macOS | 手动安装 Python+Nmap 后可用 | ❌ 暂未适配 | ❌ |
 
-> macOS 用户可以通过 `pip install -e .` 手动安装并使用扫描功能。加固脚本生成目前仅支持 Linux (.sh) 和 Windows (.ps1)，macOS 适配计划在 v0.3.0 中评估。
+> macOS 用户可以通过 `pip install -e .` 手动安装并使用扫描功能。加固脚本生成目前仅支持 Linux (.sh) 和 Windows (.ps1)，macOS 适配计划在 v0.0.30 中评估。
 
 ---
 
@@ -95,7 +95,7 @@ LightShield 在扫描报告中已经包含了针对每项风险的加固建议�
 
 ### Q6: Web 仪表板和 CLI 有什么区别？
 
-v0.3.0 新增 Web 仪表板，提供图形化操作界面，与 CLI 互补而非替代。
+v0.0.30 新增 Web 仪表板，提供图形化操作界面，与 CLI 互补而非替代。
 
 | 维度 | CLI | Web 仪表板 |
 |------|-----|-----------|

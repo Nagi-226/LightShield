@@ -186,7 +186,7 @@ echo -e " ${RED}失败: $FAIL${NC}"
 echo "============================================"
 
 if [ "$FAIL" -eq 0 ]; then
-    echo -e " ${GREEN}✅ E2E 全部通过 — 可以发布 v0.2.0${NC}"
+    echo -e " ${GREEN}✅ E2E 全部通过 — 可以发布 v0.0.20${NC}"
     exit 0
 else
     echo -e " ${RED}❌ E2E 有 $FAIL 项失败 — 修复后再发布${NC}"

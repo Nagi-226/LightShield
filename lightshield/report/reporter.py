@@ -215,7 +215,7 @@ class ReportGenerator:
             "",
             "---",
             "",
-            "*本报告由 LightShield 轻盾 v0.1.0 自动生成。仅供自有资产安全自查使用。*",
+            "*本报告由 LightShield 轻盾 v0.0.10 自动生成。仅供自有资产安全自查使用。*",
         ]
 
         return "\n".join(lines)

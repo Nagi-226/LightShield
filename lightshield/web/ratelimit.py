@@ -1,7 +1,7 @@
 """LightShield Web API — IP 速率限制器。
 
 基于滑动窗口的请求频率限制，从 config.rate_limit_per_hour 读取阈值。
-v0.3.1: 内存储存，单进程有效。v2.0.0 可迁移至 Redis。
+v0.0.31: 内存储存，单进程有效。v2.0.0 可迁移至 Redis。
 """
 
 from __future__ import annotations

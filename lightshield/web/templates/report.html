@@ -33,6 +33,10 @@
   <div class="report-actions">
     <a class="report-cta" href="{{ url_for('api.api_get_report', scan_id=scan_id, format='pdf') }}" download>下载 PDF 报告</a>
     <a class="report-cta" href="{{ url_for('pages.harden_page', scan_id=scan_id) }}">查看加固建议</a>
+    <div id="report-script-actions" class="script-download-actions" hidden>
+      <a id="report-harden-download" class="report-cta secondary-cta" href="#" download>下载加固脚本</a>
+      <a id="report-rollback-download" class="report-cta secondary-cta" href="#" download>下载回滚脚本</a>
+    </div>
   </div>
 </section>
 {% endblock %}
@@ -45,6 +49,9 @@
   const reportApiUrl = {{ url_for("api.api_get_report", scan_id=scan_id, format="markdown")|tojson }};
   const reportContent = document.getElementById("report-content");
   const reportError = document.getElementById("report-error");
+  const reportScriptActions = document.getElementById("report-script-actions");
+  const reportHardenDownload = document.getElementById("report-harden-download");
+  const reportRollbackDownload = document.getElementById("report-rollback-download");
 
   function escapeHtml(value) {
     return value
@@ -91,6 +98,35 @@
     });
   }
 
+  function scriptDownloadUrl(filename) {
+    const params = new URLSearchParams({ _csrf_token: window.LightShield.csrfToken });
+    return `/api/script/${encodeURIComponent(scanId)}/${encodeURIComponent(filename)}?${params.toString()}`;
+  }
+
+  function restoreScriptDownloads() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`ls-harden-scripts:${scanId}`) || "{}");
+      const scriptFilename = saved.scriptFilename || "";
+      const rollbackFilename = saved.rollbackFilename || "";
+      if (saved.scanId && saved.scanId !== scanId) return;
+
+      let hasDownload = false;
+      if (scriptFilename) {
+        reportHardenDownload.href = scriptDownloadUrl(scriptFilename);
+        reportHardenDownload.hidden = false;
+        hasDownload = true;
+      }
+      if (rollbackFilename) {
+        reportRollbackDownload.href = scriptDownloadUrl(rollbackFilename);
+        reportRollbackDownload.hidden = false;
+        hasDownload = true;
+      }
+      reportScriptActions.hidden = !hasDownload;
+    } catch (_) {
+      reportScriptActions.hidden = true;
+    }
+  }
+
   async function loadMeta() {
     const response = await fetch(scanStatusUrl, { credentials: "same-origin" });
     if (!response.ok) return;
@@ -123,6 +159,7 @@
     }
   }
 
+  restoreScriptDownloads();
   loadReport();
 </script>
 {% endblock %}

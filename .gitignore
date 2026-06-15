@@ -43,5 +43,11 @@ scripts/claude-*.ps1
 msf_cache/
 .msf4/
 
+# 知识图谱（自动生成，不入库）
+graphify-out/
+
+# Egg-info（自动生成）
+lightshield.egg-info/
+
 # 个人开发笔记（不推送）
 docs/interview-narratives/

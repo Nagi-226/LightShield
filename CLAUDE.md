@@ -4,10 +4,10 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-14 19:00 — v0.3.5 CVE 105 条交付，阶段二 2/4 完成。
+> **上次会话**：2026-06-14 19:00 — v0.0.35 CVE 105 条交付，阶段二 2/4 完成。
 >   - 质量基线：**580 tests** / 0 fail / ruff + mypy 全零违规
 >   - 阶段一 ✅✅✅ 安全加固 | 阶段二 ✅✅⬜⬜ 能力扩展 | 阶段三 ⬜⬜⬜ 自动化铺路
->   - 明天启动：v0.3.6 Nuclei 适配器（CC）+ v0.3.7 Web UI 增强（Codex）可并行
+>   - 明天启动：v0.0.36 Nuclei 适配器（CC）+ v0.0.37 Web UI 增强（Codex）可并行
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
@@ -96,12 +96,34 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 |------|-----|
 | **项目名** | LightShield（轻盾） |
 | **一句话定位** | 面向初创企业 & 个人站长的开源轻量化安全自检 + 防御加固工具 |
-| **当前阶段** | v0.1.0 — MVP 已完成（14 模块），v0.2.0 开发中 |
+| **当前阶段** | v0.0.36 — 阶段二 3/4，632 tests / ruff+mypy 零违规 |
 | **开源协议** | MIT |
 | **主语言** | Python 3.10+ |
 | **辅助语言** | Shell（部署脚本）、PowerShell（Windows 适配） |
 | **项目总览文档** | `PROJECT_OVERVIEW.md` |
 | **AI 提示词全集** | `LightShield_AI_Prompt_全集.txt` |
+
+---
+
+## 一-B、⚠️ 版本编号铁律（唯一体系，永不混淆）
+
+```
+LightShield 只使用一套版本号: v0.0.XX（纯线性增长）
+
+  v0.0.01 → v0.0.02 → ... → v0.0.10 (MVP) → ... → v0.0.20 → ... → v0.0.30 → ...
+  当前: v0.0.36   下一: v0.0.37
+
+里程碑（仅用于 GitHub Release，本质仍是 v0.0.XX，不是独立 tag 格式）:
+  v0.0.10 = MVP 完成    v0.0.20 = CLI 发布    v0.0.30 = Web 面板发布    v0.0.40 = 自动加固发布
+
+禁止合成任何其他格式的版本号——不存在 v0.1.0 / v0.2.0 / v0.3.0 / v0.3.1 之类的写法。
+
+版本号速查（当前周期）:
+  v0.0.31 = 异步扫描      v0.0.32 = Web 安全加固    v0.0.33 = Docker 部署
+  v0.0.34 = PDF 导出      v0.0.35 = CVE 105 条      v0.0.36 = Nuclei 适配器
+  v0.0.37 = Web UI 增强    v0.0.38 = 沙箱执行器      v0.0.39 = OpenAPI+i18n
+  v0.0.40 = 自动加固闭环
+```
 
 ---
 
@@ -265,8 +287,8 @@ Phase 10 (审计):   Security Engineer + Threat Detection Engineer
 | MSF 扫描器 | Metasploit auxiliary/scanner 子集 | 补充扫描能力（SMB/SSH/MySQL 弱口令等） |
 | 规则引擎 | JSON Schema | 漏洞特征库、加固策略匹配 |
 | 报告输出 | Python Markdown 生成 | 中文报告 |
-| Web 界面 | Flask + 原生 HTML/CSS | 轻量管理面板（v0.2.0+） |
-| 桌面界面 | Tkinter | 跨平台客户端（v0.3.0+） |
+| Web 界面 | Flask + 原生 HTML/CSS | 轻量管理面板（v0.0.20+） |
+| 桌面界面 | Tkinter | 跨平台客户端（v0.0.30+） |
 
 ---
 
@@ -401,10 +423,10 @@ LightShield/
 
 | 版本 | 里程碑 | 核心交付 |
 |------|--------|---------|
-| v0.1.0 | MVP | 资产扫描 + 漏洞检测 + 中文报告（CLI） |
-| v0.2.0 | Web 面板 | Flask 管理界面 + 在线报告预览 |
-| v0.3.0 | 桌面客户端 | Tkinter 跨平台 GUI + 一键打包 |
-| v0.4.0 | 自动加固 | Linux/Windows 加固脚本 + 复检验证 |
+| v0.0.10 | MVP | 资产扫描 + 漏洞检测 + 中文报告（CLI） |
+| v0.0.20 | Web 面板 | Flask 管理界面 + 在线报告预览 |
+| v0.0.30 | 桌面客户端 | Tkinter 跨平台 GUI + 一键打包 |
+| v0.0.40 | 自动加固 | Linux/Windows 加固脚本 + 复检验证 |
 | v1.0.0 | 正式版 | 完整功能 + 开源文档 + 合规审计报告 |
 | v2.0.0 | 重盾 | 适配器扩展 + 远程规则订阅 + 企业特性 |
 
@@ -419,7 +441,7 @@ Phase 5:  规则引擎           → engine.py + vuln_rules.json + harden_rules.
 Phase 6:  报告生成           → reporter.py
 Phase 7:  自动加固           → linux_harden.py + 脚本模板
 Phase 8:  部署脚本           → deploy_linux.sh, deploy_win.ps1
-Phase 9:  界面（v0.2.0+）   → Flask Web Panel, Tkinter GUI
+Phase 9:  界面（v0.0.20+）   → Flask Web Panel, Tkinter GUI
 Phase 10: 合规审计           → 全量代码审查
 ```
 
@@ -438,7 +460,7 @@ Phase 10: 合规审计           → 全量代码审查
 
 ## 九、可扩展性（为"重盾"预留）
 
-| 扩展点 | 当前轻盾做法 (v0.2.0) | 未来重盾方向 | 切换机制 | 预留状态 |
+| 扩展点 | 当前轻盾做法 (v0.0.20) | 未来重盾方向 | 切换机制 | 预留状态 |
 |--------|------------------------|-------------|:--:|:--:|
 | 扫描引擎 | Nmap + 自研脚本 | + OpenVAS / Nuclei / ZAP | 新增 Adapter 即可 | ✅ BaseAdapter 抽象 |
 | MSF 集成度 | 仅 auxiliary/scanner | 可扩展至 auxiliary/server/ | 白名单配置文件控制 | ✅ 常量定义已就绪 |

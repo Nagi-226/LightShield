@@ -106,7 +106,7 @@ hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-XXX.md)"
 | **v0.0.18** | `deploy_linux.sh` + `deploy_win.ps1` | 一键部署脚本 | ✅ | ✅ 171+239行 |
 | **v0.0.20** | `LICENSE` + docs 骨架 | MIT + INSTALL/USAGE/FAQ 占位 | ✅ | ✅ CC 填充 |
 | **v0.0.30** | 文档更新（Web 章节） | INSTALL/USAGE/FAQ/CHANGELOG 补充 Web 内容 | ✅ | ✅ |
-| **v0.3.3** | Docker 部署 | Dockerfile + docker-compose.yml + 数据卷持久化 | 🟢 当前 | ⬜ |
+| **v0.0.33** | Docker 部署 | Dockerfile + docker-compose.yml + 数据卷持久化 | 🟢 当前 | ⬜ |
 
 ### Hermes 全任务完成统计
 
@@ -121,7 +121,7 @@ v0.0.30  文档更新（Web 章节）                 ✅
          6/7 完成，1 个待执行 🟢
 ```
 
-> 当前状态：**v0.3.3 Docker 部署已分配，等待执行。**
+> 当前状态：**v0.0.33 Docker 部署已分配，等待执行。**
 
 ---
 
@@ -131,7 +131,7 @@ v0.0.30  文档更新（Web 章节）                 ✅
 你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
 
 ## 背景
-v0.2.0 即将发布。项目已有 deploy_linux.sh + deploy_win.ps1 一键部署脚本，
+v0.0.20 即将发布。项目已有 deploy_linux.sh + deploy_win.ps1 一键部署脚本，
 CLI 已支持 scan/quick-scan/harden/version 四个子命令，441 项测试全部通过。
 现在缺完整的开源文档和 LICENSE 文件。
 
@@ -224,7 +224,7 @@ hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/HERMES-v011-infra.m
 你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash。
 
 ## 背景
-v0.1.0 MVP 已完成（14 模块），v0.0.11 正在添加 CLI。
+v0.0.10 MVP 已完成（14 模块），v0.0.11 正在添加 CLI。
 
 ## 任务A：创建 pyproject.toml
 项目根目录创建现代化 Python 打包配置：
@@ -254,7 +254,7 @@ v0.0.27-29 已交付完整的 Web 仪表板能力：
 - 浏览器访问 `http://127.0.0.1:5000` → 登录 → 扫描 → 报告 → 加固，全流程可用
 - 新增可选依赖：`pip install lightshield[web]`
 
-现有文档（docs/）是 v0.2.0 CLI-only 时期的版本，缺少 Web 面板相关内容。
+现有文档（docs/）是 v0.0.20 CLI-only 时期的版本，缺少 Web 面板相关内容。
 
 ### 任务：更新文档，补充 Web 仪表板内容
 
@@ -265,7 +265,7 @@ v0.0.27-29 已交付完整的 Web 仪表板能力：
 在现有安装步骤后追加：
 
 ```markdown
-## Web 仪表板（可选，v0.3.0+）
+## Web 仪表板（可选，v0.0.30+）
 
 如需使用浏览器管理扫描任务，安装 Web 可选依赖：
 
@@ -305,7 +305,7 @@ CLI 和 Web 共享同一套后端（LightShieldCore），扫描能力完全相�
 Web 仪表板额外提供 Markdown 报告渲染和扫描历史管理。
 
 ### Q: Web 仪表板安全吗？可以暴露到公网吗？
-v0.3.0 的 Web 仪表板设计用于本地或内网访问。
+v0.0.30 的 Web 仪表板设计用于本地或内网访问。
 内置 Session 鉴权和 CSRF 防护，但生产环境部署到公网前应：
 - 修改默认登录凭证（环境变量 LS_WEB_USERNAME / LS_WEB_PASSWORD）
 - 配置反向代理（Nginx/Caddy）提供 HTTPS
@@ -317,7 +317,7 @@ v0.3.0 的 Web 仪表板设计用于本地或内网访问。
 脚本内置了所有权二次确认机制（交互式提示）。
 ```
 
-#### 4. CHANGELOG.md — 追加 v0.3.0 条目
+#### 4. CHANGELOG.md — 追加 v0.0.30 条目
 
 在文件顶部（`## [0.2.0]` 之前）插入：
 
@@ -347,13 +347,13 @@ v0.3.0 的 Web 仪表板设计用于本地或内网访问。
 你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
 
 ## 项目背景
-LightShield 轻盾 v0.3.0 即将发布。v0.0.27-29 新增了完整的 Web 仪表板能力：
+LightShield 轻盾 v0.0.30 即将发布。v0.0.27-29 新增了完整的 Web 仪表板能力：
 - `lightshield serve` 启动 Flask Web API + 浏览器管理面板
 - `pip install lightshield[web]` 安装 Web 可选依赖
 - 5 个 API 端点 + 3 个 Web 页面（登录/仪表板/报告/加固）
 - 默认凭证 admin/lightshield，通过环境变量覆盖
 
-现有 docs/ 文档是 v0.2.0 CLI-only 版本，需要补充 Web 内容。
+现有 docs/ 文档是 v0.0.20 CLI-only 版本，需要补充 Web 内容。
 
 ## 任务：更新 4 个文档文件
 
@@ -378,7 +378,7 @@ LightShield 轻盾 v0.3.0 即将发布。v0.0.27-29 新增了完整的 Web 仪�
 - Q: Web 仪表板安全吗？可以暴露到公网吗？
 - Q: 加固脚本生成后会自动执行吗？
 
-### 4. CHANGELOG.md — 新增 v0.3.0 条目
+### 4. CHANGELOG.md — 新增 v0.0.30 条目
 在文件顶部（[0.2.0] 之前）插入 [0.3.0] 条目：
 - 新增：Web 仪表板、Flask REST API、Session 鉴权、CSRF 防护、lightshield serve
 - 变更：版本 0.1.0→0.3.0、测试 534→575
@@ -399,13 +399,13 @@ LightShield 轻盾 v0.3.0 即将发布。v0.0.27-29 新增了完整的 Web 仪�
 
 ---
 
-## 十、v0.3.3 详细任务 + 启动提示词 🟢 当前任务
+## 十、v0.0.33 详细任务 + 启动提示词 🟢 当前任务
 
 ### 背景
 
-v0.3.0 已发布。LightShield 现在有完整的 CLI + Web 仪表板能力。
+v0.0.30 已发布。LightShield 现在有完整的 CLI + Web 仪表板能力。
 当前部署方式需要手动安装 Python 3.10+、Nmap、pip install 等依赖。
-v0.3.3 需要提供 Docker 一键部署方案，让用户无需手动配置环境。
+v0.0.33 需要提供 Docker 一键部署方案，让用户无需手动配置环境。
 
 ### 任务：创建 Docker 部署方案
 
@@ -499,7 +499,7 @@ services:
 你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
 
 ## 项目背景
-LightShield 轻盾 v0.3.0 已发布。项目有完整的 CLI + Web 仪表板（Flask）。
+LightShield 轻盾 v0.0.30 已发布。项目有完整的 CLI + Web 仪表板（Flask）。
 路径：E:/Github Project/LightShield/
 
 当前部署依赖手动安装 Python/Nmap/pip，需要 Docker 一键部署方案。

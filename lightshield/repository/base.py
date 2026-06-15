@@ -1,7 +1,7 @@
 """ScanRepository 抽象基类 — 扫描结果持久化。
 
 为 v1.0.0 / v2.0.0 扩展预留：
-  v0.2.0 → JsonFileRepository（当前实现）
+  v0.0.20 → JsonFileRepository（当前实现）
   v1.0.0 → SqliteRepository
   v2.0.0 → PostgresRepository + Redis 缓存层
 
@@ -77,12 +77,12 @@ class ScanRepository(ABC):
 
 
 # =============================================================================
-# v0.2.0 实现：JSON 文件存储
+# v0.0.20 实现：JSON 文件存储
 # =============================================================================
 
 
 class JsonFileRepository(ScanRepository):
-    """JSON 文件持久化 — v0.2.0 默认实现。
+    """JSON 文件持久化 — v0.0.20 默认实现。
 
     单用户 CLI 场景：每个扫描结果存为一个 JSON 文件。
     目录结构：{data_dir}/scans/{YYYY-MM}/{scan_id}.json
@@ -214,7 +214,7 @@ def get_repository(backend: str = "json", **kwargs) -> ScanRepository:
     """获取 Repository 实例（惰性单例）。
 
     Args:
-        backend: "json" (v0.2.0) | "sqlite" (v1.0.0) | "postgres" (v2.0.0)
+        backend: "json" (v0.0.20) | "sqlite" (v1.0.0) | "postgres" (v2.0.0)
         **kwargs: 后端特定参数（如 data_dir / db_url）
 
     Returns:

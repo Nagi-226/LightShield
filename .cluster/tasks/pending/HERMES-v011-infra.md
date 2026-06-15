@@ -1,7 +1,7 @@
 你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
 
 ## 项目背景
-LightShield v0.1.0 MVP 已完成（14 个 Python 模块），v0.0.11 正在添加 CLI 入口。
+LightShield v0.0.10 MVP 已完成（14 个 Python 模块），v0.0.11 正在添加 CLI 入口。
 需要你为项目创建现代化的 Python 打包配置和更新依赖清单。
 
 ## 任务A：创建 pyproject.toml

@@ -1,4 +1,4 @@
-# LightShield v0.3.0 全量终审报告
+# LightShield v0.0.30 全量终审报告
 
 > **审查者**: CodeWhale (DeepSeek-V4)
 > **日期**: 2026-06-14
@@ -16,7 +16,7 @@
 | 接口一致性（Gate D） | 通过，存在一处代码重复 | **Blocker 0 · Suggestion 1** |
 | 范围忠实度（Gate B） | 通过，无计划外文件 | ✓ |
 
-**总体评估**: 代码质量良好，安全机制覆盖到位，可以进入发布流程。以下发现的 5 条建议均不构成 Blocker，但建议在 v0.3.1 中修复。
+**总体评估**: 代码质量良好，安全机制覆盖到位，可以进入发布流程。以下发现的 5 条建议均不构成 Blocker，但建议在 v0.0.31 中修复。
 
 ---
 
@@ -34,7 +34,7 @@
 - **现状**: `<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>` 无 integrity 属性
 - **风险**: CDN 被篡改或中间人攻击时可注入恶意脚本
 - **建议**: 添加 SRI `integrity="sha384-..."` 和 `crossorigin="anonymous"`
-- **优先级**: 中（v0.3.0 用户多为本地 localhost 使用，影响有限）
+- **优先级**: 中（v0.0.30 用户多为本地 localhost 使用，影响有限）
 
 ### Suggestion 3 — `_reconstruct_findings()` 代码重复
 - **文件**: `lightshield/web/pages.py:192-213` 和 `lightshield/web/routes.py:314-344`
@@ -47,13 +47,13 @@
 - **文件**: `lightshield/web/routes.py`（整体缺失）
 - **现状**: `config.py` 有 `rate_limit_per_hour: int = 100` 字段，但标注为 v2.0.0 预留。Web 路径没有实际的请求速率限制。
 - **风险**: 本地 localhost 使用场景下影响较小，但若暴露到网络则存在暴力破解风险
-- **建议**: v0.3.1 可考虑引入简单的 Flask 速率限制（如 `flask-limiter`）
-- **优先级**: 低（v0.3.0 默认监听 127.0.0.1，暂不面向公网）
+- **建议**: v0.0.31 可考虑引入简单的 Flask 速率限制（如 `flask-limiter`）
+- **优先级**: 低（v0.0.30 默认监听 127.0.0.1，暂不面向公网）
 
 ### Suggestion 5 — footer 版本号过期
 - **文件**: `lightshield/web/templates/base.html:113`
-- **现状**: `<span>LightShield v0.0.28</span>` 硬编码，与即将发布的 v0.3.0 不一致
-- **建议**: 通过模板变量注入 `__version__` 或更新为 v0.3.0
+- **现状**: `<span>LightShield v0.0.28</span>` 硬编码，与即将发布的 v0.0.30 不一致
+- **建议**: 通过模板变量注入 `__version__` 或更新为 v0.0.30
 - **优先级**: 极低（展示性质）
 
 ---
@@ -116,7 +116,7 @@
 | `Access-Control-Allow-Origin` | ⚠ 已知风险 | `*` 宽松配置，代码注释已标注 v1.0.0 规划替换 |
 | 其他 CORS 头 | ✓ 通过 | `Allow-Headers` 和 `Allow-Methods` 按需设置 |
 
-**审查结论**: 这是 v0.3.0 MVP 阶段的已知取舍，代码有明确注释。本地 127.0.0.1 部署下实际风险极低。
+**审查结论**: 这是 v0.0.30 MVP 阶段的已知取舍，代码有明确注释。本地 127.0.0.1 部署下实际风险极低。
 
 ---
 
@@ -186,7 +186,7 @@
 | 扫描间隔 | ✓ `MIN_SCAN_INTERVAL = 5.0` 秒，core.py L234 `time.sleep()` |
 | Web API 速率限制 | ⚠ `rate_limit_per_hour` 字段已定义但未实现（标注 v2.0.0） |
 
-**结论**: ✓ 通过与 1 条建议。核心扫描的 R6 限制在 CLI 和 Web 路径均生效（Web 通过 submit_scan → run_scan 调用链）。API 速率限制在 v0.3.0 本地部署场景下非阻塞项。
+**结论**: ✓ 通过与 1 条建议。核心扫描的 R6 限制在 CLI 和 Web 路径均生效（Web 通过 submit_scan → run_scan 调用链）。API 速率限制在 v0.0.30 本地部署场景下非阻塞项。
 
 ---
 
@@ -233,7 +233,7 @@
 | `graphify-out/` | ✓ | 知识图谱工具产物 |
 | `lightshield.egg-info/` | ✓ | 包构建元数据 |
 
-**结论**: ✓ 通过。无计划外文件，所有新增均在 v0.3.0 Web Dashboard 需求的清单范围内。
+**结论**: ✓ 通过。无计划外文件，所有新增均在 v0.0.30 Web Dashboard 需求的清单范围内。
 
 ---
 
@@ -257,4 +257,4 @@
 
 ---
 
-*审查完成。建议在发布前修复 Suggestion 2（marked.js SRI）和 Suggestion 5（footer 版本号），其余三条建议可纳入 v0.3.1 迭代计划。*
+*审查完成。建议在发布前修复 Suggestion 2（marked.js SRI）和 Suggestion 5（footer 版本号），其余三条建议可纳入 v0.0.31 迭代计划。*

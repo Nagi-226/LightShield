@@ -8,7 +8,7 @@
 
 ## 项目上下文
 
-LightShield v0.2.0 已发布。当前覆盖率 61%，但 `cli.py` 和 `core.py` 为 0%（需要真实 Nmap 环境，之前无法测试）。
+LightShield v0.0.20 已发布。当前覆盖率 61%，但 `cli.py` 和 `core.py` 为 0%（需要真实 Nmap 环境，之前无法测试）。
 v0.0.22 的任务：通过 mock 所有外部依赖（Nmap/subprocess/HTTP），为 CLI 和 core 编写单元测试。
 
 项目路径：E:/Github Project/LightShield/
@@ -72,7 +72,7 @@ R1-R6 全部遵守。测试代码中可能引用黑名单术语（如 `is_module
 - `_validate_request("")` → (False, ...)
 - `_validate_request("*.example.com")` → (False, ...)
 
-**3. submit_scan() + get_scan_status() — v0.2.0 新增异步接口**
+**3. submit_scan() + get_scan_status() — v0.0.20 新增异步接口**
 - `submit_scan("127.0.0.1")` → 返回 task_id（格式 "LS-YYYYMMDD-..."）
 - `get_scan_status(task_id)` → 返回 dict 含 status/target/findings
 - `get_scan_status("nonexistent")` → {"status": "not_found"}

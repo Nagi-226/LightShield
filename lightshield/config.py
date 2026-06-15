@@ -78,7 +78,7 @@ class LightShieldConfig:
     scan_queue_backend: str = "memory"  # v1.0.0: memory, v2.0.0: redis
 
     # ---- 存储后端 (v1.0.0) ----
-    repository_backend: str = "json"  # v0.2.0: json, v1.0.0: sqlite, v2.0.0: postgres
+    repository_backend: str = "json"  # v0.0.20: json, v1.0.0: sqlite, v2.0.0: postgres
     db_url: str = ""  # v1.0.0: sqlite:///data/lightshield.db
     # v2.0.0: postgresql://user:pass@host/lightshield
 

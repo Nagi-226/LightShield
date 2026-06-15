@@ -1,7 +1,7 @@
 # LightShield v0.0.11 — v0.0.20 版本迭代路线图
 
-> **起点**：v0.1.0 MVP（14 模块全部就绪，架构 Grade A）
-> **终点**：v0.2.0 — 可发布的完整 CLI 工具
+> **起点**：v0.0.10 MVP（14 模块全部就绪，架构 Grade A）
+> **终点**：v0.0.20 — 可发布的完整 CLI 工具
 > **原则**：测试先行 → 加固补齐 → CLI 抛光 → 文档收尾
 
 ---
@@ -18,7 +18,7 @@ v0.0.16  自动加固 Linux  → 高危端口关闭 + 服务禁用 + Web 防护
 v0.0.17  自动加固 Win    → Windows 防火墙 + 账户策略 + 服务管理
 v0.0.18  一键部署        → deploy_linux.sh + deploy_win.ps1
 v0.0.19  E2E 集成测试    → QoderWork 全链路 + 靶机验证 + 合规终审
-v0.0.20  文档 + 发布     → README/INSTALL/USAGE/FAQ + v0.2.0 tag
+v0.0.20  文档 + 发布     → README/INSTALL/USAGE/FAQ + v0.0.20 tag
 ```
 
 ---
@@ -167,7 +167,7 @@ v0.0.20  文档 + 发布     → README/INSTALL/USAGE/FAQ + v0.2.0 tag
 
 | 属性 | 值 |
 |------|-----|
-| **目标** | 完整的开源项目文档 + v0.2.0 发布 |
+| **目标** | 完整的开源项目文档 + v0.0.20 发布 |
 | **Agent** | Claude Code + Qoder（中文审查） + Technical Writer agent |
 | **产出** | `README.md`, `docs/INSTALL.md`, `docs/USAGE.md`, `docs/FAQ.md`, `CHANGELOG.md` |
 | **验证** | 新人按文档可在 10 分钟内完成安装→首次扫描→查看报告 |
@@ -198,7 +198,7 @@ v0.0.20  文档 + 发布     → README/INSTALL/USAGE/FAQ + v0.2.0 tag
 | Gate 3 | v0.0.11 | CLI 可执行、一条命令产出报告 |
 | Gate 4 | v0.0.15 | 测试覆盖率 ≥80%、日志审计全覆盖 |
 | Gate 5 | v0.0.19 | E2E 靶机验证通过、合规终审零违规 |
-| 🚀 发布 | v0.2.0 | GitHub Release + 完整文档 |
+| 🚀 发布 | v0.0.20 | GitHub Release + 完整文档 |
 
 ---
 

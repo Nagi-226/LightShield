@@ -1,10 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-14 19:00 | **当前版本**：v0.3.5 ✅ | **下一目标**：v0.4.0
-> **会话状态**：v0.3.1-0.3.5 全部交付。阶段一 ✅（安全加固）。阶段二 2/4（PDF ✅ + CVE ✅）。
-> **明天启动**：v0.3.6 Nuclei 适配器（CC）→ v0.3.7 Web UI 增强（Codex）
-> **规则**：每个 Agent 产出必须经 Claude Code 实际读码验收
-> **⚠️  本机环境**：使用 Hermes venv Python (`d:/hermes-agent/hermes-agent/venv/Scripts/python.exe`)，不用系统 `py`（缺少 Flask 等依赖）
+> **最后更新**：2026-06-15 23:30 | **当前版本**：v0.0.37 ✅ | **下一目标**：v0.0.38
+> **会话状态**：v0.0.36 Nuclei + v0.0.37 Web UI 全部交付。阶段二 4/4 全部完成 🎉。版本体系统一。
+> **下次启动**：v0.0.38 沙箱执行器 + v0.0.39 OpenAPI/i18n
 
 ---
 
@@ -51,30 +49,30 @@
 
 ---
 
-## v0.2.0 发布就绪 🎉
+## v0.0.20 发布就绪 🎉
 
 **全部 21 个版本 (v0.0.01-v0.0.20) 已完成。8/8 Agent 零任务。**
 
-### v0.2.0 发布 + 架构预留（2026-06-11）
+### v0.0.20 发布 + 架构预留（2026-06-11）
 
 | 版本 | 目标 | Agent | 状态 |
 |:--:|------|------|:--:|
-| v0.2.0 | git tag + E2E 终审 | CC | ✅ |
+| v0.0.20 | git tag + E2E 终审 | CC | ✅ |
 | — | Repository 抽象 (JSON→SQLite→PG) | CC | ✅ `lightshield/repository/` |
 | — | `submit_scan()` / `get_scan_status()` | CC | ✅ core.py 异步接口预留 |
 | — | 未来扩展 config 字段 | CC | ✅ web/redis/db/queue/auth 预留 |
 | — | CLAUDE.md 扩展表更新 | CC | ✅ 9 个扩展点全部标注预留状态 |
 
 ### 发布步骤
-1. ✅ `git tag v0.2.0` 已创建
+1. ✅ `git tag v0.0.20` 已创建
 2. `git push origin main --tags`（需手动执行）
-3. GitHub Release 附 CHANGELOG.md v0.2.0 条目
+3. GitHub Release 附 CHANGELOG.md v0.0.20 条目
 
 ---
 
 ## v0.0.21 — v0.0.30 十版本迭代规划 🎯
 
-> **总目标**：从 v0.2.0 CLI 工具 → v0.3.0 GUI 桌面客户端
+> **总目标**：从 v0.0.20 CLI 工具 → v0.0.30 GUI 桌面客户端
 > **三阶段推进**：质量深化 → 内容增长 → GUI 铺路
 > **Agent 复用**：Codex(安全关键) / Reasonix(批量测试) / Hermes(基础设施) / CodeWhale(审查)
 
@@ -130,7 +128,7 @@
 
 | 版本 | 目标 | Agent | 关键交付 |
 |:--:|------|:--:|------|
-| **v0.0.30** | Web Panel E2E + v0.3.0 就绪 | CC + Hermes + CodeWhale | Web E2E 测试、性能基线（<100ms API 响应）、文档更新（INSTALL/USAGE/FAQ 补充 Web 章节）、CodeWhale 全量审查 |
+| **v0.0.30** | Web Panel E2E + v0.0.30 就绪 | CC + Hermes + CodeWhale | Web E2E 测试、性能基线（<100ms API 响应）、文档更新（INSTALL/USAGE/FAQ 补充 Web 章节）、CodeWhale 全量审查 |
 
 ---
 
@@ -152,39 +150,39 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 1. **质量先行**（21-23）：mypy 收紧 + 覆盖率提升 → 后续任何新功能都有安全网
 2. **内容跟上**（24-26）：CVE 库扩充 + 规则增强 → 扫描结果更有价值
-3. **GUI 铺路**（27-29）：Flask API + Web UI → 为 v0.3.0 Tkinter 桌面端验证交互模式
-4. **收尾发布**（30）：全量审查 + E2E → v0.3.0 发布
+3. **GUI 铺路**（27-29）：Flask API + Web UI → 为 v0.0.30 Tkinter 桌面端验证交互模式
+4. **收尾发布**（30）：全量审查 + E2E → v0.0.30 发布
 
 ### 为什么是这个顺序（回顾）
 
 1. **质量先行**（21-23）：mypy 收紧 + 覆盖率提升 → 后续任何新功能都有安全网
 2. **内容跟上**（24-26）：CVE 库扩充 + 规则增强 → 扫描结果更有价值
-3. **GUI 铺路**（27-29）：Flask API + Web UI → 为 v0.3.0 桌面端验证交互模式
-4. **收尾发布**（30）：全量审查 + E2E → v0.3.0 发布
+3. **GUI 铺路**（27-29）：Flask API + Web UI → 为 v0.0.30 桌面端验证交互模式
+4. **收尾发布**（30）：全量审查 + E2E → v0.0.30 发布
 
 ---
 
-## v0.3.0 发布就绪 🎉
+## v0.0.30 发布就绪 🎉
 
-**全部 30 个版本 (v0.0.01-v0.0.30) 已完成。8/8 Agent 全部任务完成。git tag v0.3.0 已推送。**
+**全部 30 个版本 (v0.0.01-v0.0.30) 已完成。8/8 Agent 全部任务完成。git tag v0.0.30 已推送。**
 
 ---
 
-## v0.3.1 — v0.4.0 十版本迭代规划 🎯
+## v0.0.31 — v0.0.40 十版本迭代规划 🎯
 
-> **总目标**：从 v0.3.0 Web 仪表板 → v0.4.0 自动加固执行
+> **总目标**：从 v0.0.30 Web 仪表板 → v0.0.40 自动加固执行
 > **三阶段推进**：安全加固 → 能力扩展 → 自动化铺路
 > **Agent 复用**：CC(架构+安全关键) / Codex(前端+数据质量) / Hermes(基础设施) / CodeWhale(审查)
 
 ---
 
-### 阶段一：安全加固（v0.3.1-0.3.3）—— Web 生产就绪
+### 阶段一：安全加固（v0.0.31-0.0.33）—— Web 生产就绪
 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
-| **v0.3.1** | 异步扫描 + 速率限制 | CC | `threading.Thread` 异步 `submit_scan()`、Web API 速率限制（`rate_limit_per_hour` 落地）、登录暴力破解防护（失败计数+指数退避）、`get_scan_status()` 返回 RUNNING/PENDING 状态 | ✅ |
-| **v0.3.2** | Web 安全加固 | CC | Secure cookie flags（HttpOnly/SameSite/8h超时）、CSP 头（script-src CDN白名单）、CORS 白名单收紧（LS_CORS_ORIGINS）、`X-Frame-Options`/`X-Content-Type-Options`/`Referrer-Policy`、403 handler | ✅ |
-| **v0.3.3** | Docker 部署 | Hermes | `Dockerfile` + `docker-compose.yml`、一键 `docker compose up` 启动 Web 仪表板、数据卷持久化（SQLite + 报告） | ✅ |
+| **v0.0.31** | 异步扫描 + 速率限制 | CC | `threading.Thread` 异步 `submit_scan()`、Web API 速率限制（`rate_limit_per_hour` 落地）、登录暴力破解防护（失败计数+指数退避）、`get_scan_status()` 返回 RUNNING/PENDING 状态 | ✅ |
+| **v0.0.32** | Web 安全加固 | CC | Secure cookie flags（HttpOnly/SameSite/8h超时）、CSP 头（script-src CDN白名单）、CORS 白名单收紧（LS_CORS_ORIGINS）、`X-Frame-Options`/`X-Content-Type-Options`/`Referrer-Policy`、403 handler | ✅ |
+| **v0.0.33** | Docker 部署 | Hermes | `Dockerfile` + `docker-compose.yml`、一键 `docker compose up` 启动 Web 仪表板、数据卷持久化（SQLite + 报告） | ✅ |
 
 **阶段一验收标准**：
 - Web API 扫描不阻塞请求线程 ✅
@@ -193,14 +191,14 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 ---
 
-### 阶段二：能力扩展（v0.3.4-0.3.7）—— 新扫描器 + 新格式
+### 阶段二：能力扩展（v0.0.34-0.0.37）—— 新扫描器 + 新格式
 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
-| **v0.3.4** | PDF 报告导出 | Codex | `PdfReportWriter`（`fpdf2` + 中文字体自动发现）、Web 下载 PDF 按钮、CLI `--output-format pdf` | ✅ |
-| **v0.3.5** | CVE 100+ + 自动更新 | Codex | CVE 70→105（26 组件）、新增 Jenkins/ES/K8s/HAProxy、`fetch_latest_cves()` NVD API 2.0 | ✅ |
-| **v0.3.6** | Nuclei 适配器 | CC | `NucleiAdapter(BaseAdapter)`、YAML 模板安全白名单（仅 `tags: detection`）、结果解析为 `VulnFinding`、`lightshield/nuclei-templates/` 精选模板库 | ⬜ |
-| **v0.3.7** | Web UI 增强 | Codex | 脚本下载按钮（harden 页）、扫描进度实时 SSE 推送、暗色/亮色主题切换、仪表板搜索+筛选 | ⬜ |
+| **v0.0.34** | PDF 报告导出 | Codex | `PdfReportWriter`（`fpdf2` + 中文字体自动发现）、Web 下载 PDF 按钮、CLI `--output-format pdf` | ✅ |
+| **v0.0.35** | CVE 100+ + 自动更新 | Codex | CVE 70→105（26 组件）、新增 Jenkins/ES/K8s/HAProxy、`fetch_latest_cves()` NVD API 2.0 | ✅ |
+| **v0.0.36** | Nuclei 适配器 | CC | `NucleiAdapter(BaseAdapter)`、标签白名单/黑名单（R1 防线）、JSONL 解析 → `VulnFinding`、路径/参数注入防护、`lightshield/nuclei-templates/` 模板目录、52 条新测试 | ✅ |
+| **v0.0.37** | Web UI 增强 | Codex | 脚本下载按钮 + CSRF + R4确认、SSE 实时推送 + poll fallback、暗色/亮色主题切换 + localStorage、仪表板搜索筛选 + URL参数同步。6 文件，+793 / -73 行。42 个 web 测试全过 | ✅ |
 
 **阶段二验收标准**：
 - PDF 报告可下载 ✅
@@ -210,12 +208,12 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 ---
 
-### 阶段三：自动化铺路（v0.3.8-0.3.9）—— 为自动加固做准备
+### 阶段三：自动化铺路（v0.0.38-0.0.39）—— 为自动加固做准备
 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
-| **v0.3.8** | 沙箱执行器 | CC | `lightshield/sandbox/` 子包、`SandboxExecutor` 抽象（Docker 容器隔离）、`--execute` 危险标志（需额外 YES 确认）、执行超时+输出捕获+审计日志 | ⬜ |
-| **v0.3.9** | OpenAPI 文档 + i18n | CC + Hermes | Swagger UI（`flasgger` 或手写 OpenAPI JSON）、所有 API 端点文档化、英文 locale（`zh-CN` / `en-US`） | ⬜ |
+| **v0.0.38** | 沙箱执行器 | CC | `lightshield/sandbox/` 子包、`SandboxExecutor` 抽象（Docker 容器隔离）、`--execute` 危险标志（需额外 YES 确认）、执行超时+输出捕获+审计日志 | ⬜ |
+| **v0.0.39** | OpenAPI 文档 + i18n | CC + Hermes | Swagger UI（`flasgger` 或手写 OpenAPI JSON）、所有 API 端点文档化、英文 locale（`zh-CN` / `en-US`） | ⬜ |
 
 **阶段三验收标准**：
 - 沙箱中可安全执行加固脚本（docker exec → 超时 → 输出捕获 → 审计）✅
@@ -224,18 +222,18 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 ---
 
-### 收尾：v0.4.0 自动加固
+### 收尾：v0.0.40 自动加固
 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
-| **v0.4.0** | 自动加固闭环 + 发布 | CC + CodeWhale | `harden → execute → re-scan → verify` 全自动闭环、Web 端一键加固+复扫+对比报告、回滚验证、CodeWhale 全量审查 → git tag v0.4.0 | ⬜ |
+| **v0.0.40** | 自动加固闭环 + 发布 | CC + CodeWhale | `harden → execute → re-scan → verify` 全自动闭环、Web 端一键加固+复扫+对比报告、回滚验证、CodeWhale 全量审查 → git tag v0.0.40 | ⬜ |
 
 ---
 
 ### Agent 任务分配总览
 
 ```
-Agent        v0.3.1  v0.3.2  v0.3.3  v0.3.4  v0.3.5  v0.3.6  v0.3.7  v0.3.8  v0.3.9  v0.4.0
+Agent        v0.0.31  v0.0.32  v0.0.33  v0.0.34  v0.0.35  v0.0.36  v0.0.37  v0.0.38  v0.0.39  v0.0.40
 ──────────────────────────────────────────────────────────────────────────────────────────────
 Claude Code    ✅       ✅       —       —       —       ✅       —      ✅      ✅      ✅
 Codex           —       —       —       ✅      ✅       —       ✅       —       —       —
@@ -257,14 +255,15 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
 
 | Agent | 已完成 | 待完成 |
 |------|:--:|:--:|
-| Claude Code | 15 | 6 |
-| Codex | 10 | 3 |
+| Claude Code | 16 | 5 |
+| Codex | 11 | 2 |
 | Hermes | 6 | 2 |
 | Reasonix | 4 | 0 |
 | CodeWhale | 3 | 1 |
 | Qoder | 1 | 0 |
 | QoderWork | 1 | 0 |
 | CodeBuddy | 1 | 0 |
+| **ZCode 3.0** 🆕 | 0 | ∞ |
 
 ---
 
@@ -276,9 +275,12 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
 | 2026-06-09 21:00 | Phase 1 骨架完成 |
 | 2026-06-09 22:10 | v0.0.09-10 规则引擎+报告生成 → MVP 完成 |
 | 2026-06-10 22:15 | 收尾——PROGRESS.md/CLAUDE.md 同步，4/8 Agent 全部任务完成 |
-| 2026-06-11 22:45 | v0.2.0 发布：E2E 终审通过，pre-commit 9组hook，覆盖率71% |
+| 2026-06-11 22:45 | v0.0.20 发布：E2E 终审通过，pre-commit 9组hook，覆盖率71% |
 | 2026-06-12 22:15 | v0.0.26 规则引擎增强，阶段二全部完成 |
 | 2026-06-14 15:15 | v0.0.28 Web 仪表板交付（Codex），CC 验收通过 |
 | 2026-06-14 16:05 | v0.0.29 加固页面 + CSRF 交付（Codex），CC 验收通过 |
-| 2026-06-14 16:20 | v0.0.30 CodeWhale 全量终审（0 Blocker）+ Hermes 文档更新，CC E2E → git tag v0.3.0 → push GitHub |
-| 2026-06-14 17:00 | v0.3.1 异步扫描+速率限制+登录防护 交付（CC）：core.py threading.Thread 异步化 + ratelimit.py 滑动窗口 + auth.py 指数退避锁定期 + app.py 429 handler。575 passed / ruff+mypy 全零 / smoke 通过 |
+| 2026-06-14 16:20 | v0.0.30 CodeWhale 全量终审（0 Blocker）+ Hermes 文档更新，CC E2E → git tag v0.0.30 → push GitHub |
+| 2026-06-14 17:00 | v0.0.31 异步扫描+速率限制+登录防护 交付（CC）：core.py threading.Thread 异步化 + ratelimit.py 滑动窗口 + auth.py 指数退避锁定期 + app.py 429 handler。575 passed / ruff+mypy 全零 / smoke 通过 |
+| 2026-06-15 19:15 | v0.0.36 Nuclei 适配器 交付（CC）：NucleiAdapter(BaseAdapter) + 标签白名单/黑名单（R1 防线） + JSONL 解析 + 路径/参数注入防护 + 52 条新测试。632 passed / ruff+mypy 全零 |
+| 2026-06-15 22:30 | 集群扩展：ZCode 3.0 + GLM-5.2 作为 Agent 9（知识架构师）加入集群。创建 `.cluster/agents/ZCODE.md`，更新 CLUSTER.md + COORDINATION.md。Kimi K2.7 Code 作为 Agent 10 技术储备存入记忆 |
+| 2026-06-15 23:30 | v0.0.37 Web UI 增强 交付验收（Codex）：脚本下载 + SSE + 主题切换 + 搜索筛选。42 web tests 全过。版本编号体系统一为 v0.0.XX，git tag v0.0.20-0.0.37 全部就位。阶段二 4/4 全部完成 🎉 |

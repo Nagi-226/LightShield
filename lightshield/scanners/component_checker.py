@@ -1269,7 +1269,7 @@ CVE_DATABASE: list[CveEntry] = [
 CVE_DATABASE.extend(
     [
         # ============================
-        # Jenkins / Elastic / Kubernetes / HAProxy (v0.3.5)
+        # Jenkins / Elastic / Kubernetes / HAProxy (v0.0.35)
         # ============================
         CveEntry(
             cve_id="CVE-2024-23897",
@@ -1426,7 +1426,7 @@ CVE_DATABASE.extend(
             remediation_cn="升级 HAProxy 至 2.5.0 或维护分支修复版本，并在边界代理启用严格 HTTP 规范化。",
         ),
         # ============================
-        # Existing components expanded (v0.3.5)
+        # Existing components expanded (v0.0.35)
         # ============================
         CveEntry(
             cve_id="CVE-2021-23017",

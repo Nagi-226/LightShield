@@ -3,7 +3,7 @@
 > **执行时间**：2026-06-11 21:53-21:55 CST
 > **执行环境**：WSL2 Ubuntu 24.04.1 LTS (替代 QoderWork VM)
 > **测试目标**：127.0.0.1 (localhost，含 5 个预置漏洞服务)
-> **结论**：✅ **PASS — 可以发布 v0.2.0**
+> **结论**：✅ **PASS — 可以发布 v0.0.20**
 
 ---
 
@@ -15,7 +15,7 @@
 | Linux 环境 | WSL2 Ubuntu 24.04.1 LTS (kernel 6.6.87.2) |
 | Python | 3.12.3 |
 | Nmap | 7.94+git20230807 |
-| LightShield | v0.1.0 (CLI 支持 scan/quick-scan/harden/version) |
+| LightShield | v0.0.10 (CLI 支持 scan/quick-scan/harden/version) |
 
 ---
 
@@ -129,12 +129,12 @@ E2E 终审  ✅  PASS
 
 ## 结论
 
-**✅ E2E 终审全部通过。LightShield v0.2.0 可以发布。**
+**✅ E2E 终审全部通过。LightShield v0.0.20 可以发布。**
 
 建议发布步骤：
-1. `git tag v0.2.0`
+1. `git tag v0.0.20`
 2. `git push origin main --tags`
-3. GitHub Release 附 CHANGELOG.md 中 v0.2.0 条目
+3. GitHub Release 附 CHANGELOG.md 中 v0.0.20 条目
 
 ---
 

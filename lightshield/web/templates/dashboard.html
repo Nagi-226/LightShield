@@ -46,6 +46,13 @@
         <div>
           <strong id="status-title">等待提交</strong>
           <p id="status-detail">输入单个 IP 或域名，并完成 R4 授权确认。</p>
+          <div id="status-progress" class="status-progress" role="progressbar" aria-label="扫描进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="status-progress-bar"></span>
+          </div>
+          <div class="status-metrics" aria-label="实时扫描指标">
+            <span>端口 <strong id="status-ports">0</strong></span>
+            <span>发现 <strong id="status-findings">0</strong></span>
+          </div>
         </div>
       </div>
 
@@ -60,6 +67,23 @@
       </div>
 
       {% if history %}
+      <div class="history-filter" role="search" aria-label="筛选扫描历史">
+        <label for="history-search">
+          <span>搜索</span>
+          <input id="history-search" type="search" placeholder="搜索目标或扫描 ID..." autocomplete="off" aria-controls="history-table-body">
+        </label>
+        <label for="history-status">
+          <span>状态</span>
+          <select id="history-status" aria-controls="history-table-body">
+            <option value="">全部</option>
+            <option value="completed">completed</option>
+            <option value="partial">partial</option>
+            <option value="failed">failed</option>
+            <option value="running">running</option>
+          </select>
+        </label>
+        <span id="history-count" class="history-count" aria-live="polite"></span>
+      </div>
       <div class="table-wrap">
         <table class="history-table">
           <thead>
@@ -74,10 +98,10 @@
               <th>加固</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="history-table-body">
             {% for item in history %}
             {% set status = item.status|default("unknown") %}
-            <tr>
+            <tr data-history-row data-scan-id="{{ item.scan_id }}" data-target="{{ item.target|default("-") }}" data-status="{{ status }}">
               <td><code title="{{ item.scan_id }}">{{ item.scan_id }}</code></td>
               <td>{{ item.target|default("-") }}</td>
               <td><span class="status-badge status-{{ status }}">{{ status }}</span></td>
@@ -88,6 +112,9 @@
               <td><a class="text-link" href="{{ url_for('pages.harden_page', scan_id=item.scan_id) }}">加固</a></td>
             </tr>
             {% endfor %}
+            <tr id="history-no-match" class="history-empty-row" hidden>
+              <td colspan="8">没有匹配的记录</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -109,6 +136,7 @@
     asset: ["port_scan", "service_detect"],
     vuln: ["web_vuln", "weak_password", "component_check"],
   };
+  const terminalScanStates = ["completed", "partial", "failed"];
 
   const scanForm = document.getElementById("scan-form");
   const targetInput = document.getElementById("target");
@@ -119,18 +147,40 @@
   const statusBox = document.getElementById("scan-status");
   const statusTitle = document.getElementById("status-title");
   const statusDetail = document.getElementById("status-detail");
+  const statusProgress = document.getElementById("status-progress");
+  const statusProgressBar = document.getElementById("status-progress-bar");
+  const statusPorts = document.getElementById("status-ports");
+  const statusFindings = document.getElementById("status-findings");
   const reportLink = document.getElementById("report-link");
   const hardenLink = document.getElementById("harden-link");
+  const historySearchInput = document.getElementById("history-search");
+  const historyStatusSelect = document.getElementById("history-status");
+  const historyCount = document.getElementById("history-count");
+  const historyRows = [...document.querySelectorAll("[data-history-row]")];
+  const historyNoMatch = document.getElementById("history-no-match");
 
   function setScanError(message) {
     scanError.textContent = message;
     scanError.hidden = !message;
   }
 
-  function setStatus(state, title, detail) {
+  function estimateProgress(state, data = {}) {
+    if (state === "idle") return 0;
+    if (terminalScanStates.includes(state)) return 100;
+    const ports = Number(data.ports ?? 0);
+    const findings = Number(data.findings ?? 0);
+    return Math.min(88, 18 + ports * 5 + findings * 7);
+  }
+
+  function setStatus(state, title, detail, data = {}) {
     statusBox.dataset.state = state;
     statusTitle.textContent = title;
     statusDetail.textContent = detail;
+    const progress = estimateProgress(state, data);
+    statusProgressBar.style.width = `${progress}%`;
+    statusProgress.setAttribute("aria-valuenow", String(Math.round(progress)));
+    statusPorts.textContent = data.ports ?? 0;
+    statusFindings.textContent = data.findings ?? 0;
   }
 
   function hasObviousTargetProblem(target) {
@@ -147,6 +197,39 @@
     return "";
   }
 
+  function parseEventPayload(event) {
+    try {
+      return JSON.parse(event.data || "{}");
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function renderScanProgress(data) {
+    const state = data.status || "running";
+    const target = data.target || targetInput.value.trim() || "未知目标";
+    const detail = `目标 ${target}，端口 ${data.ports ?? 0}，发现 ${data.findings ?? 0}`;
+    setStatus(state, state, detail, data);
+  }
+
+  function finishScan(taskId, data) {
+    const state = data.status || "completed";
+    renderScanProgress({ ...data, status: state });
+
+    if (["completed", "partial"].includes(state)) {
+      reportLink.href = `/report/${encodeURIComponent(taskId)}`;
+      reportLink.hidden = false;
+      hardenLink.href = `/harden/${encodeURIComponent(taskId)}`;
+      hardenLink.hidden = false;
+    } else {
+      reportLink.hidden = true;
+      hardenLink.hidden = true;
+    }
+
+    startButton.disabled = false;
+    startButton.textContent = "开始扫描";
+  }
+
   async function pollScan(taskId, attempt = 0) {
     const response = await fetch(`/api/scan/${encodeURIComponent(taskId)}`, { credentials: "same-origin" });
     const data = await response.json().catch(() => ({}));
@@ -155,37 +238,131 @@
     }
 
     const state = data.status || "running";
-    const target = data.target || "未知目标";
-    const detail = `目标 ${target}，端口 ${data.ports ?? 0}，发现 ${data.findings ?? 0}`;
-    setStatus(state, state, detail);
+    renderScanProgress(data);
 
-    if (["completed", "partial"].includes(state)) {
-      reportLink.href = `/report/${encodeURIComponent(taskId)}`;
-      reportLink.hidden = false;
-      hardenLink.href = `/harden/${encodeURIComponent(taskId)}`;
-      hardenLink.hidden = false;
-      startButton.disabled = false;
-      startButton.textContent = "开始扫描";
-      return;
+    if (terminalScanStates.includes(state)) {
+      finishScan(taskId, data);
+      return data;
     }
 
-    if (state === "failed") {
-      reportLink.hidden = true;
-      hardenLink.hidden = true;
-      startButton.disabled = false;
-      startButton.textContent = "开始扫描";
-      return;
+    if (attempt >= 60) {
+      throw new Error("扫描状态查询超时，请稍后刷新仪表板。");
     }
 
-    if (attempt < 60) {
-      window.setTimeout(() => pollScan(taskId, attempt + 1).catch(handleScanFailure), 1500);
+    await new Promise((resolve) => window.setTimeout(resolve, 1500));
+    return pollScan(taskId, attempt + 1);
+  }
+
+  function watchScan(taskId) {
+    if (!window.EventSource) {
+      return pollScan(taskId);
     }
+
+    return new Promise((resolve, reject) => {
+      const source = new EventSource(`/api/scan/${encodeURIComponent(taskId)}/stream`);
+      let closed = false;
+
+      source.onmessage = (event) => {
+        renderScanProgress(parseEventPayload(event));
+      };
+
+      source.addEventListener("done", (event) => {
+        closed = true;
+        source.close();
+        const data = parseEventPayload(event);
+        finishScan(taskId, data);
+        resolve(data);
+      });
+
+      source.addEventListener("timeout", (event) => {
+        closed = true;
+        source.close();
+        const data = parseEventPayload(event);
+        setStatus("failed", "进度监听超时", data.message || "扫描仍在后台运行，请稍后查看历史记录。", data);
+        reportLink.hidden = true;
+        hardenLink.hidden = true;
+        startButton.disabled = false;
+        startButton.textContent = "开始扫描";
+        resolve(data);
+      });
+
+      source.addEventListener("error", (event) => {
+        if (!("data" in event)) return;
+        closed = true;
+        source.close();
+        const data = parseEventPayload(event);
+        reject(new Error(data.message || "扫描进度连接失败"));
+      });
+
+      source.onerror = () => {
+        if (closed) return;
+        closed = true;
+        source.close();
+        setStatus("running", "SSE 中断", "自动切换为轮询查询。");
+        pollScan(taskId).then(resolve).catch(reject);
+      };
+    });
   }
 
   function handleScanFailure(error) {
-    setStatus("failed", "扫描失败", error.message);
+    setStatus("failed", "扫描失败", error.message, { ports: statusPorts.textContent, findings: statusFindings.textContent });
+    reportLink.hidden = true;
+    hardenLink.hidden = true;
     startButton.disabled = false;
     startButton.textContent = "开始扫描";
+  }
+
+  function applyHistoryFilters(syncUrl = true) {
+    if (!historySearchInput || !historyStatusSelect) return;
+
+    const rawQuery = historySearchInput.value.trim();
+    const query = rawQuery.toLowerCase();
+    const status = historyStatusSelect.value;
+    let visibleCount = 0;
+
+    historyRows.forEach((row) => {
+      const rowStatus = (row.dataset.status || "").toLowerCase();
+      const haystack = `${row.dataset.target || ""} ${row.dataset.scanId || ""}`.toLowerCase();
+      const matchesQuery = !query || haystack.includes(query);
+      const matchesStatus = !status || rowStatus === status;
+      const isVisible = matchesQuery && matchesStatus;
+      row.hidden = !isVisible;
+      if (isVisible) visibleCount += 1;
+    });
+
+    if (historyNoMatch) {
+      historyNoMatch.hidden = visibleCount > 0;
+    }
+    if (historyCount) {
+      historyCount.textContent = `${visibleCount}/${historyRows.length} 条记录`;
+    }
+
+    if (!syncUrl) return;
+    const url = new URL(window.location.href);
+    if (rawQuery) {
+      url.searchParams.set("q", rawQuery);
+    } else {
+      url.searchParams.delete("q");
+    }
+    if (status) {
+      url.searchParams.set("status", status);
+    } else {
+      url.searchParams.delete("status");
+    }
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function initHistoryFilters() {
+    if (!historySearchInput || !historyStatusSelect) return;
+    const params = new URLSearchParams(window.location.search);
+    historySearchInput.value = params.get("q") || "";
+    const status = params.get("status") || "";
+    if ([...historyStatusSelect.options].some((option) => option.value === status)) {
+      historyStatusSelect.value = status;
+    }
+    historySearchInput.addEventListener("input", () => applyHistoryFilters());
+    historyStatusSelect.addEventListener("change", () => applyHistoryFilters());
+    applyHistoryFilters(false);
   }
 
   scanForm.addEventListener("submit", async (event) => {
@@ -208,7 +385,7 @@
 
     startButton.disabled = true;
     startButton.textContent = "提交中...";
-    setStatus("running", "正在提交", "请求已发送到 LightShield API。");
+    setStatus("running", "正在提交", "请求已发送到 LightShield API。", { ports: 0, findings: 0 });
 
     try {
       const response = await fetch("/api/scan", {
@@ -225,11 +402,16 @@
       if (!response.ok) {
         throw new Error(data.message || "扫描提交失败");
       }
-      setStatus("running", "扫描中", `任务 ${data.task_id} 已创建，正在查询进度。`);
-      await pollScan(data.task_id);
+      setStatus("running", "扫描中", `任务 ${data.task_id} 已创建，正在接收实时进度。`, {
+        ports: 0,
+        findings: 0,
+      });
+      await watchScan(data.task_id);
     } catch (error) {
       handleScanFailure(error);
     }
   });
+
+  initHistoryFilters();
 </script>
 {% endblock %}

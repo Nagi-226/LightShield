@@ -102,6 +102,46 @@ BLOCKED_MSF_PREFIXES: list[str] = [
 
 
 # ============================================================
+# Nuclei 模板标签白名单/黑名单（R1 + R5 防线）
+# ============================================================
+
+# 安全检测标签——仅允许信息收集/配置检测/暴露发现类模板
+NUCLEI_ALLOWED_TAGS: list[str] = [
+    "detection",  # 版本/服务检测
+    "discovery",  # 服务发现
+    "tech",  # 技术栈识别
+    "config",  # 配置检测
+    "exposure",  # 暴露面检测
+    "enum",  # 枚举
+    "misconfig",  # 错误配置检测
+    "token-spray",  # Token 喷洒（仅检测，不爆破）
+]
+
+# 禁止的攻击标签——任何包含这些标签的模板一律拒绝
+NUCLEI_BLOCKED_TAGS: list[str] = [
+    "exploit",  # 漏洞利用
+    "intrusive",  # 侵入式
+    "attack",  # 攻击
+    "dos",  # 拒绝服务
+    "fuzz",  # 模糊测试
+    "bruteforce",  # 暴力破解
+    "sqli",  # SQL 注入（主动注入）
+    "xss",  # 跨站脚本（主动注入）
+    "rce",  # 远程代码执行
+    "lfi",  # 本地文件包含
+    "ssrf",  # 服务端请求伪造
+    "injection",  # 注入类
+    "file-upload",  # 文件上传
+    "code-injection",  # 代码注入
+    "command-injection",  # 命令注入
+    "deserialization",  # 反序列化
+]
+
+# Nuclei 默认扫描超时（秒）
+NUCLEI_DEFAULT_TIMEOUT: int = 120
+
+
+# ============================================================
 # 高危端口清单
 # ============================================================
 
@@ -197,5 +237,14 @@ if __name__ == "__main__":
     assert MIN_SCAN_INTERVAL == 5.0
     assert MAX_TARGETS_PER_SESSION == 1
     print("OK compliance constants")
+
+    # Nuclei 标签白名单/黑名单不重叠
+    for blocked in NUCLEI_BLOCKED_TAGS:
+        assert blocked not in NUCLEI_ALLOWED_TAGS, f"Nuclei tag conflict: {blocked} in both lists"
+    print(f"OK Nuclei tags: {len(NUCLEI_ALLOWED_TAGS)} allowed + {len(NUCLEI_BLOCKED_TAGS)} blocked")
+
+    # Nuclei 超时常量
+    assert NUCLEI_DEFAULT_TIMEOUT == 120
+    print("OK Nuclei timeout constant")
 
     print("=== constants: ALL PASSED ===")

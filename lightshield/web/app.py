@@ -1,11 +1,11 @@
 """LightShield Web API — Flask 应用工厂。
 
 提供 create_app(config) 工厂函数，创建并配置 Flask 实例：
-- Session 签名密钥 + 安全 cookie 标志（HttpOnly/SameSite/v0.3.2）
+- Session 签名密钥 + 安全 cookie 标志（HttpOnly/SameSite/v0.0.32）
 - 注册 API + Pages Blueprint
 - JSON 错误处理器（400/401/403/404/405/429/500）
-- 安全响应头（CSP/X-Frame-Options/X-Content-Type-Options/v0.3.2）
-- CORS 头（默认本地开发宽松，可配置白名单 v0.3.2）
+- 安全响应头（CSP/X-Frame-Options/X-Content-Type-Options/v0.0.32）
+- CORS 头（默认本地开发宽松，可配置白名单 v0.0.32）
 - CSRF 防护 + 速率限制
 - 注入 LightShieldCore 实例到 app.config
 """
@@ -54,7 +54,7 @@ def _register_error_handlers(app: Flask) -> None:
 
 
 def _configure_session(app: Flask, config: LightShieldConfig) -> None:
-    """配置 Session 安全参数（v0.3.2）。"""
+    """配置 Session 安全参数（v0.0.32）。"""
     secret_key = config.jwt_secret or os.urandom(24).hex()
     app.secret_key = secret_key
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -80,7 +80,7 @@ def create_app(config: LightShieldConfig | None = None) -> Flask:
     if config is None:
         config = LightShieldConfig()
 
-    # Session 安全配置（v0.3.2: HttpOnly + SameSite + 8h 超时）
+    # Session 安全配置（v0.0.32: HttpOnly + SameSite + 8h 超时）
     _configure_session(app, config)
 
     # 注入配置和核心实例到 app.config，供路由通过 current_app 访问
@@ -109,7 +109,7 @@ def create_app(config: LightShieldConfig | None = None) -> Flask:
 
     @app.before_request
     def _rate_limit():
-        """Apply rate limiting to API endpoints (v0.3.1)."""
+        """Apply rate limiting to API endpoints (v0.0.31)."""
         if request.endpoint and request.endpoint.startswith("api."):
             limiter = get_limiter(max_requests=config.rate_limit_per_hour, window_seconds=3600)
             ip = request.remote_addr or "127.0.0.1"
@@ -124,7 +124,7 @@ def create_app(config: LightShieldConfig | None = None) -> Flask:
 
     @app.after_request
     def _add_security_headers(response):
-        """添加安全响应头（v0.3.2: CSP + X-Frame + X-Content-Type + Referrer-Policy）。
+        """添加安全响应头（v0.0.32: CSP + X-Frame + X-Content-Type + Referrer-Policy）。
 
         CSP 允许：
           - 本域脚本和样式（HTML 内联 + static/）
@@ -150,7 +150,7 @@ def create_app(config: LightShieldConfig | None = None) -> Flask:
 
     @app.after_request
     def _add_cors_headers(response):
-        """CORS 头（v0.3.2: 收紧为可配置，默认仅本地开发宽松）。
+        """CORS 头（v0.0.32: 收紧为可配置，默认仅本地开发宽松）。
 
         生产部署在反向代理后时，CORS 由反向代理统一处理。
         如需跨域 API 访问，设置环境变量 LS_CORS_ORIGINS 为逗号分隔的域名列表。

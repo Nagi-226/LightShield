@@ -14,9 +14,14 @@
 
 from __future__ import annotations
 
+import json
+import secrets
+import time
 from datetime import datetime, timezone
+from fnmatch import fnmatchcase
+from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request, session
+from flask import Blueprint, Response, current_app, jsonify, request, send_from_directory, session, stream_with_context
 
 from lightshield.adapters.base import ScanResult, VulnFinding
 from lightshield.config import LightShieldConfig
@@ -24,6 +29,7 @@ from lightshield.report.reporter import ReportGenerator
 from lightshield.repository.base import get_repository
 from lightshield.rules.engine import RuleEngine
 from lightshield.utils.constants import RiskLevel, ScanStatus
+from lightshield.utils.logger import get_logger
 from lightshield.utils.validator import TargetValidator
 from lightshield.web.auth import login, login_required, logout
 from lightshield.web.csrf import csrf_exempt
@@ -33,6 +39,11 @@ from lightshield.web.csrf import csrf_exempt
 # ---------------------------------------------------------------------------
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+
+SCRIPT_FILENAME_PATTERNS = ("harden_*.sh", "harden_*.ps1", "rollback_*.sh", "rollback_*.ps1")
+SSE_FINAL_STATUSES = {ScanStatus.COMPLETED.value, ScanStatus.PARTIAL.value, ScanStatus.FAILED.value}
+SSE_INTERVAL_SECONDS = 0.5
+SSE_TIMEOUT_SECONDS = 20.0
 
 
 # =============================================================================
@@ -151,6 +162,62 @@ def api_get_scan_status(task_id: str):
         return jsonify({"error": True, "message": f"任务不存在: {task_id}", "code": 404}), 404
 
     return jsonify(status), 200
+
+
+@api_bp.route("/scan/<task_id>/stream", methods=["GET"])
+@login_required
+def api_scan_stream(task_id: str):
+    """SSE 实时推送扫描进度。"""
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    logger = get_logger()
+
+    def _events():
+        started_at = time.monotonic()
+        logger.info("web", f"SSE 扫描进度连接已建立：task_id={task_id}")
+
+        while True:
+            try:
+                status = core.get_scan_status(task_id)
+            except Exception as exc:
+                logger.error("web", f"SSE 扫描状态读取失败：task_id={task_id}", exception=exc)
+                yield _format_sse({"message": "扫描状态读取失败", "code": 500}, event="error")
+                return
+
+            state = str(status.get("status", "unknown"))
+            if state == "not_found":
+                logger.warning("web", f"SSE 任务不存在：task_id={task_id}")
+                yield _format_sse({"message": f"任务不存在: {task_id}", "code": 404}, event="error")
+                return
+
+            yield _format_sse(status)
+
+            if state in SSE_FINAL_STATUSES:
+                logger.info("web", f"SSE 扫描进度完成：task_id={task_id} status={state}")
+                yield _format_sse(status, event="done")
+                return
+
+            if time.monotonic() - started_at >= SSE_TIMEOUT_SECONDS:
+                logger.warning("web", f"SSE 扫描进度超时：task_id={task_id} status={state}")
+                yield _format_sse(
+                    {
+                        "task_id": task_id,
+                        "status": state,
+                        "message": "扫描进度监听超时，请稍后刷新或查看历史记录",
+                    },
+                    event="timeout",
+                )
+                return
+
+            time.sleep(SSE_INTERVAL_SECONDS)
+
+    return Response(
+        stream_with_context(_events()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # =============================================================================
@@ -278,6 +345,8 @@ def api_generate_harden(scan_id: str):
         return jsonify({"error": True, "message": f"脚本生成失败：{exc}", "code": 500}), 500
 
     status = result.status.value if hasattr(result.status, "value") else str(result.status)
+    script_filename = _script_basename(result.script_path)
+    rollback_filename = _script_basename(result.rollback_path)
     return jsonify(
         {
             "success": True,
@@ -285,15 +354,95 @@ def api_generate_harden(scan_id: str):
             "action_count": result.action_count,
             "script_path": result.script_path,
             "rollback_path": result.rollback_path,
+            "script_filename": script_filename,
+            "rollback_filename": rollback_filename,
             "status": status,
             "message": f"已生成 {result.action_count} 条加固操作",
         }
     ), 200
 
 
+@api_bp.route("/script/<scan_id>/<path:filename>", methods=["GET"])
+@login_required
+def api_download_script(scan_id: str, filename: str):
+    """下载生成的加固 / 回滚脚本。"""
+    logger = get_logger()
+
+    if not _is_allowed_script_filename(filename):
+        logger.warning("web", f"拒绝脚本下载：非法文件名 scan_id={scan_id} filename={filename}")
+        return jsonify({"error": True, "message": "脚本文件名不在下载白名单内", "code": 400}), 400
+
+    if not _validate_download_csrf():
+        logger.warning("web", f"拒绝脚本下载：CSRF 校验失败 scan_id={scan_id} filename={filename}")
+        return jsonify({"error": True, "message": "CSRF 校验失败，请刷新页面后重试", "code": 403}), 403
+
+    if not session.get("harden_confirmed_at"):
+        logger.warning("web", f"拒绝脚本下载：未确认 R4 所有权 scan_id={scan_id} filename={filename}")
+        return jsonify({"error": True, "message": "[R4] 下载脚本前请先确认目标所有权或授权范围", "code": 403}), 403
+
+    config: LightShieldConfig = current_app.config["LIGHTSHIELD_CONFIG"]
+    script_path = _resolve_script_path(config.report_output_dir, filename)
+    if script_path is None:
+        logger.warning("web", f"脚本文件不存在：scan_id={scan_id} filename={filename}")
+        return jsonify({"error": True, "message": "脚本文件不存在", "code": 404}), 404
+
+    logger.info("web", f"脚本下载：scan_id={scan_id} filename={filename}")
+    return send_from_directory(
+        directory=script_path.parent,
+        path=script_path.name,
+        as_attachment=True,
+        download_name=script_path.name,
+        mimetype="application/octet-stream",
+        max_age=0,
+    )
+
+
 # =============================================================================
 # 辅助函数：从仓库数据重建领域对象
 # =============================================================================
+
+
+def _format_sse(data: dict, event: str | None = None) -> str:
+    """Format one Server-Sent Event frame."""
+    prefix = f"event: {event}\n" if event else ""
+    return f"{prefix}data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _is_allowed_script_filename(filename: str) -> bool:
+    """Return True when filename matches the hardening script whitelist."""
+    if not filename or "/" in filename or "\\" in filename:
+        return False
+    if Path(filename).name != filename:
+        return False
+    return any(fnmatchcase(filename, pattern) for pattern in SCRIPT_FILENAME_PATTERNS)
+
+
+def _validate_download_csrf() -> bool:
+    """Validate CSRF for GET-based script downloads."""
+    expected = session.get("_csrf_token")
+    supplied = (
+        request.headers.get("X-CSRF-Token")
+        or request.args.get("_csrf_token")
+        or request.args.get("csrf_token")
+        or request.form.get("_csrf_token")
+    )
+    return bool(expected and supplied and secrets.compare_digest(str(expected), str(supplied)))
+
+
+def _resolve_script_path(output_dir: str, filename: str) -> Path | None:
+    """Resolve a script path under report_output_dir without allowing traversal."""
+    base_dir = Path(output_dir).expanduser().resolve(strict=False)
+    script_path = (base_dir / filename).resolve(strict=False)
+    if script_path.parent != base_dir or not script_path.is_file():
+        return None
+    return script_path
+
+
+def _script_basename(path: str | None) -> str:
+    """Return a generated script basename suitable for download URL construction."""
+    if not path:
+        return ""
+    return Path(path).name
 
 
 def _reconstruct_scan_result(raw: dict) -> ScanResult:

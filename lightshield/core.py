@@ -33,7 +33,7 @@ from lightshield.utils.constants import ScanStatus
 from lightshield.utils.validator import TargetValidator
 
 # =============================================================================
-# 异步任务信息（v0.3.1: threading.Thread 异步扫描）
+# 异步任务信息（v0.0.31: threading.Thread 异步扫描）
 # =============================================================================
 
 
@@ -41,7 +41,7 @@ from lightshield.utils.validator import TargetValidator
 class _TaskInfo:
     """异步扫描任务的内部状态追踪。
 
-    v0.3.1: Thread 异步，task_id 立即返回，状态可通过 get_scan_status() 轮询。
+    v0.0.31: Thread 异步，task_id 立即返回，状态可通过 get_scan_status() 轮询。
     v1.0.0: 可迁移至 concurrent.futures.ThreadPoolExecutor。
     v2.0.0: 可迁移至 Celery + Redis。
     """
@@ -76,7 +76,7 @@ class LightShieldCore:
         """
         self._config = config or get_config()
         self._adapters: dict[str, BaseAdapter] = {}
-        self._task_results: dict[str, _TaskInfo] = {}  # v0.3.1: Thread 异步, v1.0: 线程池, v2.0: Redis
+        self._task_results: dict[str, _TaskInfo] = {}  # v0.0.31: Thread 异步, v1.0: 线程池, v2.0: Redis
         self._scan_log: list[dict] = []
 
     # =========================================================================
@@ -329,7 +329,7 @@ class LightShieldCore:
         return self.run_scan(target, scan_types=None, **kwargs)
 
     # =========================================================================
-    # 异步任务接口（v0.2.0 同步实现，v1.0+ 可切换为消息队列）
+    # 异步任务接口（v0.0.20 同步实现，v1.0+ 可切换为消息队列）
     # =========================================================================
 
     def submit_scan(
@@ -340,10 +340,10 @@ class LightShieldCore:
         confirm_ownership: bool = False,
         **kwargs,
     ) -> str:
-        """提交扫描任务，立即返回 task_id（v0.3.1: threading.Thread 异步）。
+        """提交扫描任务，立即返回 task_id（v0.0.31: threading.Thread 异步）。
 
-        v0.2.0: 同步执行——提交即完成。
-        v0.3.1: Thread 异步——task_id 立即返回，通过 get_scan_status() 轮询。
+        v0.0.20: 同步执行——提交即完成。
+        v0.0.31: Thread 异步——task_id 立即返回，通过 get_scan_status() 轮询。
         v1.0.0: 线程池 → ThreadPoolExecutor。
         v2.0.0: Celery → Redis。
 
@@ -412,7 +412,7 @@ class LightShieldCore:
     def get_scan_status(self, task_id: str) -> dict:
         """查询扫描任务状态。
 
-        v0.3.1：查 Thread 任务 → PENDING / RUNNING / COMPLETED / PARTIAL / FAILED。
+        v0.0.31：查 Thread 任务 → PENDING / RUNNING / COMPLETED / PARTIAL / FAILED。
         v1.0.0：查线程池 Future。
         v2.0.0：查 Redis → 支持分布式查询。
 

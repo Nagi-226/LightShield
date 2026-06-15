@@ -1,6 +1,6 @@
 # LightShield 开发集群（Dev Cluster）
 
-> **集群角色**：将本机 8 个 AI Agent/IDE 协同编排，形成多角色开发流水线。
+> **集群角色**：将本机 9 个 AI Agent/IDE 协同编排，形成多角色开发流水线。
 > **总指挥**：Claude Code（架构师 + 编排器）
 
 ---
@@ -45,6 +45,14 @@
                         │ 🏭 后台任务执行器 │
                         │ VM隔离/长时间任务 │
                         └──────────────────┘
+                               │
+                               ▼
+                        ┌──────────────────────────┐
+                        │  ZCode 3.0 (CLI)         │
+                        │  🗂️ 知识架构师 + 文档自动化│
+                        │  1M上下文 / Zread知识库   │
+                        │  GLM-5.2 · 异步任务       │
+                        └──────────────────────────┘
 ```
 
 ### 详细能力画像
@@ -59,6 +67,7 @@
 | **CodeBuddy** | IDE | 多模型 | 编辑器内大模块开发 | — | 多文件联动开发 |
 | **Qoder** | IDE | 多模型 | AI补全 + Quest Agent | — | 编辑器内精准修改 |
 | **QoderWork** | CLI | 多模型 | 后台执行、VM隔离 | 后台常驻 | 长时间跑任务、沙箱测试 |
+| **ZCode 3.0** | CLI | GLM-5.2 (744B MoE) | 全量文档同步、知识库生成、合规审计 | `zcode exec "$(cat task.md)"` | 文档/知识/审计——异步任务 |
 
 ---
 
@@ -206,6 +215,34 @@ hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-007-infra.md)"
 - 沙箱环境验证
 - 扫描功能集成测试（在隔离 VM 中运行）
 
+### 3.9 ZCode 3.0（知识架构师 + 文档自动化专员）🆕
+
+**负责**：利用 1M 上下文全量读取项目，生成/同步文档和知识库
+- 全量文档同步（CLAUDE.md / README / CHANGELOG / FAQ / INSTALL / USAGE）
+- Zread 知识库生成（结构化项目文档，比 graphify 更叙事化）
+- 合规审计报告（R1-R6 全量扫描）
+- API 文档生成（从 routes.py 提取端点文档）
+- 新成员上手指南
+
+**调用方式**（非交互）：
+```bash
+zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
+```
+
+**优点**：
+- **1M 上下文**——集群中唯一能一次读取整个项目的 Agent
+- **Zread 知识库**——独有功能，自动生成结构化文档
+- **工具调用 100% JSON 合法率**——批量合规扫描零格式错误
+- **MIT 开源**——无许可风险
+
+**注意事项**：
+- ⚠️ 推理速度比 Claude Opus 慢 ~30%，所有任务为异步模式（发下去→等结果→审查）
+- ⚠️ 多步指令偶有缺失，任务文件必须分步明确
+- ⚠️ 不发安全关键模块实现（由 CC/Codex 负责）
+- ⚠️ 不发实时代码审查（由 CodeWhale/CC 负责）
+
+**详细配置**：见 `.cluster/agents/ZCODE.md`
+
 ---
 
 ## 四、LightShield Phase 1 任务拆分方案
@@ -238,6 +275,7 @@ hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-007-infra.md)"
 | **CodeBuddy** | DeepSeek-V4 | 🟡 良好 | 🟢 低 | 需人工 |
 | **Qoder** | **Qwen-3.7-max** | 🟢 **很强** | 🟡 中 | 需人工 |
 | **QoderWork** | **Qwen-3.7-max** | 🟢 **很强** | 🟡 中 | 后台常驻 |
+| **ZCode 3.0** | **GLM-5.2** | 🟢 **很强** | 🟢 极低（免费） | `zcode exec` |
 
 ### 任务分配逻辑（已优化）
 

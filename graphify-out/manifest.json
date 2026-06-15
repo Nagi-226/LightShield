@@ -1,0 +1,692 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1781177787.5785394,
+    "ast_hash": "f4d5b2a8e3dfda71e13dd7e2d44162e5",
+    "semantic_hash": ""
+  },
+  ".claude/settings.local.json": {
+    "mtime": 1781520633.3256817,
+    "ast_hash": "68a8b44d6d7e1b8666efec0a9b86010e",
+    "semantic_hash": ""
+  },
+  ".codebuddy/settings.json": {
+    "mtime": 1781177787.5957541,
+    "ast_hash": "f4d5b2a8e3dfda71e13dd7e2d44162e5",
+    "semantic_hash": ""
+  },
+  ".codex/hooks.json": {
+    "mtime": 1781177787.6416945,
+    "ast_hash": "599217498d3577ca0041bfd256de0cbe",
+    "semantic_hash": ""
+  },
+  ".githooks/pre-commit": {
+    "mtime": 1781180787.5799708,
+    "ast_hash": "f4745240a98f4a73b3621a82b9f6a5d9",
+    "semantic_hash": ""
+  },
+  ".remember/tmp/last-ndc.ts": {
+    "mtime": 1781523730.2401109,
+    "ast_hash": "f1a9e38ce8a74ce97d20afd2ace9ad22",
+    "semantic_hash": ""
+  },
+  ".remember/tmp/last-save.json": {
+    "mtime": 1781526893.0366068,
+    "ast_hash": "b7b68cea917e76569a8a82e9c02a1f00",
+    "semantic_hash": ""
+  },
+  "docker/entrypoint-target.sh": {
+    "mtime": 1781182266.6410935,
+    "ast_hash": "59ee747fa0e5015007d3b3e00700e744",
+    "semantic_hash": ""
+  },
+  "docker/run-e2e.sh": {
+    "mtime": 1781527174.608289,
+    "ast_hash": "4fdb0be6b054fb228d02a43b133b71ec",
+    "semantic_hash": ""
+  },
+  "lightshield/__init__.py": {
+    "mtime": 1781528046.6045582,
+    "ast_hash": "465d628841db8bce5901d5580d00eaf1",
+    "semantic_hash": ""
+  },
+  "lightshield/adapters/__init__.py": {
+    "mtime": 1781521680.6397686,
+    "ast_hash": "8b57fcbcfaa6cc53e9de998a40251af5",
+    "semantic_hash": ""
+  },
+  "lightshield/adapters/base.py": {
+    "mtime": 1781180951.1598914,
+    "ast_hash": "71e0e491d32631947c7ea186ad5c59a9",
+    "semantic_hash": ""
+  },
+  "lightshield/adapters/msf_adapter.py": {
+    "mtime": 1781176030.5990021,
+    "ast_hash": "1be17aed5909f0a42d45afee36c0728c",
+    "semantic_hash": ""
+  },
+  "lightshield/adapters/nmap_adapter.py": {
+    "mtime": 1781180953.0023105,
+    "ast_hash": "360f566d5bc65ec46324deb469aab6b1",
+    "semantic_hash": ""
+  },
+  "lightshield/cli.py": {
+    "mtime": 1781436665.5802982,
+    "ast_hash": "e77fedc1b628c505ccf84a2fd0cc154b",
+    "semantic_hash": ""
+  },
+  "lightshield/config.py": {
+    "mtime": 1781527174.60166,
+    "ast_hash": "0802d6702730641bb1aec7304b34d19e",
+    "semantic_hash": ""
+  },
+  "lightshield/core.py": {
+    "mtime": 1781527174.6026707,
+    "ast_hash": "3d1e242082a9a82e229533945dc81487",
+    "semantic_hash": ""
+  },
+  "lightshield/harden/__init__.py": {
+    "mtime": 1781180870.3742921,
+    "ast_hash": "854f7e51ced11ec04f271f245dcc1793",
+    "semantic_hash": ""
+  },
+  "lightshield/harden/base.py": {
+    "mtime": 1781180957.394815,
+    "ast_hash": "2ff096736c7767cc04085fec1743678a",
+    "semantic_hash": ""
+  },
+  "lightshield/harden/linux_harden.py": {
+    "mtime": 1781180870.3777342,
+    "ast_hash": "d0cfa9dcdd2ef5301b8d5710858169ba",
+    "semantic_hash": ""
+  },
+  "lightshield/harden/templates/linux_firewall.sh": {
+    "mtime": 1781094580.36315,
+    "ast_hash": "14db627f39979fe82d5f68e7904b9a67",
+    "semantic_hash": ""
+  },
+  "lightshield/harden/templates/linux_service.sh": {
+    "mtime": 1781094586.3385835,
+    "ast_hash": "2e14ecf89d293d99cf198acda832282d",
+    "semantic_hash": ""
+  },
+  "lightshield/harden/templates/win_firewall.ps1": {
+    "mtime": 1781098303.0924764,
+    "ast_hash": "ef51666a7f0bd3f50d34ce96c68ff4a0",
+    "semantic_hash": ""
+  },
+  "lightshield/harden/win_harden.py": {
+    "mtime": 1781180870.3798146,
+    "ast_hash": "a4effb56f55272d77038dc0c6c69099e",
+    "semantic_hash": ""
+  },
+  "lightshield/report/__init__.py": {
+    "mtime": 1781180926.9445188,
+    "ast_hash": "c1d7217ef41b4f4b3f5bb61c7f13f530",
+    "semantic_hash": ""
+  },
+  "lightshield/report/reporter.py": {
+    "mtime": 1781527174.6046712,
+    "ast_hash": "60dc6619ef5b4d474feca82af8367df0",
+    "semantic_hash": ""
+  },
+  "lightshield/repository/__init__.py": {
+    "mtime": 1781527174.6026707,
+    "ast_hash": "c3306db7e8f1468866b1bd673fa5329e",
+    "semantic_hash": ""
+  },
+  "lightshield/repository/base.py": {
+    "mtime": 1781527174.6036718,
+    "ast_hash": "9ecb1d42a91d5547874ab79ff1f0a498",
+    "semantic_hash": ""
+  },
+  "lightshield/repository/sqlite_repo.py": {
+    "mtime": 1781273742.262672,
+    "ast_hash": "cd3d6defd13b6a179ee563acc4d6c163",
+    "semantic_hash": ""
+  },
+  "lightshield/rules/__init__.py": {
+    "mtime": 1781180929.2151346,
+    "ast_hash": "72078fcc8f76146c37a28853eaeb70ed",
+    "semantic_hash": ""
+  },
+  "lightshield/rules/engine.py": {
+    "mtime": 1781273742.2640088,
+    "ast_hash": "23fdbd2d8f21b6e09d0e1f81165359f6",
+    "semantic_hash": ""
+  },
+  "lightshield/rules/harden_rules.json": {
+    "mtime": 1781099911.7343729,
+    "ast_hash": "de082fb0b8814c7fc939f9ebec857b90",
+    "semantic_hash": ""
+  },
+  "lightshield/rules/vuln_rules.json": {
+    "mtime": 1781013794.7847698,
+    "ast_hash": "5d0e9ce96d73118acae82a97bd6b127c",
+    "semantic_hash": ""
+  },
+  "lightshield/scanners/__init__.py": {
+    "mtime": 1781180931.263961,
+    "ast_hash": "67fbd0d980aed4870df8274ca81c45f2",
+    "semantic_hash": ""
+  },
+  "lightshield/scanners/component_checker.py": {
+    "mtime": 1781525576.5383494,
+    "ast_hash": "8be5b9d506b8d78554056ee7159f6c9e",
+    "semantic_hash": ""
+  },
+  "lightshield/scanners/port_scanner.py": {
+    "mtime": 1781180959.5270574,
+    "ast_hash": "c2229843e76e2bdd6a733ff6eab577fb",
+    "semantic_hash": ""
+  },
+  "lightshield/scanners/web_vuln_scanner.py": {
+    "mtime": 1781188131.1832805,
+    "ast_hash": "c6ee5399db8ece31db05f0f93dd8999d",
+    "semantic_hash": ""
+  },
+  "lightshield/utils/__init__.py": {
+    "mtime": 1781180933.3268967,
+    "ast_hash": "9f02599845a4f65bcb450c59891c388b",
+    "semantic_hash": ""
+  },
+  "lightshield/utils/constants.py": {
+    "mtime": 1781521497.556368,
+    "ast_hash": "db53bd7e0f165b10d0db2d6dcc75e73a",
+    "semantic_hash": ""
+  },
+  "lightshield/utils/logger.py": {
+    "mtime": 1781180961.5396242,
+    "ast_hash": "cdafaa4d3c9925f07dbe41df42ec36ee",
+    "semantic_hash": ""
+  },
+  "lightshield/utils/validator.py": {
+    "mtime": 1781177797.6154134,
+    "ast_hash": "78a3a9cdd111e4b3ca8a2f9478b9c029",
+    "semantic_hash": ""
+  },
+  "lightshield/web/__init__.py": {
+    "mtime": 1781415757.3808396,
+    "ast_hash": "04af70c9a0216b891aeb2f25d9e05d4d",
+    "semantic_hash": ""
+  },
+  "lightshield/web/app.py": {
+    "mtime": 1781525576.5352516,
+    "ast_hash": "973e063b66218f31ee7ef14779373a0a",
+    "semantic_hash": ""
+  },
+  "lightshield/web/auth.py": {
+    "mtime": 1781525576.5342515,
+    "ast_hash": "9f6703481be3f20bcae086056a6c56bd",
+    "semantic_hash": ""
+  },
+  "lightshield/web/pages.py": {
+    "mtime": 1781424309.5152075,
+    "ast_hash": "997042e0a553eae21f24f5c632c5b8d8",
+    "semantic_hash": ""
+  },
+  "lightshield/web/routes.py": {
+    "mtime": 1781524040.0716283,
+    "ast_hash": "6173c6c001c5a980225a0bd59174a4a5",
+    "semantic_hash": ""
+  },
+  "scripts/deploy_linux.sh": {
+    "mtime": 1781015492.623704,
+    "ast_hash": "a8048cbb71fc33d4f630aa0f140b4993",
+    "semantic_hash": ""
+  },
+  "scripts/deploy_win.ps1": {
+    "mtime": 1781177787.6595106,
+    "ast_hash": "7339844312cf2444dc05cfa9285eb69c",
+    "semantic_hash": ""
+  },
+  "setup.py": {
+    "mtime": 1781528095.668688,
+    "ast_hash": "2a6249f1b18c6dd43fdeafdccdab35f8",
+    "semantic_hash": ""
+  },
+  "test_v0003_validator_smoke.py": {
+    "mtime": 1781188245.5421903,
+    "ast_hash": "03a81a79badd337aa738a45f9ace40cc",
+    "semantic_hash": ""
+  },
+  "tests/test_cli.py": {
+    "mtime": 1781436117.9529777,
+    "ast_hash": "b13affa5409461994433ca59e0078f40",
+    "semantic_hash": ""
+  },
+  "tests/test_component.py": {
+    "mtime": 1781273742.2640088,
+    "ast_hash": "c4de99385fb939af6db1b6f5ae8d923f",
+    "semantic_hash": ""
+  },
+  "tests/test_config.py": {
+    "mtime": 1781188098.0784967,
+    "ast_hash": "2ef1d02c173dafad7330a28b5409e0d6",
+    "semantic_hash": ""
+  },
+  "tests/test_constants.py": {
+    "mtime": 1781177797.6234236,
+    "ast_hash": "bc1bbc1b1998f8339120246c665f637c",
+    "semantic_hash": ""
+  },
+  "tests/test_core.py": {
+    "mtime": 1781527174.6056685,
+    "ast_hash": "0684debe1b7b37fb63382fa23885cc48",
+    "semantic_hash": ""
+  },
+  "tests/test_engine.py": {
+    "mtime": 1781273742.2640088,
+    "ast_hash": "931f53eb522457186c4e1ddb9fae8948",
+    "semantic_hash": ""
+  },
+  "tests/test_interface_compliance.py": {
+    "mtime": 1781188098.1859233,
+    "ast_hash": "e8136002647a65d7e8a8e70cefe036e4",
+    "semantic_hash": ""
+  },
+  "tests/test_logger.py": {
+    "mtime": 1781188098.0764954,
+    "ast_hash": "fef70438132837d3a074888c3eeeb140",
+    "semantic_hash": ""
+  },
+  "tests/test_msf_adapter.py": {
+    "mtime": 1781177797.6224246,
+    "ast_hash": "f33e83c59115ebe8f90bd7eef82c9d80",
+    "semantic_hash": ""
+  },
+  "tests/test_nmap_adapter.py": {
+    "mtime": 1781263989.0557222,
+    "ast_hash": "aa2bf104db91dc80a91d455c1908188d",
+    "semantic_hash": ""
+  },
+  "tests/test_reporter.py": {
+    "mtime": 1781446944.4573762,
+    "ast_hash": "e827370a1c6bbd84329b0c57b162a3a4",
+    "semantic_hash": ""
+  },
+  "tests/test_sqlite_repo.py": {
+    "mtime": 1781273742.262672,
+    "ast_hash": "4eaf49462ba3d7605f45fce86454a861",
+    "semantic_hash": ""
+  },
+  "tests/test_validator.py": {
+    "mtime": 1781176030.6005182,
+    "ast_hash": "35d333bf048dd69fffc759b7a84961e8",
+    "semantic_hash": ""
+  },
+  "tests/test_web.py": {
+    "mtime": 1781436149.692027,
+    "ast_hash": "6ad25e9ebddce6a508d1f21a422cd01b",
+    "semantic_hash": ""
+  },
+  "tests/test_web_pages.py": {
+    "mtime": 1781436126.4582243,
+    "ast_hash": "0f2f2770ea7f6686fdcaf2a7ab83f334",
+    "semantic_hash": ""
+  },
+  "tests/test_web_vuln.py": {
+    "mtime": 1781188098.0774968,
+    "ast_hash": "f70d44708bee57fb8a95113d053e7d39",
+    "semantic_hash": ""
+  },
+  "tests/test_win_harden.py": {
+    "mtime": 1781273742.262672,
+    "ast_hash": "4440035ac3210e86a5b2bc8147d93469",
+    "semantic_hash": ""
+  },
+  ".claude/agents/backend-architect.md": {
+    "mtime": 1781177783.5661492,
+    "ast_hash": "002f5960eca41a36f7e17b13c44a9718",
+    "semantic_hash": ""
+  },
+  ".claude/agents/code-reviewer.md": {
+    "mtime": 1774684634.568335,
+    "ast_hash": "b954cd1da68df37314efaa106fee4501",
+    "semantic_hash": ""
+  },
+  ".claude/agents/devops-automator.md": {
+    "mtime": 1781177783.673928,
+    "ast_hash": "bf1a087274fb441eceb9024151c95d9f",
+    "semantic_hash": ""
+  },
+  ".claude/agents/security-engineer.md": {
+    "mtime": 1774684634.5723536,
+    "ast_hash": "e5ac34a0a343c8fd572ae030e3a0a86e",
+    "semantic_hash": ""
+  },
+  ".claude/agents/software-architect.md": {
+    "mtime": 1774684634.572952,
+    "ast_hash": "0ce4dd39d6a75969c78b99fd8502254d",
+    "semantic_hash": ""
+  },
+  ".claude/agents/technical-writer.md": {
+    "mtime": 1774684634.573988,
+    "ast_hash": "69c0bb300bfe02790df4736547325cb8",
+    "semantic_hash": ""
+  },
+  ".claude/agents/threat-detection-engineer.md": {
+    "mtime": 1774684634.57451,
+    "ast_hash": "b468a2ecd28f436b178993ade2f89e95",
+    "semantic_hash": ""
+  },
+  ".cluster/CLUSTER.md": {
+    "mtime": 1781525003.575949,
+    "ast_hash": "7db53a5c47497ea5eb166e1bc8ded0e0",
+    "semantic_hash": ""
+  },
+  ".cluster/COORDINATION.md": {
+    "mtime": 1781525576.5315316,
+    "ast_hash": "142c8bfd71bf1718f8e67050b8d34906",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/CODEX-v003-validator.md": {
+    "mtime": 1781177782.7356114,
+    "ast_hash": "139084e27db6f968f11e29d025ac803a",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/CODEX-v006-webvuln.md": {
+    "mtime": 1781012211.912174,
+    "ast_hash": "c75d068d0dd268c67dfda87b177ca570",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/HERMES-v001-v002.md": {
+    "mtime": 1781011772.9806526,
+    "ast_hash": "62e62728cd95c8f15cd7ca69ac3ee2fc",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/HERMES-v011-infra.md": {
+    "mtime": 1781527174.607161,
+    "ast_hash": "aa8d34d582f1d15e3ca07150c12dc9ad",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/LS-003-config.md": {
+    "mtime": 1781007795.6977718,
+    "ast_hash": "81cb4a68576a9b7f7a47976afad7e539",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/LS-004-validator.md": {
+    "mtime": 1781177782.757972,
+    "ast_hash": "14e68f9d2e79b195498b6009fd0cc004",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/LS-005-logger.md": {
+    "mtime": 1781007144.7992322,
+    "ast_hash": "2c16551951fcef91a689ce15622ac61e",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/LS-006-constants.md": {
+    "mtime": 1781007797.7085903,
+    "ast_hash": "2c922a4f6a257889da1b2b04c96379cb",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/LS-007-infra.md": {
+    "mtime": 1781526969.3127494,
+    "ast_hash": "e8f5e3d3daa14c34f0e33768bee7d3a7",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/LS-008-review.md": {
+    "mtime": 1781007219.9518337,
+    "ast_hash": "70ea3639459fdf984b3c3d9024013a0c",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/REASONIX-v022-cli-core.md": {
+    "mtime": 1781526969.3132727,
+    "ast_hash": "b6815784e05e4284b0cc56854a01630c",
+    "semantic_hash": ""
+  },
+  ".codewhale/instructions.md": {
+    "mtime": 1781177783.6634514,
+    "ast_hash": "067117db75d059c0abcd446b527db7da",
+    "semantic_hash": ""
+  },
+  ".github/workflows/quality-gates.yml": {
+    "mtime": 1781176850.181198,
+    "ast_hash": "9bbc568264f59496caa822af8ee5bc2a",
+    "semantic_hash": ""
+  },
+  ".guardrails/PROGRESS.md": {
+    "mtime": 1781526969.2951562,
+    "ast_hash": "69223c22c311d72a7cad46059c8946e7",
+    "semantic_hash": ""
+  },
+  ".guardrails/PROJECT_CONTRACT.md": {
+    "mtime": 1781526969.2981603,
+    "ast_hash": "a89fe013cb7ac754e8e5d49bf0269e89",
+    "semantic_hash": ""
+  },
+  ".guardrails/QUALITY_GATES.md": {
+    "mtime": 1781010386.0751998,
+    "ast_hash": "fe95dcec00392da05e2f07f172709e1d",
+    "semantic_hash": ""
+  },
+  ".guardrails/VERSION_ROADMAP.md": {
+    "mtime": 1781526969.2976503,
+    "ast_hash": "da6b726a19b0d2c6a160b9c5bcebb3b0",
+    "semantic_hash": ""
+  },
+  ".guardrails/VERSION_ROADMAP_v2.md": {
+    "mtime": 1781526969.2961545,
+    "ast_hash": "66ca086ec08129a7d567494656728c09",
+    "semantic_hash": ""
+  },
+  ".guardrails/audit-log.md": {
+    "mtime": 1781013085.617107,
+    "ast_hash": "d908899bdee3ba04ab2553165fca24cb",
+    "semantic_hash": ""
+  },
+  ".pre-commit-config.yaml": {
+    "mtime": 1781177995.0645356,
+    "ast_hash": "8bf73ef256ca8b145fe4b924887b9f05",
+    "semantic_hash": ""
+  },
+  ".remember/now.md": {
+    "mtime": 1781526889.40251,
+    "ast_hash": "d8e07bc6b4423de01fb110f95cd06e7e",
+    "semantic_hash": ""
+  },
+  ".remember/today-2026-06-09.md": {
+    "mtime": 1781009646.8259697,
+    "ast_hash": "369eb20baaa45943dd3a1b616ed8522f",
+    "semantic_hash": ""
+  },
+  ".remember/today-2026-06-10.md": {
+    "mtime": 1781095521.2042925,
+    "ast_hash": "518510732eb25508df733a28628a2c54",
+    "semantic_hash": ""
+  },
+  ".workbuddy/memory/2026-05-30.md": {
+    "mtime": 1780120133.9936545,
+    "ast_hash": "810ba7789f0357cf55a17bbd6516d196",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1781177787.4789233,
+    "ast_hash": "62c05a2bf20bf036a0b2633478663e64",
+    "semantic_hash": ""
+  },
+  "CHANGELOG.md": {
+    "mtime": 1781526969.3006284,
+    "ast_hash": "65a7f41ff61762e90e24cc4a20a2f016",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1781527071.4052863,
+    "ast_hash": "bc4b90644e82da731591a3928c084d12",
+    "semantic_hash": ""
+  },
+  "CODEBUDDY.md": {
+    "mtime": 1781010652.4609993,
+    "ast_hash": "d426dcb5f03381eed547520289b4e8c4",
+    "semantic_hash": ""
+  },
+  "CODEWHALE.md": {
+    "mtime": 1781526969.3048668,
+    "ast_hash": "a8c199b8e88d0f210a9c68e5ada0bd2c",
+    "semantic_hash": ""
+  },
+  "CODEX.md": {
+    "mtime": 1781526969.3032565,
+    "ast_hash": "941c93dcc4c1132be7a51c3dc98a72ed",
+    "semantic_hash": ""
+  },
+  "HERMES.md": {
+    "mtime": 1781526969.3064253,
+    "ast_hash": "8c3d141303fd0c7496449e73ebf922c1",
+    "semantic_hash": ""
+  },
+  "LightShield_AI_Prompt_\u5168\u96c6.txt": {
+    "mtime": 1781009990.9335923,
+    "ast_hash": "ac0e4b5184883ffe1ade5ee350408aec",
+    "semantic_hash": ""
+  },
+  "PROJECT_OVERVIEW.md": {
+    "mtime": 1781526969.3091023,
+    "ast_hash": "a483c5bb08234f6c819a3dc9c53babe9",
+    "semantic_hash": ""
+  },
+  "QODER.md": {
+    "mtime": 1781177782.9797182,
+    "ast_hash": "f2ec79413212ea965e71587bf749238f",
+    "semantic_hash": ""
+  },
+  "QODERWORK.md": {
+    "mtime": 1781526969.3075361,
+    "ast_hash": "c410724ca128c9fb94f2e2143f383058",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1781100469.7389157,
+    "ast_hash": "32e2739f4939874072d70b3f95abea95",
+    "semantic_hash": ""
+  },
+  "REASONIX.md": {
+    "mtime": 1781527174.606649,
+    "ast_hash": "e81bf73adca8a01f5cc009a05417f4a5",
+    "semantic_hash": ""
+  },
+  "docker-compose.yml": {
+    "mtime": 1781429007.0053535,
+    "ast_hash": "06cf9256edd0a9233c10b89bfd6269c2",
+    "semantic_hash": ""
+  },
+  "docs/FAQ.md": {
+    "mtime": 1781526969.315887,
+    "ast_hash": "868596544358cd57dbb6d18f45b7c413",
+    "semantic_hash": ""
+  },
+  "docs/INSTALL.md": {
+    "mtime": 1781526969.3137918,
+    "ast_hash": "4d2af4065fec22465d5b37d551dd6ff3",
+    "semantic_hash": ""
+  },
+  "docs/USAGE.md": {
+    "mtime": 1781526969.3148358,
+    "ast_hash": "29163d79b12640296e0974b6f973a506",
+    "semantic_hash": ""
+  },
+  "docs/e2e-v019-report.md": {
+    "mtime": 1781526969.3169959,
+    "ast_hash": "3d2e96c0b7158354c70285b87eb51487",
+    "semantic_hash": ""
+  },
+  "docs/review-phase1-codebuddy.md": {
+    "mtime": 1781177787.6618514,
+    "ast_hash": "ac479091bff50a1585eeac45ab850a85",
+    "semantic_hash": ""
+  },
+  "docs/review-phase1-codewhale.md": {
+    "mtime": 1781527174.6093328,
+    "ast_hash": "a250a6e213ae8c0fe48a97e000695904",
+    "semantic_hash": ""
+  },
+  "docs/review-v004-qoder.md": {
+    "mtime": 1781177787.6482904,
+    "ast_hash": "d2a76cac481e749e441e931244b65c7a",
+    "semantic_hash": ""
+  },
+  "docs/review-v016-codex.md": {
+    "mtime": 1781177787.5235815,
+    "ast_hash": "7b4f7fab8ac4d1ef16788ab5291dee59",
+    "semantic_hash": ""
+  },
+  "docs/review-v023-v024-codewhale.md": {
+    "mtime": 1781273738.6026733,
+    "ast_hash": "30d910de99feda852a5542a084eb49f0",
+    "semantic_hash": ""
+  },
+  "lightshield/web/templates/base.html": {
+    "mtime": 1781524075.196781,
+    "ast_hash": "b908693e53a4d3949f78d082c9ec1e49",
+    "semantic_hash": ""
+  },
+  "lightshield/web/templates/dashboard.html": {
+    "mtime": 1781524602.6067395,
+    "ast_hash": "2e7c7b544bdf875a94ab49306cc6812a",
+    "semantic_hash": ""
+  },
+  "lightshield/web/templates/login.html": {
+    "mtime": 1781420739.1794176,
+    "ast_hash": "71b2d4520015c66ad798e8377613b222",
+    "semantic_hash": ""
+  },
+  "lightshield/web/templates/report.html": {
+    "mtime": 1781524253.795829,
+    "ast_hash": "7b22a874f8268423743a5ff3b5225331",
+    "semantic_hash": ""
+  },
+  "requirements.txt": {
+    "mtime": 1781015070.819527,
+    "ast_hash": "5a06d3bab77d19c003bb54983cf2ea78",
+    "semantic_hash": ""
+  },
+  "lightshield/web/csrf.py": {
+    "mtime": 1781420939.7567816,
+    "ast_hash": "a560ab056c409a22ac3ace06c955e84b",
+    "semantic_hash": ""
+  },
+  "lightshield/web/templates/harden.html": {
+    "mtime": 1781524216.818751,
+    "ast_hash": "fd37a6a7f40ef7b1485daf4bd0d865fd",
+    "semantic_hash": ""
+  },
+  "lightshield/report/pdf_writer.py": {
+    "mtime": 1781439871.4742718,
+    "ast_hash": "cd0c123028a04cc61b58f7d4d3cfce3d",
+    "semantic_hash": ""
+  },
+  "lightshield/web/ratelimit.py": {
+    "mtime": 1781525576.5352516,
+    "ast_hash": "6715eb8cbb8eeff76420e37ba48a56c1",
+    "semantic_hash": ""
+  },
+  "docs/review-v030-codewhale.md": {
+    "mtime": 1781526969.3181286,
+    "ast_hash": "61f4b3baa1638814727f2edabc83c75e",
+    "semantic_hash": ""
+  },
+  "lightshield/adapters/nuclei_adapter.py": {
+    "mtime": 1781522111.5546412,
+    "ast_hash": "151f2177242b75bba12c2a666f639864",
+    "semantic_hash": ""
+  },
+  "tests/test_nuclei_adapter.py": {
+    "mtime": 1781522335.8068821,
+    "ast_hash": "23f978f66602466fe657e13722a5f56c",
+    "semantic_hash": ""
+  },
+  ".cluster/agents/ZCODE.md": {
+    "mtime": 1781526969.3106644,
+    "ast_hash": "74a4cd357ed44139b896e2d2be37a31f",
+    "semantic_hash": ""
+  },
+  ".cluster/tasks/pending/CODEX-v037-webui-enhance.md": {
+    "mtime": 1781525576.5322442,
+    "ast_hash": "b3ed530ca37b10d70356f3264a8c732c",
+    "semantic_hash": ""
+  },
+  "lightshield/nuclei-templates/README.md": {
+    "mtime": 1781521720.0228853,
+    "ast_hash": "4b43c6745df3ad4dc96f02801818dc0d",
+    "semantic_hash": ""
+  }
+}

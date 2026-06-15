@@ -1,10 +1,27 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}LightShield 轻盾{% endblock %}</title>
+  <script>
+    (() => {
+      const storageKey = "ls-theme";
+      let theme = "light";
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored === "dark" || stored === "light") {
+          theme = stored;
+        } else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+          theme = "dark";
+        }
+      } catch (_) {
+        theme = "light";
+      }
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -20,6 +37,10 @@
       </a>
       <nav class="topbar-actions" aria-label="页面操作">
         {% block nav_actions %}{% endblock %}
+        <button class="ghost-button theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="切换深色主题">
+          <span data-theme-icon aria-hidden="true">☾</span>
+          <span data-theme-label>深色</span>
+        </button>
         <span class="user-chip">{{ username|default(session.get("user", "admin")) }}</span>
         <button class="ghost-button" type="button" data-logout>退出</button>
       </nav>
@@ -31,18 +52,60 @@
     </main>
 
     <footer class="footer">
-      <span>LightShield v0.0.28</span>
+      <span>LightShield v0.0.36</span>
       <span>仅用于已授权资产的安全自检</span>
     </footer>
   </div>
 
   <script>
+    const themeStorageKey = "ls-theme";
+
+    function currentPreferredTheme() {
+      try {
+        const stored = localStorage.getItem(themeStorageKey);
+        if (stored === "dark" || stored === "light") return stored;
+      } catch (_) {
+        // Ignore storage failures and fall back to the document default.
+      }
+      return document.documentElement.dataset.theme || "light";
+    }
+
+    function applyTheme(theme, persist = false) {
+      const normalized = theme === "dark" ? "dark" : "light";
+      document.documentElement.dataset.theme = normalized;
+      if (persist) {
+        try {
+          localStorage.setItem(themeStorageKey, normalized);
+        } catch (_) {
+          // Theme switching still works for the current page when storage is blocked.
+        }
+      }
+
+      const toggle = document.querySelector("[data-theme-toggle]");
+      if (!toggle) return;
+      const isDark = normalized === "dark";
+      toggle.setAttribute("aria-pressed", String(isDark));
+      toggle.setAttribute("aria-label", isDark ? "切换亮色主题" : "切换深色主题");
+      const icon = toggle.querySelector("[data-theme-icon]");
+      const label = toggle.querySelector("[data-theme-label]");
+      if (icon) icon.textContent = isDark ? "☀" : "☾";
+      if (label) label.textContent = isDark ? "亮色" : "深色";
+    }
+
     window.LightShield = {
       csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || "",
       csrfHeaders(extra = {}) {
         return { ...extra, "X-CSRF-Token": this.csrfToken };
       },
+      setTheme: applyTheme,
     };
+
+    applyTheme(currentPreferredTheme());
+
+    document.querySelector("[data-theme-toggle]")?.addEventListener("click", () => {
+      const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      applyTheme(nextTheme, true);
+    });
 
     document.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-logout]");

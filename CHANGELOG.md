@@ -17,7 +17,7 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 - **4 个 Web 页面**：登录页、仪表板（扫描面板+历史列表）、报告查看器（marked.js Markdown 渲染+SRI hash）、加固建议页（RuleEngine 建议+脚本生成）
 - **`lightshield serve`** CLI 子命令：支持 `--host` / `--port` / `--debug` 参数
 - `pip install lightshield[web]` 可选依赖（Flask>=3.0）
-- **CodeWhale v0.3.0 全量终审**：0 Blocker，5 Suggestion，全部修复（`docs/review-v030-codewhale.md`）
+- **CodeWhale v0.0.30 全量终审**：0 Blocker，5 Suggestion，全部修复（`docs/review-v030-codewhale.md`）
 - **Nagi 五大铁律 × 六大合规红线**：全量 R1-R6 逐条核查通过
 
 ### Changed
@@ -71,6 +71,6 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 - 一键部署脚本 `scripts/deploy_linux.sh` + `scripts/deploy_win.ps1`
 - 121 项单元测试（Reasonix batch1：constants 45项 + logger 29项 + config 47项）
 
-[0.3.0]: https://github.com/LightShield/lightshield/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/LightShield/lightshield/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/LightShield/lightshield/releases/tag/v0.1.0
+[0.3.0]: https://github.com/LightShield/lightshield/compare/v0.0.20...v0.0.30
+[0.2.0]: https://github.com/LightShield/lightshield/compare/v0.0.10...v0.0.20
+[0.1.0]: https://github.com/LightShield/lightshield/releases/tag/v0.0.10

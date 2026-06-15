@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightshield"
-version = "0.0.27"
+version = "0.0.36"
 description = "LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -69,7 +69,7 @@ source = ["lightshield"]
 omit = ["tests/*", "*/__main__"]
 
 [tool.coverage.report]
-fail_under = 60              # 当前最低覆盖率门槛（v0.3.0→70, v1.0.0→80）
+fail_under = 60              # 当前最低覆盖率门槛（v0.0.30→70, v1.0.0→80）
                                 # 当前 61%: cli/core 在无真实 Nmap/用户交互时难测试
 exclude_also = [
     "if __name__ == .__main__.:",
@@ -116,8 +116,8 @@ ignore = [
 # === 针对特定规则的微调 ===
 # McCabe 圈复杂度上限
 [tool.ruff.lint.mccabe]
-max-complexity = 20  # v0.2.0: 2 个函数略超 15（run_scan=17, component_checker.scan=27）
-                     # v0.3.0 目标：15，需拆分 scan() 为子方法
+max-complexity = 20  # v0.0.20: 2 个函数略超 15（run_scan=17, component_checker.scan=27）
+                     # v0.0.30 目标：15，需拆分 scan() 为子方法
 
 # pydocstyle 适配中文 docstring（忽略英文标点格式要求）
 [tool.ruff.lint.pydocstyle]
@@ -151,7 +151,7 @@ skips = [
 # Mypy — 静态类型检查
 # =============================================================================
 # 策略：从宽松开始（项目已有 ~8000 行非类型化代码），随 Phase 推进逐步收紧。
-# 目标路径：v0.3.0 → disallow_untyped_defs=true, v1.0.0 → strict=true
+# 目标路径：v0.0.30 → disallow_untyped_defs=true, v1.0.0 → strict=true
 [tool.mypy]
 python_version = "3.12"
 strict = false
@@ -176,7 +176,7 @@ exclude = [
     "docs/",
 ]
 
-# v0.3.5: Codex 交付文件中存在 mypy 类型不匹配（不影响运行时正确性）
+# v0.0.35: Codex 交付文件中存在 mypy 类型不匹配（不影响运行时正确性）
 [[tool.mypy.overrides]]
 module = ["lightshield.report.reporter", "lightshield.scanners.component_checker"]
 ignore_errors = true

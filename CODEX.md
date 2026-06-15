@@ -127,9 +127,9 @@ graphify affected "config.py"
 
 | 版本 | 模块 | 状态 | Claude Code 验收 |
 |:--:|------|:--:|:--:|
-| **v0.3.4** | PDF 报告导出 | ✅ | `PdfReportWriter`（`fpdf2` + 中文字体）、Web 下载、CLI `--output-format pdf` |
-| **v0.3.5** | CVE 100+ + 自动更新 | ✅ | CVE 70→105（26 组件）+ `fetch_latest_cves()` NVD API 2.0 |
-| **v0.3.7** | Web UI 增强 | ⬜ | 脚本下载按钮、SSE 进度推送、主题切换、搜索筛选 |
+| **v0.0.34** | PDF 报告导出 | ✅ | `PdfReportWriter`（`fpdf2` + 中文字体）、Web 下载、CLI `--output-format pdf` |
+| **v0.0.35** | CVE 100+ + 自动更新 | ✅ | CVE 70→105（26 组件）+ `fetch_latest_cves()` NVD API 2.0 |
+| **v0.0.37** | Web UI 增强 | ⬜ | 脚本下载按钮、SSE 进度推送、主题切换、搜索筛选 |
 
 ---
 
@@ -150,8 +150,8 @@ v0.0.29  加固页面 + CSRF 防护      ✅  9 文件 / 9 测试 / CC 验收通
         12/13 完成，1 个待执行 🟢
 ```
 
-> 当前状态：**v0.3.7 Web UI 增强等待执行。**
-> 上一任务：v0.3.5 CVE 100+（已完成 ✅，CC 验收通过）
+> 当前状态：**v0.0.37 Web UI 增强等待执行。**
+> 上一任务：v0.0.35 CVE 100+（已完成 ✅，CC 验收通过）
 > 基线就绪：580 tests / ruff + mypy 全零
 
 ---
@@ -288,7 +288,7 @@ LightShield 是开源安全自检工具，Python 3.10+，路径：E:/Github Proj
 你是 LightShield 项目的高级开发工程师，使用 GPT-5.5 模型。
 
 ## 背景
-v0.1.0 MVP 已完成，v0.0.11 CLI 已交付。v0.0.12 开始测试阶段。
+v0.0.10 MVP 已完成，v0.0.11 CLI 已交付。v0.0.12 开始测试阶段。
 validator.py 是你自己在 v0.0.03 实现的——你最了解它的逻辑。
 
 ## 任务：实现 tests/test_validator.py
@@ -740,7 +740,7 @@ class SecurityViolationError(Exception):
 
 ### 背景
 
-v0.1.0 MVP 已有 14 个模块，但只能在 Python 中通过 `from lightshield.core import ...` 调用。
+v0.0.10 MVP 已有 14 个模块，但只能在 Python 中通过 `from lightshield.core import ...` 调用。
 v0.0.11 需要给用户一个命令行入口：`lightshield scan 192.168.1.1`
 
 ### 依赖就绪
@@ -761,7 +761,7 @@ lightshield/config.py             ✅ 配置管理
 
 ## 项目背景
 LightShield（轻盾）是开源轻量化安全自检+防御加固工具，Python 3.10+。
-v0.1.0 MVP 已完成（14 模块），v0.0.11 需要添加 CLI 命令行入口。
+v0.0.10 MVP 已完成（14 模块），v0.0.11 需要添加 CLI 命令行入口。
 
 ## 任务：实现 lightshield/cli.py + 更新 setup.py
 
@@ -835,7 +835,7 @@ entry_points={
 ### 进度提示（面向用户友好）
 
 ```
-LightShield 轻盾 v0.1.0
+LightShield 轻盾 v0.0.10
 [1/4] 正在扫描端口... (NmapAdapter)
 [2/4] 正在检测漏洞... (WebVulnScanner + WeakPassword + ComponentChecker)
 [3/4] 正在匹配规则... (RuleEngine: 14 条漏洞规则)
@@ -1860,12 +1860,12 @@ CSRF 豁免（公开端点不校验）：
 
 ---
 
-## 十六、v0.3.4 详细任务 + 启动提示词 🟢 当前任务
+## 十六、v0.0.34 详细任务 + 启动提示词 🟢 当前任务
 
 ### 背景
 
-v0.3.0 支持 Markdown 和纯文本两种报告格式。企业用户需要 PDF 格式用于合规归档。
-v0.3.4 新增 PDF 输出——使用 `fpdf2` 库（纯 Python，无需系统依赖），支持中文嵌入。
+v0.0.30 支持 Markdown 和纯文本两种报告格式。企业用户需要 PDF 格式用于合规归档。
+v0.0.34 新增 PDF 输出——使用 `fpdf2` 库（纯 Python，无需系统依赖），支持中文嵌入。
 
 ### 依赖就绪
 
@@ -1888,7 +1888,7 @@ lightshield/cli.py                 ✅ --output-format 参数已支持 markdown|
 from fpdf import FPDF
 
 class PdfReportWriter:
-    """中文 PDF 安全检测报告生成器（v0.3.4）。"""
+    """中文 PDF 安全检测报告生成器（v0.0.34）。"""
 
     def __init__(self, font_dir: str | None = None):
         """初始化 PDF 写入器。自动搜索系统中文字体。"""
@@ -1974,7 +1974,7 @@ web = ["Flask>=3.0,<4.0", "fpdf2>=2.8,<3.0"]  # PDF 报告生成
 LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Python 3.10+。
 路径：E:/Github Project/LightShield/
 
-## 任务：实现 PDF 报告导出（v0.3.4）
+## 任务：实现 PDF 报告导出（v0.0.34）
 
 ### 前置条件
 - ReportGenerator 已支持 markdown/text 双格式，generate(scan_result, findings, fmt) 接口
@@ -2031,7 +2031,7 @@ LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Pyt
 
 ---
 
-## 十七、v0.3.5 详细任务 + 启动提示词 🟢 当前任务
+## 十七、v0.0.35 详细任务 + 启动提示词 🟢 当前任务
 
 ### 背景
 
@@ -2040,7 +2040,7 @@ v0.0.24 将 CVE 知识库从 28 条扩充到 70 条，覆盖 22 个组件。但�
 - 部分组件覆盖不足（nginx 3条、mysql 3条、redis 3条）
 - 无法从 NVD 自动获取最新 CVE，依赖手动更新
 
-v0.3.5 目标：CVE 70→100+，新增 4 个组件，实现 `--cve-update` CLI 自动拉取 NVD。
+v0.0.35 目标：CVE 70→100+，新增 4 个组件，实现 `--cve-update` CLI 自动拉取 NVD。
 
 ### 依赖就绪
 
@@ -2130,7 +2130,7 @@ def fetch_latest_cves(api_key: str | None = None, max_results: int = 20) -> list
 LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Python 3.10+。
 路径：E:/Github Project/LightShield/
 
-## 任务：CVE 知识库扩充 + NVD 自动更新（v0.3.5）
+## 任务：CVE 知识库扩充 + NVD 自动更新（v0.0.35）
 
 ### 前置条件
 - lightshield/scanners/component_checker.py 已有 70 条 CVE / 22 组件 / CveEntry dataclass / _COMPONENT_ALIASES

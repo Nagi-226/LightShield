@@ -150,7 +150,7 @@ lightshield scan 127.0.0.1 --output-format text --confirm-ownership
 
 ## Web 仪表板
 
-v0.3.0 新增 Web 仪表板，通过浏览器图形化界面使用 LightShield。
+v0.0.30 新增 Web 仪表板，通过浏览器图形化界面使用 LightShield。
 
 ### 启动服务
 

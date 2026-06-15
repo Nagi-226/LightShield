@@ -5,7 +5,7 @@
 - login(username, password) → 校验通过设置 session["user"]
 - logout() → 清除 session
 - @login_required 装饰器 → 未登录返回 401 JSON
-- v0.3.1: 登录暴力破解防护（IP 失败计数 + 指数退避锁定期）
+- v0.0.31: 登录暴力破解防护（IP 失败计数 + 指数退避锁定期）
 
 JWT 鉴权留给 v2.0.0，当前 MVP 使用最简单的 session 方案。
 """
@@ -40,7 +40,7 @@ def _get_credentials() -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# 登录暴力破解防护（v0.3.1）
+# 登录暴力破解防护（v0.0.31）
 # ---------------------------------------------------------------------------
 
 _login_failures: dict[str, dict] = {}
@@ -71,7 +71,7 @@ def _is_login_blocked(ip: str) -> bool:
 def login(username: str, password: str) -> bool:
     """校验用户名密码，成功则设置 session。
 
-    v0.3.1: 暴力破解防护——每个 IP 最多 5 次连续失败，超过后进入指数退避锁定期。
+    v0.0.31: 暴力破解防护——每个 IP 最多 5 次连续失败，超过后进入指数退避锁定期。
 
     Args:
         username: 登录用户名

@@ -1,25 +1,38 @@
 # 🔗 LightShield 集群协调协议（Coordination Protocol）
 
-> **目的**：确保 8 Agent 并行开发的产出不相互冲突
+> **目的**：确保 9 Agent 并行开发的产出不相互冲突
 > **核心原则**：一个文件一个 Agent，接口契约先行，冲突自动检测
 
 ---
 
 ## 一、文件归属机制
 
-### 1.1 归属表（Phase 1）
+### 1.1 归属表（当前 v0.0.36）
 
 | 文件 | 归属 Agent | 状态 |
 |------|-----------|:--:|
-| `lightshield/adapters/base.py` | Claude Code | 待实现 |
-| `lightshield/core.py` | Claude Code | 待实现 |
-| `lightshield/config.py` | Reasonix | 待实现 |
-| `lightshield/utils/validator.py` | Codex | 待实现 |
-| `lightshield/utils/logger.py` | Reasonix | 待实现 |
-| `lightshield/utils/constants.py` | Hermes | 待实现 |
-| `requirements.txt` | Hermes | 待实现 |
-| `.gitignore` | Hermes | 待实现 |
-| 各 `__init__.py` | Hermes | 待实现 |
+| `lightshield/` 所有源码 | Claude Code（集成） | ✅ 已实现（v0.0.36） |
+| `tests/` 所有测试 | Reasonix + CC | ✅ 已实现 |
+| `requirements.txt` | Hermes | ✅ 已实现 |
+| `.gitignore` | Hermes | ✅ 已实现 |
+| 各 `__init__.py` | Hermes | ✅ 已实现 |
+| `Dockerfile`, `docker-compose.yml` | Hermes | ✅ 已实现 |
+| | | |
+| `CLAUDE.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `README.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `CHANGELOG.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `docs/INSTALL.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `docs/USAGE.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `docs/FAQ.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `PROJECT_OVERVIEW.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `.guardrails/PROGRESS.md` | Claude Code | CC 自行维护 |
+| `.guardrails/audit-log.md` | Claude Code | CC 自行维护 |
+
+> 🆕 **ZCode 3.0 归属原则**：
+> - 面向用户文档（README/CHANGELOG/FAQ/INSTALL/USAGE）+ 导航文档（CLAUDE.md/PROJECT_OVERVIEW.md）
+> - 护栏体系（`.guardrails/`）由 CC 自行维护
+> - 源码变更触发 ZCode 增量同步
+> - ZCode 不修改源码——只读源码 + 写文档
 
 ### 1.2 冲突规则
 
