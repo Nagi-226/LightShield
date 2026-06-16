@@ -142,6 +142,22 @@ NUCLEI_DEFAULT_TIMEOUT: int = 120
 
 
 # ============================================================
+# 沙箱执行器（v0.0.38 — R1 + R4 防线）
+# ============================================================
+# 沙箱用于在隔离的 Docker 容器中安全执行加固脚本，绝不在宿主机直接运行。
+# 默认配置以"最大隔离"为原则：无网络、资源受限、容器即用即销毁。
+
+SANDBOX_DEFAULT_IMAGE: str = "ubuntu:22.04"  # 需含 bash（加固脚本依赖 bash 语法）
+SANDBOX_DEFAULT_TIMEOUT: int = 120  # 沙箱执行超时（秒）
+SANDBOX_DEFAULT_MEMORY: str = "256m"  # 容器内存上限（防内存炸弹）
+SANDBOX_DEFAULT_CPUS: str = "1.0"  # 容器 CPU 上限
+SANDBOX_DEFAULT_PIDS_LIMIT: int = 256  # 容器进程数上限（防 fork 炸弹）
+SANDBOX_DEFAULT_NETWORK: str = "none"  # R1 防线：沙箱内无网络，脚本无法对外发起连接/攻击
+SANDBOX_MAX_SCRIPT_BYTES: int = 1024 * 1024  # 待执行脚本体积上限 1MB（防异常输入）
+SANDBOX_CONTAINER_SCRIPT_PATH: str = "/sandbox/script.sh"  # 容器内脚本只读挂载路径
+
+
+# ============================================================
 # 高危端口清单
 # ============================================================
 
@@ -246,5 +262,15 @@ if __name__ == "__main__":
     # Nuclei 超时常量
     assert NUCLEI_DEFAULT_TIMEOUT == 120
     print("OK Nuclei timeout constant")
+
+    # 沙箱执行器常量（v0.0.38）
+    assert SANDBOX_DEFAULT_NETWORK == "none", "R1 防线：沙箱默认必须无网络"
+    assert SANDBOX_MAX_SCRIPT_BYTES > 0
+    assert SANDBOX_CONTAINER_SCRIPT_PATH.startswith("/")
+    assert SANDBOX_DEFAULT_PIDS_LIMIT > 0
+    print(
+        f"OK Sandbox constants: image={SANDBOX_DEFAULT_IMAGE} "
+        f"network={SANDBOX_DEFAULT_NETWORK} timeout={SANDBOX_DEFAULT_TIMEOUT}s"
+    )
 
     print("=== constants: ALL PASSED ===")

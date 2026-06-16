@@ -29,6 +29,7 @@ if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os
 from lightshield.adapters.base import BaseAdapter, ScanResult, VulnFinding
 from lightshield.config import get_config
 from lightshield.harden.base import HardenResult
+from lightshield.sandbox.base import ExecutionResult, SandboxExecutor
 from lightshield.utils.constants import ScanStatus
 from lightshield.utils.validator import TargetValidator
 
@@ -514,6 +515,41 @@ class LightShieldCore:
             f"os={result.os_platform.value} actions={result.action_count} status={result.status.value}",
         )
 
+        return result
+
+    def execute_hardening(
+        self,
+        script_path: str,
+        *,
+        confirm_execute: bool = False,
+        executor: SandboxExecutor | None = None,
+        timeout: int | None = None,
+    ) -> ExecutionResult:
+        """在隔离沙箱中执行已生成的加固脚本（v0.0.38）。
+
+        ⚠️ 危险操作：必须 confirm_execute=True 才放行。脚本只在隔离的 Docker
+        容器中运行（无网络 + 资源受限 + 即用即销毁），绝不在宿主机直接执行。
+        这是 v0.0.40「自动加固闭环」的执行基座。
+
+        Args:
+            script_path: 待执行的加固脚本路径（通常来自 generate_hardening 的 script_path）
+            confirm_execute: 必须显式传 True（对齐 R4 双确认）
+            executor: 沙箱执行器实例，默认 DockerSandboxExecutor
+            timeout: 执行超时秒数（覆盖默认）
+
+        Returns:
+            ExecutionResult 结构化结果（任何失败都返回结果对象，不抛异常）
+        """
+        from lightshield.sandbox.docker_executor import DockerSandboxExecutor
+
+        exec_backend = executor or DockerSandboxExecutor()
+        result = exec_backend.execute(script_path, confirm_execute=confirm_execute, timeout=timeout)
+
+        self._log_audit(
+            "harden_execute",
+            script_path,
+            f"sandbox={result.sandbox} status={result.status.value} exit={result.exit_code}",
+        )
         return result
 
     # =========================================================================

@@ -4,9 +4,57 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+> 版本编号统一为单一 `v0.0.XX` 线性序列（不存在 v0.1/0.2/0.3 等格式）。
+
 ---
 
-## [0.3.0] - 2026-06-14
+## [0.0.38] - 2026-06-15
+
+### Added
+
+- **沙箱执行器**（`lightshield/sandbox/`）：在隔离 Docker 容器中安全执行加固脚本，为 v0.0.40 自动加固闭环铺路
+  - `SandboxExecutor` 抽象基类（模板方法：危险闸门 + 脚本校验 + 审计 + 委托给子类）
+  - `DockerSandboxExecutor`：`--network none`（R1：容器无网络）+ 内存/CPU/进程数上限 + `--rm` 即用即销毁 + 脚本只读挂载 + `no-new-privileges`
+  - `ExecutionResult` / `ExecutionStatus`：结构化执行结果（success/failed/timeout/sandbox_unavailable/rejected/error）
+  - 超时强制终止 + best-effort 容器清理（`docker kill`）+ 完整 stdout/stderr 捕获
+- **`lightshield harden --execute`**：危险标志，生成后在沙箱中执行加固脚本（需额外输入 `EXECUTE` 二次确认；`--yes-execute` 跳过，供自动化）
+- **`core.execute_hardening()`**：核心调度层沙箱执行钩子，`confirm_execute=True` 双确认闸门（对齐 R4）
+- 32 条沙箱单元测试（全 mock subprocess，不依赖真实 Docker）
+
+### Security
+
+- 沙箱执行必须显式 `confirm_execute=True`，默认拒绝（防误执行）
+- 容器默认无网络（R1 防线：脚本无法对外发起连接/攻击）
+- 脚本只读挂载 + 体积上限 1MB + 路径存在性/类型校验
+
+### Changed
+
+- 版本号 0.0.37 → 0.0.38；测试总数 632 → 664
+
+---
+
+## [0.0.31] – [0.0.37] - 2026-06-14 ~ 2026-06-15
+
+> 阶段一「安全加固」+ 阶段二「能力扩展」合并条目（CHANGELOG 回填）。
+
+### Added
+
+- **v0.0.31** 异步扫描：`threading.Thread` 异步 `submit_scan()` + `get_scan_status()` 轮询；Web API 速率限制（滑动窗口）；登录暴力破解防护（失败计数 + 指数退避锁定）
+- **v0.0.32** Web 安全加固：Secure cookie（HttpOnly/SameSite/8h 超时）、CSP 头、CORS 白名单（`LS_CORS_ORIGINS`）、`X-Frame-Options`/`X-Content-Type-Options`/`Referrer-Policy`、403 handler
+- **v0.0.33** Docker 部署：`Dockerfile` + `docker-compose.yml`，一键 `docker compose up`，SQLite + 报告数据卷持久化
+- **v0.0.34** PDF 报告导出：`PdfReportWriter`（fpdf2 + 中文字体自动发现）、Web 下载按钮、CLI `--output-format pdf`
+- **v0.0.35** CVE 知识库 70 → 105 条（26 组件，新增 Jenkins/Elasticsearch/K8s/HAProxy）、`fetch_latest_cves()` NVD API 2.0
+- **v0.0.36** Nuclei 适配器：`NucleiAdapter(BaseAdapter)`、标签白名单/黑名单（R1 防线）、JSONL 解析、路径/参数注入防护、52 条测试
+- **v0.0.37** Web UI 增强：脚本下载 + CSRF + R4 确认、SSE 实时推送 + poll 回退、暗/亮主题切换、仪表板搜索筛选 + URL 同步、42 条 web 测试
+
+### Changed
+
+- 版本编号体系统一为单一 `v0.0.XX` 线性序列
+- 集群扩展：Agent 9（ZCode 3.0 + GLM-5.2，知识架构师）加入
+
+---
+
+## [0.0.30] - 2026-06-14
 
 ### Added
 
@@ -29,7 +77,7 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 
 ---
 
-## [0.2.0] - 开发中
+## [0.0.20] - 2026-06-11
 
 ### Added
 
@@ -56,7 +104,7 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 
 ---
 
-## [0.1.0] - 2026-06-09
+## [0.0.10] - 2026-06-09
 
 ### Added
 
@@ -71,6 +119,8 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 - 一键部署脚本 `scripts/deploy_linux.sh` + `scripts/deploy_win.ps1`
 - 121 项单元测试（Reasonix batch1：constants 45项 + logger 29项 + config 47项）
 
-[0.3.0]: https://github.com/LightShield/lightshield/compare/v0.0.20...v0.0.30
-[0.2.0]: https://github.com/LightShield/lightshield/compare/v0.0.10...v0.0.20
-[0.1.0]: https://github.com/LightShield/lightshield/releases/tag/v0.0.10
+[0.0.38]: https://github.com/LightShield/lightshield/compare/v0.0.37...v0.0.38
+[0.0.37]: https://github.com/LightShield/lightshield/compare/v0.0.30...v0.0.37
+[0.0.30]: https://github.com/LightShield/lightshield/compare/v0.0.20...v0.0.30
+[0.0.20]: https://github.com/LightShield/lightshield/compare/v0.0.10...v0.0.20
+[0.0.10]: https://github.com/LightShield/lightshield/releases/tag/v0.0.10

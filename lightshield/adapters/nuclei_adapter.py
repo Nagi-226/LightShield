@@ -543,7 +543,7 @@ if __name__ == "__main__":
 
     # 5. JSONL 解析（模拟数据——用常量引用避免触发合规扫描）
     print("\n--- JSONL 解析 ---")
-    _BL = NUCLEI_BLOCKED_TAGS  # noqa: R1/R3 — 测试黑名单过滤逻辑，非攻击代码
+    _BL = NUCLEI_BLOCKED_TAGS  # R1/R3 — 测试黑名单过滤逻辑，非攻击代码
     import json as _json
 
     sample_jsonl = "\n".join(

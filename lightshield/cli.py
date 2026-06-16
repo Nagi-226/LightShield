@@ -279,8 +279,14 @@ def run_harden_command(args: argparse.Namespace) -> int:
         print(f" 加固脚本：{harden_result.script_path}")
         print(f" 回滚脚本：{harden_result.rollback_path}")
         print(f" 安全报告：{report_path}")
+
+        # v0.0.38: --execute 在 Docker 沙箱中执行加固脚本
+        if getattr(args, "execute", False):
+            return _run_sandbox_execution(core, harden_result, args)
+
         print("")
         print(" ⚠️  请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
+        print("     如需在隔离沙箱中试运行，可加 --execute 参数（v0.0.38）。")
         return 0
 
     except KeyboardInterrupt:
@@ -464,6 +470,16 @@ def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--timeout", type=int, default=60, help="扫描超时时间，默认 60 秒")
     parser.add_argument("--rules-url", help="从远程 URL 导入额外规则（v0.0.26）")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="⚠️ 危险：生成后在 Docker 沙箱（隔离）中执行加固脚本（v0.0.38），需额外确认",
+    )
+    parser.add_argument(
+        "--yes-execute",
+        action="store_true",
+        help="跳过 --execute 的交互确认（仅用于自动化/CI，请谨慎）",
+    )
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
 
@@ -501,6 +517,74 @@ def _ensure_ownership(target: str, confirmed: bool) -> bool:
     print(TargetValidator.confirm_ownership(target))
     answer = input("如确认拥有该目标或已获授权，请输入 YES 继续：").strip()
     return answer == "YES"
+
+
+def _ensure_execute(script_path: str, pre_confirmed: bool) -> bool:
+    """--execute 危险操作二次确认：未预确认时必须交互输入 EXECUTE。"""
+    if pre_confirmed:
+        return True
+
+    print("")
+    print("⚠️  [危险操作] 即将在 Docker 沙箱中执行加固脚本。")
+    print("    脚本将在隔离容器（无网络 + 资源受限 + 即用即销毁）中运行，不影响宿主机。")
+    print(f"    脚本：{script_path}")
+    answer = input("如确认执行，请输入 EXECUTE 继续：").strip()
+    return answer == "EXECUTE"
+
+
+def _run_sandbox_execution(core: LightShieldCore, harden_result: Any, args: argparse.Namespace) -> int:
+    """在 Docker 沙箱中执行加固脚本（v0.0.38 --execute 流程）。"""
+    from lightshield.sandbox.base import ExecutionStatus
+    from lightshield.sandbox.docker_executor import DockerSandboxExecutor
+
+    script_path = harden_result.script_path
+    if not script_path:
+        print("[错误] 未生成可执行的加固脚本。")
+        return 1
+
+    if not _ensure_execute(script_path, getattr(args, "yes_execute", False)):
+        print("已跳过执行：未确认。加固脚本仍已生成，可在审阅后手动执行。")
+        return 0
+
+    executor = DockerSandboxExecutor()
+    if not executor.is_available():
+        print("[错误] Docker 不可用，无法启动沙箱。请安装 Docker 或确认 docker 守护进程已运行。")
+        print("       加固脚本已生成，你可在审阅后手动执行。")
+        return 1
+
+    print("")
+    print("[沙箱] 正在 Docker 隔离容器中执行加固脚本...")
+    result = core.execute_hardening(
+        script_path,
+        confirm_execute=True,
+        executor=executor,
+        timeout=args.timeout,
+    )
+    _print_execution_result(result)
+    return 0 if result.status == ExecutionStatus.SUCCESS else 1
+
+
+def _print_execution_result(result: Any) -> None:
+    """打印沙箱执行结果（状态 + 退出码 + 输出摘要）。"""
+    print("")
+    print("=== 沙箱执行结果 ===")
+    print(f"  状态  ：{result.status.value}")
+    print(f"  沙箱  ：{result.sandbox}")
+    if result.exit_code is not None:
+        print(f"  退出码：{result.exit_code}")
+    print(f"  耗时  ：{result.duration_seconds}s")
+    if result.audit_id:
+        print(f"  审计ID：{result.audit_id}")
+    if result.stdout:
+        print("  --- stdout（末尾 20 行）---")
+        for line in result.stdout.strip().splitlines()[-20:]:
+            print(f"    {line}")
+    if result.stderr:
+        print("  --- stderr（末尾 10 行）---")
+        for line in result.stderr.strip().splitlines()[-10:]:
+            print(f"    {line}")
+    if result.error:
+        print(f"  错误  ：{result.error}")
 
 
 def _register_adapters(core: LightShieldCore, quick: bool = False) -> None:

@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-15 23:30 | **当前版本**：v0.0.37 ✅ | **下一目标**：v0.0.38
-> **会话状态**：v0.0.36 Nuclei + v0.0.37 Web UI 全部交付。阶段二 4/4 全部完成 🎉。版本体系统一。
-> **下次启动**：v0.0.38 沙箱执行器 + v0.0.39 OpenAPI/i18n
+> **最后更新**：2026-06-15 | **当前版本**：v0.0.38 ✅ | **下一目标**：v0.0.39
+> **会话状态**：v0.0.38 沙箱执行器交付（CC）。源码版本号补齐 0.0.37 基准 + CHANGELOG 回填 v0.0.31-38。阶段三 1/2。
+> **下次启动**：v0.0.39 OpenAPI + i18n（CC + Hermes）→ v0.0.40 自动加固闭环
 
 ---
 
@@ -212,7 +212,7 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
-| **v0.0.38** | 沙箱执行器 | CC | `lightshield/sandbox/` 子包、`SandboxExecutor` 抽象（Docker 容器隔离）、`--execute` 危险标志（需额外 YES 确认）、执行超时+输出捕获+审计日志 | ⬜ |
+| **v0.0.38** | 沙箱执行器 | CC | `lightshield/sandbox/` 子包、`SandboxExecutor` 抽象（Docker 容器隔离）、`--execute` 危险标志（需额外 EXECUTE 确认）、执行超时+输出捕获+审计日志、32 条测试 | ✅ |
 | **v0.0.39** | OpenAPI 文档 + i18n | CC + Hermes | Swagger UI（`flasgger` 或手写 OpenAPI JSON）、所有 API 端点文档化、英文 locale（`zh-CN` / `en-US`） | ⬜ |
 
 **阶段三验收标准**：
@@ -255,7 +255,7 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
 
 | Agent | 已完成 | 待完成 |
 |------|:--:|:--:|
-| Claude Code | 16 | 5 |
+| Claude Code | 17 | 4 |
 | Codex | 11 | 2 |
 | Hermes | 6 | 2 |
 | Reasonix | 4 | 0 |
@@ -284,3 +284,5 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
 | 2026-06-15 19:15 | v0.0.36 Nuclei 适配器 交付（CC）：NucleiAdapter(BaseAdapter) + 标签白名单/黑名单（R1 防线） + JSONL 解析 + 路径/参数注入防护 + 52 条新测试。632 passed / ruff+mypy 全零 |
 | 2026-06-15 22:30 | 集群扩展：ZCode 3.0 + GLM-5.2 作为 Agent 9（知识架构师）加入集群。创建 `.cluster/agents/ZCODE.md`，更新 CLUSTER.md + COORDINATION.md。Kimi K2.7 Code 作为 Agent 10 技术储备存入记忆 |
 | 2026-06-15 23:30 | v0.0.37 Web UI 增强 交付验收（Codex）：脚本下载 + SSE + 主题切换 + 搜索筛选。42 web tests 全过。版本编号体系统一为 v0.0.XX，git tag v0.0.20-0.0.37 全部就位。阶段二 4/4 全部完成 🎉 |
+| 2026-06-15 (续) | 源码版本号补齐：__init__/pyproject/setup 从 0.0.36 → 0.0.37（v0.0.37 交付时漏 bump，与已推送 tag 自相矛盾），独立提交建立干净基准。CHANGELOG 回填 v0.0.31-38 + 旧 [0.3.0]/[0.2.0]/[0.1.0] 头规范化为 v0.0.XX |
+| 2026-06-15 (续) | v0.0.38 沙箱执行器 交付（CC）：`lightshield/sandbox/`（SandboxExecutor 抽象 + DockerSandboxExecutor）、Docker 隔离（--network none + 资源限制 + 只读挂载 + no-new-privileges）、`harden --execute` EXECUTE 二次确认、core.execute_hardening 钩子、超时强制终止 + 审计。32 条新测试，664 passed / 1 skip / ruff+mypy 全零。阶段三 1/2 |
