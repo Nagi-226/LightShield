@@ -1,6 +1,6 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-15 | **当前版本**：v0.0.38 ✅ | **下一目标**：v0.0.39
+> **最后更新**：2026-06-16 | **当前版本**：v0.0.38 ✅（已推送 GitHub：commit 8b8ae1c + tag v0.0.38）| **下一目标**：v0.0.39
 > **会话状态**：v0.0.38 沙箱执行器交付（CC）。源码版本号补齐 0.0.37 基准 + CHANGELOG 回填 v0.0.31-38。阶段三 1/2。
 > **下次启动**：v0.0.39 OpenAPI + i18n（CC + Hermes）→ v0.0.40 自动加固闭环
 
@@ -286,3 +286,4 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
 | 2026-06-15 23:30 | v0.0.37 Web UI 增强 交付验收（Codex）：脚本下载 + SSE + 主题切换 + 搜索筛选。42 web tests 全过。版本编号体系统一为 v0.0.XX，git tag v0.0.20-0.0.37 全部就位。阶段二 4/4 全部完成 🎉 |
 | 2026-06-15 (续) | 源码版本号补齐：__init__/pyproject/setup 从 0.0.36 → 0.0.37（v0.0.37 交付时漏 bump，与已推送 tag 自相矛盾），独立提交建立干净基准。CHANGELOG 回填 v0.0.31-38 + 旧 [0.3.0]/[0.2.0]/[0.1.0] 头规范化为 v0.0.XX |
 | 2026-06-15 (续) | v0.0.38 沙箱执行器 交付（CC）：`lightshield/sandbox/`（SandboxExecutor 抽象 + DockerSandboxExecutor）、Docker 隔离（--network none + 资源限制 + 只读挂载 + no-new-privileges）、`harden --execute` EXECUTE 二次确认、core.execute_hardening 钩子、超时强制终止 + 审计。32 条新测试，664 passed / 1 skip / ruff+mypy 全零。阶段三 1/2 |
+| 2026-06-16 | v0.0.38 推送 GitHub：commit `8b8ae1c`（14 文件/+1311）+ 带注释 tag `v0.0.38`，origin/main 对齐（顺带补推 a3a1ea9 版本基准提交）。纠正一处误判：单跑 `mypy lightshield/`（缺 types-requests 存根）误报 `web_vuln_scanner.py:496` 的 `# type: ignore[override]` 多余，删后被 pre-commit 拦下；该 ignore 在真实门禁（pre-commit mypy + types-requests）中**必需**，已还原，PROGRESS「mypy 全零」本就成立。附带清理 `nuclei_adapter.py` 无效 `# noqa: R1/R3` → 普通注释。pre-commit 全门禁通过 |
