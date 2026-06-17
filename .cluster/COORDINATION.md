@@ -7,18 +7,18 @@
 
 ## 一、文件归属机制
 
-### 1.1 归属表（当前 v0.0.36）
+### 1.1 归属表（当前 v0.0.38）
 
 | 文件 | 归属 Agent | 状态 |
 |------|-----------|:--:|
-| `lightshield/` 所有源码 | Claude Code（集成） | ✅ 已实现（v0.0.36） |
+| `lightshield/` 所有源码 | Claude Code（集成） | ✅ 已实现（v0.0.38） |
 | `tests/` 所有测试 | Reasonix + CC | ✅ 已实现 |
 | `requirements.txt` | Hermes | ✅ 已实现 |
 | `.gitignore` | Hermes | ✅ 已实现 |
 | 各 `__init__.py` | Hermes | ✅ 已实现 |
 | `Dockerfile`, `docker-compose.yml` | Hermes | ✅ 已实现 |
 | | | |
-| `CLAUDE.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `CLAUDE.md` | **ZCode 3.0** + CC（双重） | 治理段 CC / 其余 ZCode 同步 ¹ |
 | `README.md` | **ZCode 3.0** 🆕 | 文档同步 |
 | `CHANGELOG.md` | **ZCode 3.0** 🆕 | 文档同步 |
 | `docs/INSTALL.md` | **ZCode 3.0** 🆕 | 文档同步 |
@@ -27,12 +27,19 @@
 | `PROJECT_OVERVIEW.md` | **ZCode 3.0** 🆕 | 文档同步 |
 | `.guardrails/PROGRESS.md` | Claude Code | CC 自行维护 |
 | `.guardrails/audit-log.md` | Claude Code | CC 自行维护 |
+| | | |
+| `.cluster/CLUSTER.md` | Claude Code（集群治理） | CC 自行维护 |
+| `.cluster/COORDINATION.md` | Claude Code（集群治理） | CC 自行维护 |
+| 根目录各 `<AGENT>.md`（CODEX/REASONIX/…） | Claude Code（集群治理） | CC 自行维护 ² |
 
 > 🆕 **ZCode 3.0 归属原则**：
-> - 面向用户文档（README/CHANGELOG/FAQ/INSTALL/USAGE）+ 导航文档（CLAUDE.md/PROJECT_OVERVIEW.md）
-> - 护栏体系（`.guardrails/`）由 CC 自行维护
+> - 面向用户文档（README/CHANGELOG/FAQ/INSTALL/USAGE）+ 导航文档（PROJECT_OVERVIEW.md）
+> - 护栏体系（`.guardrails/`）、集群治理（`.cluster/` + 根目录 `<AGENT>.md`）由 CC 自行维护
 > - 源码变更触发 ZCode 增量同步
 > - ZCode 不修改源码——只读源码 + 写文档
+>
+> ¹ **CLAUDE.md 双重归属**：集群治理段（零-A 护栏 / 零-B 集群模式）+ 顶部会话纪要由 **CC** 维护；项目身份/架构/路线图等导航内容由 **ZCode** 增量同步。改这两类内容前各自不越界。
+> ² **集群治理文件**：CLUSTER.md / COORDINATION.md / 根目录 `<AGENT>.md` 描述 Agent 角色与分工，属编排范畴，由 CC（编排器）维护——例如 2026-06-16 模型优势对齐分工升级即由 CC 同步全部 `<AGENT>.md`。
 
 ### 1.2 冲突规则
 

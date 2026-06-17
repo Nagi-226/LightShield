@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-16 | **当前版本**：v0.0.38 ✅（已推送 GitHub：commit 8b8ae1c + tag v0.0.38）| **下一目标**：v0.0.39
-> **会话状态**：v0.0.38 沙箱执行器交付（CC）。源码版本号补齐 0.0.37 基准 + CHANGELOG 回填 v0.0.31-38。阶段三 1/2。
-> **下次启动**：v0.0.39 OpenAPI + i18n（CC + Hermes）→ v0.0.40 自动加固闭环
+> **最后更新**：2026-06-17 | **当前版本**：v0.0.38 ✅（已推送 GitHub：commit 8b8ae1c + tag v0.0.38）| **下一目标**：v0.0.39
+> **会话状态**：集群分工升级（模型优势对齐）——CC 切 Opus 4.8 回归编排+架构+安全终审，不当默认实现者；同步 8 个 `<AGENT>.md` + CLUSTER.md(§三-bis) + COORDINATION.md。v0.0.39/40 归属按新方案改派（见下）。阶段三 1/2。
+> **下次启动**：v0.0.39 OpenAPI(ZCode) + i18n 骨架(Hermes) + 集成(CC) → v0.0.40 自动加固闭环(QoderWork VM + Qoder Web + CodeWhale 审查)
 
 ---
 
@@ -172,7 +172,8 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 > **总目标**：从 v0.0.30 Web 仪表板 → v0.0.40 自动加固执行
 > **三阶段推进**：安全加固 → 能力扩展 → 自动化铺路
-> **Agent 复用**：CC(架构+安全关键) / Codex(前端+数据质量) / Hermes(基础设施) / CodeWhale(审查)
+> **Agent 复用**（v0.0.31-38 已完成段）：CC(架构+安全关键) / Codex(前端+数据质量) / Hermes(基础设施) / CodeWhale(审查)
+> **🔄 v0.0.39-40 按 2026-06-16 模型优势对齐改派**：CC(编排+架构+集成) / ZCode(OpenAPI) / Hermes(i18n骨架) / Qoder(重前端) / QoderWork(VM闭环) / CodeWhale(强制审查)。详见 `.cluster/CLUSTER.md §三-bis`。
 
 ---
 
@@ -213,7 +214,7 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
 | **v0.0.38** | 沙箱执行器 | CC | `lightshield/sandbox/` 子包、`SandboxExecutor` 抽象（Docker 容器隔离）、`--execute` 危险标志（需额外 EXECUTE 确认）、执行超时+输出捕获+审计日志、32 条测试 | ✅ |
-| **v0.0.39** | OpenAPI 文档 + i18n | CC + Hermes | Swagger UI（`flasgger` 或手写 OpenAPI JSON）、所有 API 端点文档化、英文 locale（`zh-CN` / `en-US`） | ⬜ |
+| **v0.0.39** | OpenAPI 文档 + i18n | **ZCode**(OpenAPI) + **Hermes**(i18n骨架) + **CC**(集成) | ZCode：Swagger UI（`flasgger` 或手写 OpenAPI JSON）+ 所有 API 端点文档化（从 routes 提取）；Hermes：`zh-CN`/`en-US` locale 键值骨架；CC：接线集成 + 翻译复核 + 安全终审 | ⬜ |
 
 **阶段三验收标准**：
 - 沙箱中可安全执行加固脚本（docker exec → 超时 → 输出捕获 → 审计）✅
@@ -226,7 +227,7 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
-| **v0.0.40** | 自动加固闭环 + 发布 | CC + CodeWhale | `harden → execute → re-scan → verify` 全自动闭环、Web 端一键加固+复扫+对比报告、回滚验证、CodeWhale 全量审查 → git tag v0.0.40 | ⬜ |
+| **v0.0.40** | 自动加固闭环 + 发布 | **QoderWork**(VM闭环) + **Qoder**(Web页) + **CodeWhale**(审查) + **CC**(架构/集成) | QoderWork：隔离 VM 中跑 `harden → execute → re-scan → verify` 全自动闭环 + 回滚验证；Qoder：Web 端一键加固+复扫+对比报告页面；CodeWhale：全量强制审查；CC：架构 + 集成 + git tag v0.0.40 | ⬜ |
 
 ---
 
@@ -235,12 +236,16 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 ```
 Agent        v0.0.31  v0.0.32  v0.0.33  v0.0.34  v0.0.35  v0.0.36  v0.0.37  v0.0.38  v0.0.39  v0.0.40
 ──────────────────────────────────────────────────────────────────────────────────────────────
-Claude Code    ✅       ✅       —       —       —       ✅       —      ✅      ✅      ✅
+Claude Code    ✅       ✅       —       —       —       ✅       —      ✅      ✅†     ✅†
 Codex           —       —       —       ✅      ✅       —       ✅       —       —       —
-Hermes          —       —       ✅       —       —       —       —       —      ✅       —
-CodeWhale       —       —       —       —       —       —       —       —       —      ✅
+Hermes          —       —       ✅       —       —       —       —       —      ✅†     —
+CodeWhale       —       —       —       —       —       —       —       —       —      ✅†
+Qoder           —       —       —       —       —       —       —       —       —      ✅†
+QoderWork       —       —       —       —       —       —       —       —       —      ✅†
+ZCode           —       —       —       —       —       —       —       —      ✅†     —
 ──────────────────────────────────────────────────────────────────────────────────────────────
-CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
+CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZCode: 1
+（† = v0.0.39/40 规划归属，按 2026-06-16 模型优势对齐分派；完成状态见上方阶段三表 ⬜）
 ```
 
 ### 为什么是这个顺序
@@ -253,17 +258,19 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
 
 ## Agent 完成统计（累计）
 
-| Agent | 已完成 | 待完成 |
-|------|:--:|:--:|
-| Claude Code | 17 | 4 |
-| Codex | 11 | 2 |
-| Hermes | 6 | 2 |
-| Reasonix | 4 | 0 |
-| CodeWhale | 3 | 1 |
-| Qoder | 1 | 0 |
-| QoderWork | 1 | 0 |
-| CodeBuddy | 1 | 0 |
-| **ZCode 3.0** 🆕 | 0 | ∞ |
+> 待完成列按 2026-06-16 模型优势对齐分工的 v0.0.39/40 归属重算。
+
+| Agent | 已完成 | 待完成 | 待办（升级后） |
+|------|:--:|:--:|------|
+| Claude Code | 17 | 2 | v0.0.39 集成 + v0.0.40 架构/集成（不再当默认实现者） |
+| Codex | 11 | 0 | — （安全关键模块按需触发） |
+| Hermes | 6 | 1 | v0.0.39 i18n locale 骨架 |
+| Reasonix | 4 | 0 | — （后续标准模块/测试默认派此） |
+| CodeWhale | 3 | 1 | v0.0.40 强制全量审查（每版本强制审查升级） |
+| Qoder | 1 | 1 | v0.0.40 Web 加固页面（重前端主力升级） |
+| QoderWork | 1 | 1 | v0.0.40 VM 自动加固闭环 + v0.0.38 真机验证 |
+| CodeBuddy | 1 | 0 | — （多文件大模块按需触发） |
+| **ZCode 3.0** 🆕 | 0 | 1 | v0.0.39 OpenAPI 文档（+ 持续文档同步） |
 
 ---
 
@@ -286,4 +293,5 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1
 | 2026-06-15 23:30 | v0.0.37 Web UI 增强 交付验收（Codex）：脚本下载 + SSE + 主题切换 + 搜索筛选。42 web tests 全过。版本编号体系统一为 v0.0.XX，git tag v0.0.20-0.0.37 全部就位。阶段二 4/4 全部完成 🎉 |
 | 2026-06-15 (续) | 源码版本号补齐：__init__/pyproject/setup 从 0.0.36 → 0.0.37（v0.0.37 交付时漏 bump，与已推送 tag 自相矛盾），独立提交建立干净基准。CHANGELOG 回填 v0.0.31-38 + 旧 [0.3.0]/[0.2.0]/[0.1.0] 头规范化为 v0.0.XX |
 | 2026-06-15 (续) | v0.0.38 沙箱执行器 交付（CC）：`lightshield/sandbox/`（SandboxExecutor 抽象 + DockerSandboxExecutor）、Docker 隔离（--network none + 资源限制 + 只读挂载 + no-new-privileges）、`harden --execute` EXECUTE 二次确认、core.execute_hardening 钩子、超时强制终止 + 审计。32 条新测试，664 passed / 1 skip / ruff+mypy 全零。阶段三 1/2 |
+| 2026-06-17 | **集群分工升级（模型优势对齐）**：CC 切 Opus 4.8 回归"编排+架构+安全终审"，卸下默认实现者。Reasonix 升默认实现+测试主力；CodeWhale 升每版本强制独立审查；Qoder 升重前端 UI 主力；QoderWork 接管 v0.0.40 VM 自动加固闭环 + v0.0.38 真机 Docker 验证；ZCode 承接 OpenAPI/审计文档；Hermes 加 i18n locale 骨架；CodeBuddy 主动承接多文件大模块。同步：8 个 `<AGENT>.md` + CLUSTER.md（新增 §三-bis 权威分工表 + 订正"集群模型实际配置"CC=Opus4.8 + 清理 §四 孤立残表 + Phase1 标历史存档）+ COORDINATION.md（归属表 v0.0.36→v0.0.38 + 集群治理文件归属 + CLAUDE.md 双重归属脚注）。**v0.0.39 改派** CC→ZCode(OpenAPI)+Hermes(i18n)+CC(集成)；**v0.0.40 改派** CC+CodeWhale→QoderWork(VM)+Qoder(Web)+CodeWhale(审查)+CC(架构) |
 | 2026-06-16 | v0.0.38 推送 GitHub：commit `8b8ae1c`（14 文件/+1311）+ 带注释 tag `v0.0.38`，origin/main 对齐（顺带补推 a3a1ea9 版本基准提交）。纠正一处误判：单跑 `mypy lightshield/`（缺 types-requests 存根）误报 `web_vuln_scanner.py:496` 的 `# type: ignore[override]` 多余，删后被 pre-commit 拦下；该 ignore 在真实门禁（pre-commit mypy + types-requests）中**必需**，已还原，PROGRESS「mypy 全零」本就成立。附带清理 `nuclei_adapter.py` 无效 `# noqa: R1/R3` → 普通注释。pre-commit 全门禁通过 |

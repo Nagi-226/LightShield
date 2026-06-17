@@ -56,27 +56,31 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 
 ## 零-B、开发集群模式（重要）
 
-本项目配置了一个 **8 Agent 开发集群**，Claude Code 担任架构师+编排器角色。
+本项目配置了一个 **9 Agent 开发集群**，Claude Code 担任架构师+编排器角色。
+
+> **🔄 2026-06-16 分工升级**：按各 Agent 底层模型优势重排任务（详见 `.cluster/CLUSTER.md` §三-bis 与项目根目录各 `<AGENT>.md`）。Claude Code 已于 2026-06-15 从 DeepSeek-V4-Pro 切换为 **Opus 4.8**，回归"编排+架构+安全终审、不当默认实现者"。
 
 ### 集群成员
 
-| Agent | 角色 | 非交互调用 |
-|-------|------|-----------|
-| **Claude Code** | 🏛️ 架构师 + 编排器 | —（自身） |
-| **Codex** | 💎 高级开发工程师 | `codex exec "$(cat task.md)"` |
-| **Reasonix** | 🔧 开发工程师（DeepSeek） | `reasonix run "$(cat task.md)"` |
-| **CodeWhale** | 🔍 代码审查专员 | `codewhale exec "$(cat task.md)"` |
-| **Hermes** | 🛠️ 工具链 + 基础设施 | `hermes -z "$(cat task.md)"` |
-| **CodeBuddy** | 💻 IDE 大规模开发 | 需人工在 IDE 中操作 |
-| **Qoder** | 🖥️ IDE 精准修改 + AI补全 | 需人工在 IDE 中操作 |
-| **QoderWork** | 🏭 后台任务 + VM 隔离 | 后台常驻服务 |
+| Agent | 角色 | 底层模型 | 非交互调用 |
+|-------|------|---------|-----------|
+| **Claude Code** | 🏛️ 架构师 + 编排器 | **Opus 4.8**（原 DeepSeek-V4-Pro，6-15 切换） | —（自身） |
+| **Codex** | 💎 高级开发（安全关键+前端精密） | GPT-5.5 | `codex exec "$(cat task.md)"` |
+| **Reasonix** | 🔧 主力实现 + 测试生成 | DeepSeek-V4-Pro | `reasonix run "$(cat task.md)"` |
+| **CodeWhale** | 🔍 代码审查（每版本强制） | DeepSeek-V4-Pro | `codewhale exec "$(cat task.md)"` |
+| **Hermes** | 🛠️ 工具链 + 基础设施 | DeepSeek-V4-Flash | `hermes -z "$(cat task.md)"` |
+| **CodeBuddy** | 💻 IDE 大规模多文件开发 | DeepSeek-V4-Pro | 需人工在 IDE 中操作 |
+| **Qoder** | 🖥️ IDE 精准编辑 + 重前端 UI | Qwen-3.7-Max | 需人工在 IDE 中操作 |
+| **QoderWork** | 🏭 后台 VM 隔离执行（自动加固闭环） | Qwen-3.7-Max | 后台常驻服务 |
+| **ZCode 3.0** | 🗂️ 知识架构 + 文档自动化（OpenAPI/审计） | GLM-5.2（1M 上下文） | `zcode exec "$(cat task.md)"` |
 
 ### 编排规则
 
 1. **Claude Code 不直接写实现代码** — 只做架构设计、接口定义、任务拆分、最终集成和合规审查
 2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文
 3. **并行执行 + 集中集成** — 各 Agent 并行产出，Claude Code 审查后合并
-4. **双审机制** — CodeWhale + Claude Code 双重审查所有代码
+4. **双审机制** — CodeWhale + Claude Code 双重审查所有代码（**每版本强制一次 CodeWhale 独立审查**，消除同源盲区）
+5. **模型优势对齐**（2026-06-16）— 按底层模型分派：安全关键→Codex(GPT-5.5)；批量实现+测试→Reasonix(Pro)；重前端 UI→Qoder(Qwen-Max)；VM 隔离执行→QoderWork(Qwen-Max)；文档/OpenAPI/审计→ZCode(GLM-5.2)；样板/基础设施→Hermes(Flash)。CC 不做默认实现者。
 
 ### 任务文件模板规范
 

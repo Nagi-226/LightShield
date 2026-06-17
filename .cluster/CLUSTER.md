@@ -1,7 +1,8 @@
 # LightShield 开发集群（Dev Cluster）
 
 > **集群角色**：将本机 9 个 AI Agent/IDE 协同编排，形成多角色开发流水线。
-> **总指挥**：Claude Code（架构师 + 编排器）
+> **总指挥**：Claude Code（架构师 + 编排器，**Opus 4.8** · 2026-06-15 起由 DeepSeek-V4-Pro 切换）
+> **🔄 当前分工**：2026-06-16 起按底层模型优势对齐重排，**当前生效分工以 §三-bis 为准**（§三/§四 为历史存档）。
 
 ---
 
@@ -60,13 +61,13 @@
 | 工具 | 类型 | 底层模型 | 核心能力 | 非交互模式 | 适用场景 |
 |------|------|---------|---------|-----------|---------|
 | **Claude Code** | CLI | Claude Opus 4.8 | 复杂推理、架构设计、多文件编排 | —（自身即编排器） | 架构设计、合规审计、全局集成 |
-| **Codex** | CLI | OpenAI GPT-5 | 代码生成、单文件实现、脚本 | `codex exec "prompt"` | Python 模块实现、脚本生成 |
-| **Reasonix** | CLI | DeepSeek | 低token成本、缓存命中 | `reasonix run "task"` | 大量测试生成、中文文档 |
-| **CodeWhale** | CLI | 多模型 | 代码审查、diff分析 | `codewhale exec "prompt"` | PR审查、合规检查 |
-| **Hermes** | CLI | 多模型 | MCP集成、工具链、部署 | `hermes -z "prompt"` | 环境搭建、依赖管理 |
-| **CodeBuddy** | IDE | 多模型 | 编辑器内大模块开发 | — | 多文件联动开发 |
-| **Qoder** | IDE | 多模型 | AI补全 + Quest Agent | — | 编辑器内精准修改 |
-| **QoderWork** | CLI | 多模型 | 后台执行、VM隔离 | 后台常驻 | 长时间跑任务、沙箱测试 |
+| **Codex** | CLI | OpenAI GPT-5.5 | 代码生成、单文件实现、脚本 | `codex exec "prompt"` | 🔑 安全关键模块、精密前端逻辑 |
+| **Reasonix** | CLI | DeepSeek-V4-Pro | 批量实现、测试生成、缓存命中 | `reasonix run "task"` | 主力实现、单元测试、中文文档 |
+| **CodeWhale** | CLI | DeepSeek-V4-Pro | 代码审查、diff分析 | `codewhale exec "prompt"` | 每版本强制独立审查、合规检查 |
+| **Hermes** | CLI | DeepSeek-V4-Flash | MCP集成、工具链、部署 | `hermes -z "prompt"` | 环境搭建、依赖管理、i18n locale 骨架 |
+| **CodeBuddy** | IDE | DeepSeek-V4-Pro | 编辑器内大模块开发 | — | 多文件联动、全栈大模块 |
+| **Qoder** | IDE | Qwen-3.7-Max | AI补全 + Quest Agent | — | 重前端 UI、多文件精准编辑 |
+| **QoderWork** | CLI | Qwen-3.7-Max | 后台执行、VM隔离 | 后台常驻 | 自动加固 VM 闭环、长时任务、真机验证 |
 | **ZCode 3.0** | CLI | GLM-5.2 (744B MoE) | 全量文档同步、知识库生成、合规审计 | `zcode exec "$(cat task.md)"` | 文档/知识/审计——异步任务 |
 
 ---
@@ -117,6 +118,8 @@ pending → claimed → in_progress → completed → verified
 ---
 
 ## 三、各 Agent 任务分配原则
+
+> ⚠️ **本节为分工原则的历史叙述**。**2026-06-16 模型优势对齐后的当前生效分工以 [§三-bis](#三-bis模型优势对齐分工2026-06-16--当前生效) 为准**——若本节描述与 §三-bis 冲突，以 §三-bis 为准。
 
 ### 3.1 Claude Code（架构师 + 编排器）
 
@@ -245,7 +248,38 @@ zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 
 ---
 
-## 四、LightShield Phase 1 任务拆分方案
+## 三-bis、模型优势对齐分工（2026-06-16 · 当前生效）
+
+> **触发**：Claude Code 于 2026-06-15 从 DeepSeek-V4-Pro 切换为 **Opus 4.8**。借此对全集群按"底层模型优势"重排任务，纠正三处错配：① CC 长期超载兼任默认实现者；② Qoder/QoderWork（Qwen-3.7-Max，编码很强）长期闲置（各仅 1 任务）；③ 多数版本仅 CC 自审、CodeWhale 强制审查缺位（同源盲区）。
+>
+> **核心原则**：**按底层模型优势分派，CC 不当默认实现者。**
+
+### 权威分工表（与各 `<AGENT>.md` 同源）
+
+| Agent | 底层模型 | 当前职责（升级后） | 相对此前的变化 |
+|-------|---------|------------------|---------------|
+| **Claude Code** | **Opus 4.8** | 编排 + 架构设计 + 接口契约 + 安全终审 + 集成 | 🔻 卸下默认实现者；常规实现/测试下沉 Reasonix |
+| **Codex** | GPT-5.5 | 🔑 安全关键模块（validator R2 / payload 检测 / CSRF / 鉴权）+ 精密前端逻辑 | 🔻 移出 CVE 录入、规则批量扩充（→ Reasonix/ZCode），不浪费贵 token |
+| **Reasonix** | DeepSeek-V4-Pro | **默认实现 + 测试生成主力**：标准复杂度模块 + 单元测试默认派此 | 🔺 升级——承接原压在 CC 上的常规实现/测试 |
+| **CodeWhale** | DeepSeek-V4-Pro | **每版本强制一次独立审查**（合入前必须） | 🔺 升级——从"偶尔审"到"强制审"，与 CC 构成真双审 |
+| **Hermes** | DeepSeek-V4-Flash | 样板/基础设施（依赖/部署/`__init__`）+ **i18n locale 机械骨架** | ➡️ 维持 Flash + 新增 v0.0.39 locale 键值骨架 |
+| **CodeBuddy** | DeepSeek-V4-Pro | **主动承接多文件/全栈大模块**（Web 前后端联动、跨模块重构） | 🔺 升级——从闲置（1 任务）到主力 IDE 大模块 |
+| **Qoder** | Qwen-3.7-Max | **重前端 / 多文件 UI 主力**；v0.0.40 Web"一键加固+复扫+对比"页面主导 | 🔺 升级——从闲置到重前端主力（比 GPT-5.5 便宜且强） |
+| **QoderWork** | Qwen-3.7-Max | **接管 v0.0.40 自动加固 VM 闭环**（`harden→execute→re-scan→verify`）+ v0.0.38 真机 Docker 验证 | 🔺 大幅启用——VM 隔离正是自动加固最缺的能力 |
+| **ZCode 3.0** | GLM-5.2（1M） | 文档自动化（**OpenAPI/审计**）+ Zread 知识库 + 全量文档同步 | 🆕 承接 v0.0.39 OpenAPI 文档生成 |
+
+### 改派后的近期版本归属
+
+| 版本 | 主交付 | 归属（升级后） |
+|:--:|------|---------------|
+| **v0.0.39** | OpenAPI 文档 + i18n | **ZCode**（OpenAPI/Swagger 从 routes 提取）+ **Hermes**（zh-CN/en-US locale 骨架）+ **CC**（集成接线 + 翻译复核） |
+| **v0.0.40** | 自动加固闭环 + 发布 | **QoderWork**（VM 闭环执行）+ **Qoder**（Web 加固页面）+ **CodeWhale**（强制全量审查）+ **CC**（架构 + 集成 + git tag） |
+
+---
+
+## 四、LightShield Phase 1 任务拆分方案（历史存档）
+
+> 📦 **历史存档**：本节为 Phase 1（v0.0.01-0.0.10）当时的任务拆分与模型配置，模型列反映**当时**状态（CC 当时为 DeepSeek-V4）。**当前生效分工见 §三-bis**。
 
 ### Phase 1 目标：项目骨架
 **产出**：`core.py`, `config.py`, `validator.py`, `logger.py`, `base.py`, `constants.py`, `__init__.py`, `requirements.txt`, `.gitignore`
@@ -267,12 +301,12 @@ zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 
 | Agent | 模型 | 编码能力 | 成本 | 非交互调用 |
 |-------|------|:--:|:--:|:--:|
-| **Claude Code** | DeepSeek-V4 | 🟡 良好 | 🟢 低 | — |
+| **Claude Code** | **Opus 4.8** | 🟢 **最强** | 🔴 高 | —（2026-06-15 起，原 DeepSeek-V4） |
 | **Codex** | **GPT-5.5** | 🟢 **最强** | 🔴 高 | `codex exec` |
-| **Reasonix** | DeepSeek-V4 | 🟡 良好 | 🟢 低 | `reasonix run` |
-| **CodeWhale** | DeepSeek-V4 | 🟡 良好 | 🟢 低 | `codewhale exec` |
-| **Hermes** | DeepSeek-V4-flash | 🟠 一般 | 🟢 极低 | `hermes -z` |
-| **CodeBuddy** | DeepSeek-V4 | 🟡 良好 | 🟢 低 | 需人工 |
+| **Reasonix** | DeepSeek-V4-Pro | 🟡 良好 | 🟢 低 | `reasonix run` |
+| **CodeWhale** | DeepSeek-V4-Pro | 🟡 良好 | 🟢 低 | `codewhale exec` |
+| **Hermes** | DeepSeek-V4-Flash | 🟠 一般 | 🟢 极低 | `hermes -z` |
+| **CodeBuddy** | DeepSeek-V4-Pro | 🟡 良好 | 🟢 低 | 需人工 |
 | **Qoder** | **Qwen-3.7-max** | 🟢 **很强** | 🟡 中 | 需人工 |
 | **QoderWork** | **Qwen-3.7-max** | 🟢 **很强** | 🟡 中 | 后台常驻 |
 | **ZCode 3.0** | **GLM-5.2** | 🟢 **很强** | 🟢 极低（免费） | `zcode exec` |
@@ -283,11 +317,9 @@ zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 
 1. **Codex (GPT-5.5)**：仅分配安全关键、精密度要求最高的模块。本次 Phase 1 只有 `validator.py`（R2 防线）。配置加载、日志封装等普通任务不给 Codex——成本浪费。
 2. **Qoder (Qwen-3.7-max)**：编码能力仅次于 GPT-5.5。Phase 1 不能 CLI 调用，但 Phase 9（Flask Web + Tkinter UI）以及多文件重构时发挥最大价值。Phase 1 中作为 CodeWhale 的双审搭档。
-3. **Reasonix (DeepSeek-V4)**：主力开发。处理大多数标准模块实现。成本低，能批量产出。
-4. **Hermes (DeepSeek-V4-flash)**：样板代码和定义类任务。纯模板输出，Flash 绰绰有余。
-5. **CodeWhale (DeepSeek-V4)**：独立视角审查。搭配 Qoder（Qwen-3.7-max）形成**双模型双审**机制。
-| LS-007 | `requirements.txt` + 骨架 | ⚡ Flash | 纯样板代码，逐字输出即可 |
-| LS-008 | 代码审查 | 💎 Pro | 审查需要判断力，不能图快 |
+3. **Reasonix (DeepSeek-V4-Pro)**：主力开发。处理大多数标准模块实现。成本低，能批量产出。
+4. **Hermes (DeepSeek-V4-Flash)**：样板代码和定义类任务。纯模板输出，Flash 绰绰有余。
+5. **CodeWhale (DeepSeek-V4-Pro)**：独立视角审查。搭配 Qoder（Qwen-3.7-max）形成**双模型双审**机制。
 
 **Hermes 在 LightShield 全局使用 Flash**：
 

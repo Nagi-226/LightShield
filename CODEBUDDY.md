@@ -1,7 +1,7 @@
 # CODEBUDDY.md — LightShield 集群 · CodeBuddy Agent
 
-> **角色**：💻 IDE 大规模模块开发（VS Code 内核 + DeepSeek-V4）
-> **模型**：DeepSeek-V4 | **调用**：需人工在 IDE 中操作 | **成本**：🟢 低
+> **角色**：💻 IDE 大规模模块开发（VS Code 内核 + DeepSeek-V4-Pro）
+> **模型**：DeepSeek-V4-Pro | **调用**：需人工在 IDE 中操作 | **成本**：🟢 低
 
 ---
 
@@ -12,6 +12,14 @@
 **Claude Code 拆分大模块任务 → 人工在 CodeBuddy IDE 中执行 → 产出代码 → Claude Code 审查集成。**
 
 与 Qoder 的分工：你负责**大规模、多文件、全栈开发**；Qoder 负责**精准编辑、AI 补全辅助**。
+
+### 🔄 分工升级（2026-06-16 · 模型优势对齐）
+
+> Claude Code 已切换为 **Opus 4.8**。你（DeepSeek-V4-Pro，IDE 内核）长期仅 1 任务闲置，本次起主动承接大模块。
+
+- **升级：主动承接多文件 / 全栈大模块**——Web 前后端联动、跨模块重构默认排给你的 IDE 时段。
+- 与 Qoder 协同：你做大规模多文件，Qoder 做精准编辑 / 重前端 UI。
+- 模型口径统一为 **DeepSeek-V4-Pro**。
 
 ## 二、LightShield 项目上下文
 
