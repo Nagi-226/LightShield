@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="light">
+<html lang="{{ current_lang|default('zh-CN') }}" data-theme="light" dir="{{ locale_dir|default('ltr') }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{% block title %}LightShield 轻盾{% endblock %}</title>
+  <title>{% block title %}{{ t('common.brand') }}{% endblock %}</title>
   <script>
     (() => {
       const storageKey = "ls-theme";
@@ -23,26 +23,27 @@
     })();
   </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <div class="shell">
     {% if show_nav|default(false) %}
     <header class="topbar">
-      <a class="brand" href="{{ url_for('pages.dashboard') }}" aria-label="LightShield 仪表板">
+      <a class="brand" href="{{ url_for('pages.dashboard') }}" aria-label="{{ t('common.brand') }}">
         <span class="brand-mark">LS</span>
         <span>
-          <strong>LightShield 轻盾</strong>
-          <small>安全自检控制台</small>
+          <strong>{{ t('common.brand') }}</strong>
+          <small>{{ t('common.console') }}</small>
         </span>
       </a>
-      <nav class="topbar-actions" aria-label="页面操作">
+      <nav class="topbar-actions" aria-label="{{ t('common.console') }}">
         {% block nav_actions %}{% endblock %}
-        <button class="ghost-button theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="切换深色主题">
+        <button class="ghost-button theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="{{ t('nav.toggle_dark') }}">
           <span data-theme-icon aria-hidden="true">☾</span>
-          <span data-theme-label>深色</span>
+          <span data-theme-label>{{ t('nav.theme_dark') }}</span>
         </button>
         <span class="user-chip">{{ username|default(session.get("user", "admin")) }}</span>
-        <button class="ghost-button" type="button" data-logout>退出</button>
+        <button class="ghost-button" type="button" data-logout>{{ t('nav.logout') }}</button>
       </nav>
     </header>
     {% endif %}
@@ -52,10 +53,28 @@
     </main>
 
     <footer class="footer">
-      <span>LightShield v0.0.36</span>
-      <span>仅用于已授权资产的安全自检</span>
+      <span>LightShield v{{ app_version|default('') }}</span>
+      <span>{{ t('footer.notice') }}</span>
+      <span class="footer-meta">
+        <a class="footer-link" href="{{ url_for('pages.api_docs') }}">{{ t('nav.docs') }}</a>
+        <span class="lang-switch" aria-label="Language / 语言">
+          <a href="{{ url_for('pages.set_language', code='zh-CN') }}"{% if current_lang == 'zh-CN' %} aria-current="true"{% endif %}>简体中文</a>
+          <span aria-hidden="true">·</span>
+          <a href="{{ url_for('pages.set_language', code='en-US') }}"{% if current_lang == 'en-US' %} aria-current="true"{% endif %}>English</a>
+        </span>
+      </span>
     </footer>
   </div>
+
+  <script>
+    // i18n 桥：把当前语言的扁平翻译字典暴露给前端脚本（仅 UI 文案，无敏感数据）。
+    // t(key) 缺失键回退键名本身；tf(key, vars) 支持 {name} 占位符插值。
+    window.LS_LANG = {{ current_lang|default('zh-CN')|tojson }};
+    window.LS_I18N = {{ i18n_map|default({})|tojson }};
+    window.t = (key) => (window.LS_I18N && window.LS_I18N[key]) || key;
+    window.tf = (key, vars) =>
+      window.t(key).replace(/\{(\w+)\}/g, (_, name) => (vars && name in vars ? vars[name] : `{${name}}`));
+  </script>
 
   <script>
     const themeStorageKey = "ls-theme";
@@ -85,11 +104,11 @@
       if (!toggle) return;
       const isDark = normalized === "dark";
       toggle.setAttribute("aria-pressed", String(isDark));
-      toggle.setAttribute("aria-label", isDark ? "切换亮色主题" : "切换深色主题");
+      toggle.setAttribute("aria-label", window.t(isDark ? "nav.toggle_light" : "nav.toggle_dark"));
       const icon = toggle.querySelector("[data-theme-icon]");
       const label = toggle.querySelector("[data-theme-label]");
       if (icon) icon.textContent = isDark ? "☀" : "☾";
-      if (label) label.textContent = isDark ? "亮色" : "深色";
+      if (label) label.textContent = window.t(isDark ? "nav.theme_light" : "nav.theme_dark");
     }
 
     window.LightShield = {

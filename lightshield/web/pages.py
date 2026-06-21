@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, current_app, redirect, render_template, session, url_for
+from urllib.parse import urlparse
+
+from flask import Blueprint, current_app, redirect, render_template, request, session, url_for
 
 from lightshield.adapters.base import VulnFinding
 from lightshield.repository.base import get_repository
 from lightshield.rules.engine import RuleEngine
 from lightshield.utils.constants import RiskLevel
+from lightshield.web.i18n import LANG_SESSION_KEY, normalize_locale, translate
 
 pages_bp = Blueprint("pages", __name__)
 
@@ -18,6 +21,39 @@ def index():
     if "user" in session:
         return redirect(url_for("pages.dashboard"))
     return render_template("login.html")
+
+
+@pages_bp.route("/lang/<code>")
+def set_language(code: str):
+    """切换界面语言：合法语言写入 session，随后重定向回来源页。
+
+    仅接受白名单语言代码；非法值静默忽略（不报错）。重定向目标经同源校验，
+    防止借 Referer 头实施开放重定向（R 红线之外的通用安全加固）。
+    """
+    normalized = normalize_locale(code)
+    if normalized:
+        session[LANG_SESSION_KEY] = normalized
+    return redirect(_safe_referrer())
+
+
+def _safe_referrer() -> str:
+    """返回安全的重定向目标：仅允许同源 Referer，否则回登录页。"""
+    referrer = request.referrer or ""
+    if referrer:
+        ref = urlparse(referrer)
+        if not ref.netloc or ref.netloc == urlparse(request.host_url).netloc:
+            return referrer
+    return url_for("pages.index")
+
+
+@pages_bp.route("/docs")
+def api_docs():
+    """渲染应用内 Swagger UI（自托管资产），可视化 /static/openapi.json。
+
+    公开页面（与已公开的 openapi.json 一致）；登录用户额外显示顶栏便于返回。
+    Try-it-out 调用走既有鉴权/CSRF/限流，未登录时对应 API 返回 401。
+    """
+    return render_template("docs.html", show_nav=("user" in session))
 
 
 @pages_bp.route("/dashboard")
@@ -77,8 +113,8 @@ def harden_page(scan_id: str):
             "harden.html",
             scan_id=scan_id,
             scan_data={},
-            target="未知",
-            error="扫描记录不存在",
+            target=translate("common.unknown"),
+            error=translate("harden.err_not_found"),
             recommendations=[],
             show_nav=True,
             username=session.get("user", "?"),

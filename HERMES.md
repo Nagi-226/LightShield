@@ -7,7 +7,7 @@
 
 ## 一、集群定位
 
-你是 LightShield 8 Agent 开发集群中的 **工具链 + 基础设施专家**。你的任务都是样板代码/模板生成/依赖管理——零复杂推理需求，因此强制使用 Flash 模型以最大化成本效益。
+你是 LightShield 9 Agent 开发集群中的 **工具链 + 基础设施专家**。你的任务都是样板代码/模板生成/依赖管理——零复杂推理需求，因此强制使用 Flash 模型以最大化成本效益。
 
 **所有 Hermes 任务一律使用 `deepseek-v4-flash`，禁止使用 Pro。**
 
@@ -128,7 +128,7 @@ v0.0.30  文档更新（Web 章节）                 ✅
          6/7 完成，1 个待执行 🟢
 ```
 
-> 当前状态：**v0.0.33 Docker 部署已分配，等待执行。**
+> 当前状态：**v0.0.39 i18n locale 骨架为当前任务**（详见 §十二）。v0.0.33 Docker 已完成。
 
 ---
 
@@ -555,3 +555,31 @@ LightShield 轻盾 v0.0.30 已发布。项目有完整的 CLI + Web 仪表板（
 - `requirements.txt` 每个依赖注明版本范围和用途（中文注释）
 - `.gitignore` 每个规则用中文注释说明排除原因
 - Shell 脚本包含中文日志输出
+
+---
+
+## 十二、v0.0.39 当前任务（i18n locale 骨架）🟢
+
+> 来源：2026-06-16 模型优势对齐分工——i18n locale **机械骨架**归 Hermes（纯数据文件，Flash 绰绰有余），翻译质量由 Codex/CC 复核。
+
+### 任务摘要
+
+把 Web 仪表板的硬编码中文界面文字抽进 locale 文件：
+- 产出 2 个新文件：`lightshield/web/locales/zh-CN.json` + `en-US.json`
+- 键集合相同；zh-CN 值 = 任务文件给的中文原文（逐字复制），en-US = 英文翻译（不确定项带 `__review` 标记）
+- **纯格式化 + 翻译**：字符串清单已在任务文件中整理好（5 模板抽取、命名空间化），你不需要自己扫模板
+- **不改任何 .py / .html / pyproject，不新增依赖**——i18n 接线（t()/模板改造/语言选择）由 CC 负责
+
+### 完整任务文件
+
+`.cluster/tasks/pending/HERMES-v039-i18n-locale.md`（含完整字符串清单 + 结构规范 + 验收）
+
+### 启动提示词（直接复制到 Hermes 终端）
+
+```bash
+hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/HERMES-v039-i18n-locale.md)"
+```
+
+### 验收（CC 执行）
+
+两 JSON 合法且键一致、`_meta` 正确、zh-CN 逐字一致、en-US 全键有值且不确定项带 `__review`、未改 .py/.html/pyproject。

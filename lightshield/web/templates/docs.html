@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('docs.title') }} - {{ t('common.brand') }}{% endblock %}
+{% block body_class %}docs-page{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/swagger-ui/swagger-ui.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="docs-shell" aria-labelledby="docs-title">
+  <div class="workspace-head">
+    <div>
+      <p class="eyebrow">OpenAPI 3.0.3</p>
+      <h1 id="docs-title">{{ t('docs.title') }}</h1>
+    </div>
+    <p class="head-note">{{ t('docs.subtitle') }}</p>
+  </div>
+  <div id="swagger-ui"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/swagger-ui/swagger-ui-bundle.js') }}"></script>
+<script>
+  window.addEventListener("load", () => {
+    const mount = document.getElementById("swagger-ui");
+    const specUrl = "{{ url_for('static', filename='openapi.json') }}";
+    // 资产缺失时降级为原始规范链接，避免空白页
+    if (!window.SwaggerUIBundle) {
+      mount.innerHTML = '<p><a href="' + specUrl + '">openapi.json</a></p>';
+      return;
+    }
+    window.SwaggerUIBundle({
+      url: specUrl,
+      dom_id: "#swagger-ui",
+      presets: [window.SwaggerUIBundle.presets.apis],
+      deepLinking: true,
+      docExpansion: "list",
+      defaultModelsExpandDepth: 0,
+    });
+  });
+</script>
+{% endblock %}

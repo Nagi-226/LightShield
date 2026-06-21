@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-17 | **当前版本**：v0.0.38 ✅（已推送 GitHub：commit 8b8ae1c + tag v0.0.38）| **下一目标**：v0.0.39
-> **会话状态**：集群分工升级（模型优势对齐）——CC 切 Opus 4.8 回归编排+架构+安全终审，不当默认实现者；同步 8 个 `<AGENT>.md` + CLUSTER.md(§三-bis) + COORDINATION.md。v0.0.39/40 归属按新方案改派（见下）。阶段三 1/2。
-> **下次启动**：v0.0.39 OpenAPI(ZCode) + i18n 骨架(Hermes) + 集成(CC) → v0.0.40 自动加固闭环(QoderWork VM + Qoder Web + CodeWhale 审查)
+> **最后更新**：2026-06-20 | **当前版本**：v0.0.39 ✅（本地交付，待推送 GitHub）| **下一目标**：v0.0.40
+> **会话状态**：v0.0.39 OpenAPI + i18n 中英双语交付（ZCode→OpenAPI/Swagger，Hermes→locale，CC→i18n.py 桥接+6 页面接线+测试）。`/docs` Swagger UI、`/lang/<code>` 切换、Accept-Language 协商、JS i18n 桥（window.t/tf）。687 passed / 1 skip，五道门禁全绿（含 Gate A 合规）。阶段三 2/2 ✅。
+> **下次启动**：v0.0.40 自动加固闭环（QoderWork VM + Qoder Web + CodeWhale 审查 + CC 架构/集成）
 
 ---
 
@@ -214,7 +214,7 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
 | **v0.0.38** | 沙箱执行器 | CC | `lightshield/sandbox/` 子包、`SandboxExecutor` 抽象（Docker 容器隔离）、`--execute` 危险标志（需额外 EXECUTE 确认）、执行超时+输出捕获+审计日志、32 条测试 | ✅ |
-| **v0.0.39** | OpenAPI 文档 + i18n | **ZCode**(OpenAPI) + **Hermes**(i18n骨架) + **CC**(集成) | ZCode：Swagger UI（`flasgger` 或手写 OpenAPI JSON）+ 所有 API 端点文档化（从 routes 提取）；Hermes：`zh-CN`/`en-US` locale 键值骨架；CC：接线集成 + 翻译复核 + 安全终审 | ⬜ |
+| **v0.0.39** | OpenAPI 文档 + i18n | **ZCode**(OpenAPI) + **Hermes**(i18n骨架) + **CC**(集成) | ZCode：手写 OpenAPI 3.0.3 JSON（8 端点）+ 自托管 Swagger UI（`/docs`）+ `docs/API.md`；Hermes：`zh-CN`/`en-US` locale（含 `_meta`、中英键集对称）；CC：`i18n.py` 桥接（协商 session→cookie→Accept-Language→默认 + JS 桥扁平字典）+ 6 页面接线（base/login/dashboard/report/harden/docs）+ `/lang/<code>` 切换 + `harden_page` 服务端 translate + 23 条 i18n/docs/双语测试。687 passed / 1 skip / 五门禁全绿 | ✅ |
 
 **阶段三验收标准**：
 - 沙箱中可安全执行加固脚本（docker exec → 超时 → 输出捕获 → 审计）✅
@@ -295,3 +295,4 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 | 2026-06-15 (续) | v0.0.38 沙箱执行器 交付（CC）：`lightshield/sandbox/`（SandboxExecutor 抽象 + DockerSandboxExecutor）、Docker 隔离（--network none + 资源限制 + 只读挂载 + no-new-privileges）、`harden --execute` EXECUTE 二次确认、core.execute_hardening 钩子、超时强制终止 + 审计。32 条新测试，664 passed / 1 skip / ruff+mypy 全零。阶段三 1/2 |
 | 2026-06-17 | **集群分工升级（模型优势对齐）**：CC 切 Opus 4.8 回归"编排+架构+安全终审"，卸下默认实现者。Reasonix 升默认实现+测试主力；CodeWhale 升每版本强制独立审查；Qoder 升重前端 UI 主力；QoderWork 接管 v0.0.40 VM 自动加固闭环 + v0.0.38 真机 Docker 验证；ZCode 承接 OpenAPI/审计文档；Hermes 加 i18n locale 骨架；CodeBuddy 主动承接多文件大模块。同步：8 个 `<AGENT>.md` + CLUSTER.md（新增 §三-bis 权威分工表 + 订正"集群模型实际配置"CC=Opus4.8 + 清理 §四 孤立残表 + Phase1 标历史存档）+ COORDINATION.md（归属表 v0.0.36→v0.0.38 + 集群治理文件归属 + CLAUDE.md 双重归属脚注）。**v0.0.39 改派** CC→ZCode(OpenAPI)+Hermes(i18n)+CC(集成)；**v0.0.40 改派** CC+CodeWhale→QoderWork(VM)+Qoder(Web)+CodeWhale(审查)+CC(架构) |
 | 2026-06-16 | v0.0.38 推送 GitHub：commit `8b8ae1c`（14 文件/+1311）+ 带注释 tag `v0.0.38`，origin/main 对齐（顺带补推 a3a1ea9 版本基准提交）。纠正一处误判：单跑 `mypy lightshield/`（缺 types-requests 存根）误报 `web_vuln_scanner.py:496` 的 `# type: ignore[override]` 多余，删后被 pre-commit 拦下；该 ignore 在真实门禁（pre-commit mypy + types-requests）中**必需**，已还原，PROGRESS「mypy 全零」本就成立。附带清理 `nuclei_adapter.py` 无效 `# noqa: R1/R3` → 普通注释。pre-commit 全门禁通过 |
+| 2026-06-20 | v0.0.39 OpenAPI + i18n 交付（ZCode + Hermes + CC 集成）：ZCode→`static/openapi.json`(8 端点)+自托管 Swagger UI(`/docs`)+`docs/API.md`；Hermes→`zh-CN`/`en-US` locale（中英对称）；CC→`i18n.py`（locale 加载/翻译/语言协商/JS 桥扁平字典）+ 6 个 Web 模板接入 `t()`/`window.t`/`window.tf` + `/lang/<code>` 切换（白名单+同源重定向防护）+ `harden_page` 服务端 translate + 版本 0.0.38→0.0.39 三处。新增 `tests/test_web_i18n.py`（23 条）。687 passed / 1 skip / ruff+mypy+bandit+Gate A 全过。阶段三 2/2 ✅ |

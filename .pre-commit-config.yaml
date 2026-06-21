@@ -14,6 +14,14 @@
 default_language_version:
   python: python3.12
 
+# ── 白名单：vendored 第三方前端资产 ───────────────────────────────────────────
+# vendor/ 下为自托管的官方 Swagger UI（swagger-ui-bundle.js ≈1.49MB + swagger-ui.css），
+# 用于离线 / 内网环境的 API 文档。这些是上游官方产物，必须保持与上游字节一致以便校验
+# 与升级，因此豁免于所有 pre-commit hook（大文件拦截 + 行尾/换行/格式化等卫生类修复）。
+# 安全边界：① 豁免范围严格限定 vendor/，自研源码仍受 500KB 大文件门禁 + 全部卫生检查约束；
+#          ② Gate A（R1-R6 合规扫描）走独立 bash 脚本（always_run），不受本 exclude 影响。
+exclude: ^lightshield/web/static/vendor/
+
 # 仅在 LightShield 仓库内运行（不扫描外部项目）
 # 外部路径如 E:\Open-Source Projects by others\ 不在 git 仓库中，天然不受影响
 

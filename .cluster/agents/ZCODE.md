@@ -179,3 +179,31 @@ ZCode 在以下时机由 Claude Code 调度：
 3. **1M 上下文**——鼓励一次读取项目全量文件（~200 个 .py + .md），不要限制读取范围
 4. **模型选择**——文档/知识类任务用 GLM-5.2 Max 模式；简单格式化任务用 GLM-5-turbo 节省额度
 5. **Zread 知识库**——每次生成文档后，同步更新 Zread 索引，方便后续增量同步
+
+---
+
+## 九、v0.0.39 当前任务（OpenAPI 文档）🟢
+
+> 这是 ZCode 在集群中的**首个正式任务**（此前 0 任务）。来源于 2026-06-16 模型优势对齐分工：文档/OpenAPI/审计 → ZCode。
+
+### 任务摘要
+
+为 LightShield 8 个 REST 端点生成 **OpenAPI 3.0.3 规范** + **中文 API 参考**：
+- 产出 1：`lightshield/web/static/openapi.json`（机器可读，OpenAPI 3.0.3 合法 JSON）
+- 产出 2：`docs/API.md`（人类可读中文参考）
+- **只写文档，不改源码，不接路由**——Swagger UI 路由 + CSP 调整由 CC 负责
+- 充分用 1M 上下文一次读完 `routes.py`/`auth.py`/`app.py`/`pages.py`，逐条核对端点清单，存疑列「核对说明」交 CC 裁决
+
+### 完整任务文件
+
+`.cluster/tasks/pending/ZCODE-v039-openapi.md`（含 8 端点权威清单 + 分步结构要求 + 验收标准）
+
+### 启动命令
+
+```bash
+zcode exec "$(cat .cluster/tasks/pending/ZCODE-v039-openapi.md)"
+```
+
+### 验收（CC 执行）
+
+openapi.json 可被 swagger 解析器/`json.load` 无错加载、8 端点全入册、securitySchemes + ErrorEnvelope 完整、docs/API.md 每端点含 curl + 响应示例、未改任何 .py、「核对说明」就位。

@@ -17,6 +17,7 @@ from datetime import timedelta
 
 from flask import Flask, jsonify, request, session
 
+from lightshield import __version__
 from lightshield.config import LightShieldConfig
 from lightshield.core import LightShieldCore
 from lightshield.web.csrf import (
@@ -26,6 +27,7 @@ from lightshield.web.csrf import (
     is_csrf_exempt,
     validate_csrf,
 )
+from lightshield.web.i18n import flatten_for_js, locale_meta, resolve_locale, translate
 from lightshield.web.pages import pages_bp
 from lightshield.web.ratelimit import get_limiter
 from lightshield.web.routes import api_bp
@@ -174,8 +176,23 @@ def create_app(config: LightShieldConfig | None = None) -> Flask:
         return response
 
     @app.context_processor
-    def _inject_csrf():
-        """Expose csrf_token() to all Jinja templates."""
-        return {"csrf_token": generate_csrf_token}
+    def _inject_template_globals():
+        """向所有 Jinja 模板注入 CSRF 令牌、i18n 翻译与应用版本。
+
+        - csrf_token: 生成/读取当前会话 CSRF 令牌
+        - t(key): 按当前语言翻译点号键（缺失回退默认语言再回退键名）
+        - current_lang / locale_dir: 供 <html lang/dir> 使用
+        - i18n_map: 扁平翻译字典，模板用 |tojson 注入前端 JS 桥
+        - app_version: 取自 lightshield.__version__（页脚版本不再硬编码）
+        """
+        lang = resolve_locale()
+        return {
+            "csrf_token": generate_csrf_token,
+            "t": lambda key: translate(key, lang),
+            "current_lang": lang,
+            "locale_dir": locale_meta(lang).get("dir", "ltr"),
+            "i18n_map": flatten_for_js(lang),
+            "app_version": __version__,
+        }
 
     return app

@@ -8,6 +8,27 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 
 ---
 
+## [0.0.39] - 2026-06-20
+
+### Added
+
+- **OpenAPI 3.0.3 文档**（ZCode）：
+  - `lightshield/web/static/openapi.json`：覆盖 8 个 REST 端点（登录/登出/扫描提交/扫描状态/SSE 流/报告/加固生成/脚本下载）的完整规范
+  - `/docs` 路由 + 自托管 Swagger UI（`static/vendor/swagger-ui/`，无 CDN 依赖；资产缺失时降级为原始规范链接，避免空白页）
+  - `docs/API.md`：人读版 REST API 参考文档
+- **国际化（i18n）中英双语**（Hermes locale + CC 集成）：
+  - `lightshield/web/i18n.py`：locale 加载与缓存、点号键翻译查找（缺失回退默认语言再回退键名）、语言协商（`session` → cookie → `Accept-Language` → 默认）、前端 JS 桥扁平字典
+  - `lightshield/web/locales/`：`zh-CN.json` / `en-US.json`（含 `_meta` + 全量 UI 文案，中英键集对称）
+  - `/lang/<code>` 语言切换路由：白名单校验 + 同源重定向防护（防开放重定向）
+  - 全部 Web 页面（base/login/dashboard/report/harden/docs）接入服务端 `t()` 翻译 + `window.t` / `window.tf` 前端 JS 桥（含占位符插值）
+  - 页脚语言切换器 + `<html lang/dir>` 动态属性 + Jinja `context_processor` 统一注入翻译上下文
+
+### Changed
+
+- 版本号 0.0.38 → 0.0.39；测试总数 664 → 687（新增 23 条 i18n / docs 路由 / 中英双语页面测试）
+
+---
+
 ## [0.0.38] - 2026-06-15
 
 ### Added

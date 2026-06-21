@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}登录 - LightShield 轻盾{% endblock %}
+{% block title %}{{ t('login.submit') }} - {{ t('common.brand') }}{% endblock %}
 {% block body_class %}login-page{% endblock %}
 {% block main_class %}login-main{% endblock %}
 
@@ -8,8 +8,8 @@
 <section class="login-hero" aria-labelledby="login-title">
   <div class="login-copy">
     <p class="eyebrow">LightShield Web Dashboard</p>
-    <h1 id="login-title">轻盾安全自检控制台</h1>
-    <p class="lead">提交授权目标、跟踪扫描状态，并在浏览器中阅读 Markdown 报告。</p>
+    <h1 id="login-title">{{ t('login.title') }}</h1>
+    <p class="lead">{{ t('login.lead') }}</p>
     <div class="signal-line" aria-hidden="true">
       <span></span><span></span><span></span><span></span>
     </div>
@@ -18,19 +18,19 @@
   <form id="login-form" class="login-panel" autocomplete="on">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <div>
-      <p class="panel-kicker">Session 登录</p>
-      <h2>进入仪表板</h2>
+      <p class="panel-kicker">{{ t('login.kicker') }}</p>
+      <h2>{{ t('login.heading') }}</h2>
     </div>
 
-    <label for="username">用户名</label>
+    <label for="username">{{ t('login.username') }}</label>
     <input id="username" name="username" type="text" autocomplete="username" value="admin" required>
 
-    <label for="password">密码</label>
+    <label for="password">{{ t('login.password') }}</label>
     <input id="password" name="password" type="password" autocomplete="current-password" value="lightshield" required>
 
     <p id="login-error" class="form-error" role="alert" hidden></p>
-    <button id="login-button" class="primary-button" type="submit">登录</button>
-    <p class="hint">默认凭证：admin / lightshield。生产环境请通过环境变量覆盖。</p>
+    <button id="login-button" class="primary-button" type="submit">{{ t('login.submit') }}</button>
+    <p class="hint">{{ t('login.hint') }}</p>
   </form>
 </section>
 {% endblock %}
@@ -45,7 +45,7 @@
     event.preventDefault();
     errorBox.hidden = true;
     button.disabled = true;
-    button.textContent = "登录中...";
+    button.textContent = window.t("login.submitting");
 
     try {
       const response = await fetch("/api/login", {
@@ -60,7 +60,7 @@
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.message || "登录失败，请检查用户名和密码");
+        throw new Error(data.message || window.t("login.error"));
       }
       window.location.href = "/dashboard";
     } catch (error) {
@@ -68,7 +68,7 @@
       errorBox.hidden = false;
     } finally {
       button.disabled = false;
-      button.textContent = "登录";
+      button.textContent = window.t("login.submit");
     }
   });
 </script>

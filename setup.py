@@ -24,7 +24,7 @@ def _read_requirements() -> list[str]:
 
 setup(
     name="lightshield",
-    version="0.0.38",
+    version="0.0.39",
     description="LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具",
     packages=find_packages(),
     python_requires=">=3.10",

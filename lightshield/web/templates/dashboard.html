@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}仪表板 - LightShield 轻盾{% endblock %}
+{% block title %}{{ t('dashboard.title') }} - {{ t('common.brand') }}{% endblock %}
 {% block body_class %}dashboard-page{% endblock %}
 
 {% block content %}
@@ -8,74 +8,74 @@
   <div class="workspace-head">
     <div>
       <p class="eyebrow">Authorized Scan Workspace</p>
-      <h1>扫描面板</h1>
+      <h1>{{ t('dashboard.title') }}</h1>
     </div>
-    <p class="head-note">前端执行基础 R2/R4 提示，最终校验仍由 API 层完成。</p>
+    <p class="head-note">{{ t('dashboard.head_note') }}</p>
   </div>
 
   <div class="dashboard-grid">
     <section class="scan-panel" aria-labelledby="scan-title">
       <div class="section-heading">
         <p class="panel-kicker">New Scan</p>
-        <h2 id="scan-title">新建扫描</h2>
+        <h2 id="scan-title">{{ t('dashboard.new_scan') }}</h2>
       </div>
 
       <form id="scan-form" class="scan-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-        <label for="target">目标地址</label>
-        <input id="target" name="target" type="text" placeholder="127.0.0.1 或 example.com" required>
+        <label for="target">{{ t('dashboard.target_label') }}</label>
+        <input id="target" name="target" type="text" placeholder="{{ t('dashboard.target_ph') }}" required>
 
-        <label for="scan-type">扫描类型</label>
+        <label for="scan-type">{{ t('dashboard.scan_type') }}</label>
         <select id="scan-type" name="scan_type">
-          <option value="full">全量扫描</option>
-          <option value="asset">资产扫描</option>
-          <option value="vuln">漏洞扫描</option>
+          <option value="full">{{ t('dashboard.type_full') }}</option>
+          <option value="asset">{{ t('dashboard.type_asset') }}</option>
+          <option value="vuln">{{ t('dashboard.type_vuln') }}</option>
         </select>
 
         <label class="check-row" for="confirm-ownership">
           <input id="confirm-ownership" name="confirm_ownership" type="checkbox">
-          <span>我确认拥有目标所有权或已获得明确授权</span>
+          <span>{{ t('dashboard.confirm_own') }}</span>
         </label>
 
         <p id="scan-error" class="form-error" role="alert" hidden></p>
-        <button id="start-scan-button" class="primary-button" type="submit">开始扫描</button>
+        <button id="start-scan-button" class="primary-button" type="submit">{{ t('dashboard.start') }}</button>
       </form>
 
       <div id="scan-status" class="status-console" data-state="idle" aria-live="polite">
         <span class="status-dot"></span>
         <div>
-          <strong id="status-title">等待提交</strong>
-          <p id="status-detail">输入单个 IP 或域名，并完成 R4 授权确认。</p>
-          <div id="status-progress" class="status-progress" role="progressbar" aria-label="扫描进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <strong id="status-title">{{ t('dashboard.status_wait') }}</strong>
+          <p id="status-detail">{{ t('dashboard.status_detail') }}</p>
+          <div id="status-progress" class="status-progress" role="progressbar" aria-label="{{ t('dashboard.aria_progress') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <span id="status-progress-bar"></span>
           </div>
-          <div class="status-metrics" aria-label="实时扫描指标">
-            <span>端口 <strong id="status-ports">0</strong></span>
-            <span>发现 <strong id="status-findings">0</strong></span>
+          <div class="status-metrics" aria-label="{{ t('dashboard.aria_metrics') }}">
+            <span>{{ t('common.ports') }} <strong id="status-ports">0</strong></span>
+            <span>{{ t('common.findings') }} <strong id="status-findings">0</strong></span>
           </div>
         </div>
       </div>
 
-      <a id="report-link" class="report-cta" href="#" hidden>查看报告</a>
-      <a id="harden-link" class="report-cta secondary-cta" href="#" hidden>加固建议</a>
+      <a id="report-link" class="report-cta" href="#" hidden>{{ t('dashboard.view_report') }}</a>
+      <a id="harden-link" class="report-cta secondary-cta" href="#" hidden>{{ t('dashboard.harden') }}</a>
     </section>
 
     <section class="history-panel" aria-labelledby="history-title">
       <div class="section-heading">
         <p class="panel-kicker">Recent Records</p>
-        <h2 id="history-title">扫描历史</h2>
+        <h2 id="history-title">{{ t('dashboard.history') }}</h2>
       </div>
 
       {% if history %}
-      <div class="history-filter" role="search" aria-label="筛选扫描历史">
+      <div class="history-filter" role="search" aria-label="{{ t('dashboard.aria_filter') }}">
         <label for="history-search">
-          <span>搜索</span>
-          <input id="history-search" type="search" placeholder="搜索目标或扫描 ID..." autocomplete="off" aria-controls="history-table-body">
+          <span>{{ t('dashboard.search') }}</span>
+          <input id="history-search" type="search" placeholder="{{ t('dashboard.search_ph') }}" autocomplete="off" aria-controls="history-table-body">
         </label>
         <label for="history-status">
-          <span>状态</span>
+          <span>{{ t('common.status') }}</span>
           <select id="history-status" aria-controls="history-table-body">
-            <option value="">全部</option>
+            <option value="">{{ t('common.all') }}</option>
             <option value="completed">completed</option>
             <option value="partial">partial</option>
             <option value="failed">failed</option>
@@ -88,14 +88,14 @@
         <table class="history-table">
           <thead>
             <tr>
-              <th>扫描 ID</th>
-              <th>目标</th>
-              <th>状态</th>
-              <th>端口</th>
-              <th>发现</th>
-              <th>时间</th>
-              <th>报告</th>
-              <th>加固</th>
+              <th>{{ t('dashboard.th_scan_id') }}</th>
+              <th>{{ t('common.target') }}</th>
+              <th>{{ t('common.status') }}</th>
+              <th>{{ t('common.ports') }}</th>
+              <th>{{ t('common.findings') }}</th>
+              <th>{{ t('common.time') }}</th>
+              <th>{{ t('dashboard.th_report') }}</th>
+              <th>{{ t('dashboard.th_harden') }}</th>
             </tr>
           </thead>
           <tbody id="history-table-body">
@@ -108,20 +108,20 @@
               <td>{{ item.ports_count|default(0) }}</td>
               <td>{{ item.findings_count|default(0) }}</td>
               <td>{{ item.created_at|default("-") }}</td>
-              <td><a class="text-link" href="{{ url_for('pages.view_report', scan_id=item.scan_id) }}">查看报告</a></td>
-              <td><a class="text-link" href="{{ url_for('pages.harden_page', scan_id=item.scan_id) }}">加固</a></td>
+              <td><a class="text-link" href="{{ url_for('pages.view_report', scan_id=item.scan_id) }}">{{ t('dashboard.view_report') }}</a></td>
+              <td><a class="text-link" href="{{ url_for('pages.harden_page', scan_id=item.scan_id) }}">{{ t('dashboard.th_harden') }}</a></td>
             </tr>
             {% endfor %}
             <tr id="history-no-match" class="history-empty-row" hidden>
-              <td colspan="8">没有匹配的记录</td>
+              <td colspan="8">{{ t('dashboard.no_match') }}</td>
             </tr>
           </tbody>
         </table>
       </div>
       {% else %}
       <div class="empty-state">
-        <strong>暂无扫描历史</strong>
-        <p>完成第一次授权扫描后，最近 20 条记录会显示在这里。</p>
+        <strong>{{ t('dashboard.empty') }}</strong>
+        <p>{{ t('dashboard.empty_hint') }}</p>
       </div>
       {% endif %}
     </section>
@@ -184,16 +184,16 @@
   }
 
   function hasObviousTargetProblem(target) {
-    if (!target) return "请输入目标地址";
-    if (/\s/.test(target)) return "目标地址不能包含空格";
+    if (!target) return window.t("dashboard.err_no_target");
+    if (/\s/.test(target)) return window.t("dashboard.err_target_space");
     if (target.includes("://") || target.startsWith("http://") || target.startsWith("https://")) {
-      return "请填写域名或 IP，不要包含 URL 协议";
+      return window.t("dashboard.err_target_url");
     }
     if (target.includes("/") || target.includes("?") || target.includes("#")) {
-      return "请填写单个 IP 或域名，不要包含路径、CIDR 或查询参数";
+      return window.t("dashboard.err_target_path");
     }
-    if (target.startsWith("*.")) return "不支持通配符域名";
-    if (/^\d{1,3}(?:\.\d{1,3}){3}-/.test(target)) return "不支持 IP 范围";
+    if (target.startsWith("*.")) return window.t("dashboard.err_target_wildcard");
+    if (/^\d{1,3}(?:\.\d{1,3}){3}-/.test(target)) return window.t("dashboard.err_target_range");
     return "";
   }
 
@@ -207,8 +207,8 @@
 
   function renderScanProgress(data) {
     const state = data.status || "running";
-    const target = data.target || targetInput.value.trim() || "未知目标";
-    const detail = `目标 ${target}，端口 ${data.ports ?? 0}，发现 ${data.findings ?? 0}`;
+    const target = data.target || targetInput.value.trim() || window.t("dashboard.unknown_target");
+    const detail = window.tf("dashboard.detail_progress", { target, ports: data.ports ?? 0, findings: data.findings ?? 0 });
     setStatus(state, state, detail, data);
   }
 
@@ -227,14 +227,14 @@
     }
 
     startButton.disabled = false;
-    startButton.textContent = "开始扫描";
+    startButton.textContent = window.t("dashboard.start");
   }
 
   async function pollScan(taskId, attempt = 0) {
     const response = await fetch(`/api/scan/${encodeURIComponent(taskId)}`, { credentials: "same-origin" });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.message || "查询扫描状态失败");
+      throw new Error(data.message || window.t("dashboard.err_status_query"));
     }
 
     const state = data.status || "running";
@@ -246,7 +246,7 @@
     }
 
     if (attempt >= 60) {
-      throw new Error("扫描状态查询超时，请稍后刷新仪表板。");
+      throw new Error(window.t("dashboard.err_status_timeout"));
     }
 
     await new Promise((resolve) => window.setTimeout(resolve, 1500));
@@ -278,11 +278,11 @@
         closed = true;
         source.close();
         const data = parseEventPayload(event);
-        setStatus("failed", "进度监听超时", data.message || "扫描仍在后台运行，请稍后查看历史记录。", data);
+        setStatus("failed", window.t("dashboard.timeout_title"), data.message || window.t("dashboard.timeout_detail"), data);
         reportLink.hidden = true;
         hardenLink.hidden = true;
         startButton.disabled = false;
-        startButton.textContent = "开始扫描";
+        startButton.textContent = window.t("dashboard.start");
         resolve(data);
       });
 
@@ -291,25 +291,25 @@
         closed = true;
         source.close();
         const data = parseEventPayload(event);
-        reject(new Error(data.message || "扫描进度连接失败"));
+        reject(new Error(data.message || window.t("dashboard.err_sse_connect")));
       });
 
       source.onerror = () => {
         if (closed) return;
         closed = true;
         source.close();
-        setStatus("running", "SSE 中断", "自动切换为轮询查询。");
+        setStatus("running", window.t("dashboard.sse_interrupt_title"), window.t("dashboard.sse_interrupt_detail"));
         pollScan(taskId).then(resolve).catch(reject);
       };
     });
   }
 
   function handleScanFailure(error) {
-    setStatus("failed", "扫描失败", error.message, { ports: statusPorts.textContent, findings: statusFindings.textContent });
+    setStatus("failed", window.t("dashboard.scan_fail_title"), error.message, { ports: statusPorts.textContent, findings: statusFindings.textContent });
     reportLink.hidden = true;
     hardenLink.hidden = true;
     startButton.disabled = false;
-    startButton.textContent = "开始扫描";
+    startButton.textContent = window.t("dashboard.start");
   }
 
   function applyHistoryFilters(syncUrl = true) {
@@ -334,7 +334,7 @@
       historyNoMatch.hidden = visibleCount > 0;
     }
     if (historyCount) {
-      historyCount.textContent = `${visibleCount}/${historyRows.length} 条记录`;
+      historyCount.textContent = window.tf("dashboard.records_count", { visible: visibleCount, total: historyRows.length });
     }
 
     if (!syncUrl) return;
@@ -379,13 +379,13 @@
     }
 
     if (!ownershipCheckbox.checked) {
-      setScanError("R4 合规要求：请先确认目标所有权或授权范围。");
+      setScanError(window.t("dashboard.err_r4"));
       return;
     }
 
     startButton.disabled = true;
-    startButton.textContent = "提交中...";
-    setStatus("running", "正在提交", "请求已发送到 LightShield API。", { ports: 0, findings: 0 });
+    startButton.textContent = window.t("dashboard.submitting");
+    setStatus("running", window.t("dashboard.status_submitting_title"), window.t("dashboard.status_submitting_detail"), { ports: 0, findings: 0 });
 
     try {
       const response = await fetch("/api/scan", {
@@ -400,9 +400,9 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.message || "扫描提交失败");
+        throw new Error(data.message || window.t("dashboard.err_submit_fail"));
       }
-      setStatus("running", "扫描中", `任务 ${data.task_id} 已创建，正在接收实时进度。`, {
+      setStatus("running", window.t("dashboard.status_scanning_title"), window.tf("dashboard.status_scanning_detail", { task_id: data.task_id }), {
         ports: 0,
         findings: 0,
       });

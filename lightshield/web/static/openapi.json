@@ -1,0 +1,1028 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "LightShield 轻盾 API",
+    "version": "0.0.39",
+    "description": "LightShield 轻盾的本地 / 内网安全自检 REST API。该接口仅用于对已授权的自有资产进行端口扫描、漏洞检测、报告生成与加固脚本生成。所有 /api/* 端点都受速率限制（每 IP 每小时 100 次，可配置），需登录端点依赖 Flask 签名 Session Cookie，非安全方法（POST 等）还需携带 CSRF 令牌。请遵守 R1–R6 合规红线，禁止用于未授权目标的主动攻击。",
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:5000",
+      "description": "本地默认"
+    }
+  ],
+  "tags": [
+    {
+      "name": "鉴权",
+      "description": "登录 / 登出，换取 Flask 签名 Session Cookie。"
+    },
+    {
+      "name": "扫描",
+      "description": "提交扫描任务、查询状态、订阅实时进度。受 R2（单目标校验）和 R6（频率限制）约束。"
+    },
+    {
+      "name": "报告",
+      "description": "获取扫描报告，支持 Markdown / 纯文本 / PDF。"
+    },
+    {
+      "name": "加固",
+      "description": "生成加固与回滚脚本并下载。受 R4（所有权确认）约束。"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session",
+        "description": "Flask 签名 Session Cookie，登录后由 /api/login 下发。所有需登录端点必须携带。"
+      },
+      "csrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "CSRF 令牌。已登录用户的非安全方法（POST 等）请求必须携带。令牌来自页面 <meta name=\"csrf-token\">，由会话首访时生成并写入 session._csrf_token。"
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "description": "统一的失败响应信封。",
+        "required": ["error", "message", "code"],
+        "properties": {
+          "error": {
+            "type": "boolean",
+            "description": "固定为 true，表示失败。",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "description": "中文错误说明。",
+            "example": "请先登录"
+          },
+          "code": {
+            "type": "integer",
+            "description": "HTTP 状态码，与响应行一致。",
+            "example": 401
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "description": "登录请求体。",
+        "required": ["username", "password"],
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "用户名。默认凭证为 admin，可由环境变量 LS_WEB_USERNAME 覆盖。",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "description": "密码。默认凭证为 lightshield，可由环境变量 LS_WEB_PASSWORD 覆盖。",
+            "example": "lightshield"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "description": "登录成功响应。",
+        "required": ["success", "message"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "固定为 true。",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "description": "结果说明。",
+            "example": "登录成功"
+          }
+        }
+      },
+      "LogoutResponse": {
+        "type": "object",
+        "description": "登出成功响应。",
+        "required": ["success", "message"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "固定为 true。",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "description": "结果说明。",
+            "example": "已登出"
+          }
+        }
+      },
+      "ScanRequest": {
+        "type": "object",
+        "description": "提交扫描任务的请求体。受 R2 合规约束：target 必须是单一 IP 或域名，禁止 CIDR / 网段 / 通配符。",
+        "required": ["target"],
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "扫描目标，单一 IP 或域名。批量公网段会被 R2 校验拒绝。",
+            "example": "192.168.1.10"
+          },
+          "scan_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "可选。扫描类型列表，省略时使用默认全套。常见取值：port_scan、service_detect、os_detect、web_vuln、weak_password、component_check。",
+            "example": ["port_scan", "service_detect"]
+          },
+          "confirm_ownership": {
+            "type": "boolean",
+            "description": "可选。R4 所有权确认标志，默认 false。",
+            "default": false,
+            "example": true
+          }
+        }
+      },
+      "ScanAccepted": {
+        "type": "object",
+        "description": "扫描任务提交成功响应（HTTP 202）。",
+        "required": ["task_id", "status", "target"],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "扫描任务 ID，用于后续状态查询与报告获取。",
+            "example": "LS-20260615-153012-a1b2"
+          },
+          "status": {
+            "type": "string",
+            "description": "固定为 accepted。",
+            "example": "accepted"
+          },
+          "target": {
+            "type": "string",
+            "description": "回显的扫描目标。",
+            "example": "192.168.1.10"
+          }
+        }
+      },
+      "ScanStatus": {
+        "type": "object",
+        "description": "扫描任务状态快照。字段集随扫描阶段扩展。",
+        "required": ["task_id", "status"],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "description": "任务 ID。",
+            "example": "LS-20260615-153012-a1b2"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "completed", "partial", "failed", "cancelled"],
+            "description": "任务状态机。completed / partial 可生成报告；其余状态不能。",
+            "example": "completed"
+          },
+          "target": {
+            "type": "string",
+            "description": "扫描目标。",
+            "example": "192.168.1.10"
+          },
+          "ports": {
+            "type": "integer",
+            "description": "已发现端口数（扫描过程中实时增长）。",
+            "example": 12
+          },
+          "findings": {
+            "type": "integer",
+            "description": "已发现漏洞条目数（扫描过程中实时增长）。",
+            "example": 3
+          }
+        }
+      },
+      "HardenRequest": {
+        "type": "object",
+        "description": "生成加固脚本的请求体。受 R4 约束：confirm_ownership 必须为真值。",
+        "required": ["os_platform", "confirm_ownership"],
+        "properties": {
+          "os_platform": {
+            "type": "string",
+            "enum": ["linux", "windows"],
+            "description": "目标操作系统平台，决定生成 .sh 还是 .ps1 脚本。",
+            "example": "linux"
+          },
+          "confirm_ownership": {
+            "type": "boolean",
+            "description": "R4 所有权确认。必须为真值（true / \"true\" / \"1\" / \"yes\" / \"on\"），否则拒绝。",
+            "example": true
+          }
+        }
+      },
+      "HardenResult": {
+        "type": "object",
+        "description": "加固脚本生成成功响应。",
+        "required": ["success", "generated", "message"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "固定为 true。",
+            "example": true
+          },
+          "generated": {
+            "type": "boolean",
+            "description": "是否真的生成了脚本。false 表示无风险项。",
+            "example": true
+          },
+          "action_count": {
+            "type": "integer",
+            "description": "生成的加固操作条数。generated=false 时缺省。",
+            "example": 5
+          },
+          "script_path": {
+            "type": "string",
+            "description": "加固脚本在服务端的完整路径。generated=false 时缺省。",
+            "example": "reports/harden_192_168_1_10_20260615-153012.sh"
+          },
+          "rollback_path": {
+            "type": "string",
+            "description": "回滚脚本在服务端的完整路径。generated=false 时缺省。",
+            "example": "reports/rollback_192_168_1_10_20260615-153012.sh"
+          },
+          "script_filename": {
+            "type": "string",
+            "description": "加固脚本文件名，可用于拼接 /api/script 下载 URL。generated=false 时为空串。",
+            "example": "harden_192_168_1_10_20260615-153012.sh"
+          },
+          "rollback_filename": {
+            "type": "string",
+            "description": "回滚脚本文件名，可用于拼接下载 URL。generated=false 时为空串。",
+            "example": "rollback_192_168_1_10_20260615-153012.sh"
+          },
+          "status": {
+            "type": "string",
+            "description": "加固结果状态字符串。",
+            "example": "success"
+          },
+          "message": {
+            "type": "string",
+            "description": "结果说明。",
+            "example": "已生成 5 条加固操作"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/login": {
+      "post": {
+        "tags": ["鉴权"],
+        "summary": "用户登录",
+        "description": "校验用户名密码，成功后下发 Flask 签名 Session Cookie。该端点 CSRF 豁免。同一 IP 连续失败 5 次后进入指数退避锁定期（2s → 4s → ... → 最长 64s）。",
+        "operationId": "login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求体为空或缺少用户名 / 密码。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": true,
+                  "message": "请提供用户名和密码",
+                  "code": 400
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "用户名或密码错误，或该 IP 处于登录锁定期。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": true,
+                  "message": "用户名或密码错误",
+                  "code": 401
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "tags": ["鉴权"],
+        "summary": "用户登出",
+        "description": "清除当前 Session。该端点 CSRF 豁免。即使未登录也会返回 200。",
+        "operationId": "logout",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "已登出。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan": {
+      "post": {
+        "tags": ["扫描"],
+        "summary": "提交扫描任务",
+        "description": "异步提交一个扫描任务，立即返回 task_id。target 经 R2 双层校验（API 层 + core 内部）：必须是单一 IP 或域名，拒绝 CIDR / 网段 / 通配符 / 批量公网地址。提交后任务进入 pending 状态，由后台线程执行。",
+        "operationId": "submitScan",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "任务已接受，返回 task_id。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求体为空 / 缺 target / R2 校验失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "missing_target": {
+                    "summary": "缺少 target",
+                    "value": {
+                      "error": true,
+                      "message": "请提供扫描目标 (target)",
+                      "code": 400
+                    }
+                  },
+                  "r2_violation": {
+                    "summary": "R2 违规",
+                    "value": {
+                      "error": true,
+                      "message": "[R2 违规] 不允许的 IP 段或批量地址",
+                      "code": 400
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF 校验失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "扫描提交失败（core 异常）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan/{task_id}": {
+      "get": {
+        "tags": ["扫描"],
+        "summary": "查询扫描任务状态",
+        "description": "返回任务当前状态快照。状态机：pending → running → completed / partial / failed（另有 cancelled）。建议配合 SSE 端点实时订阅进度，避免高频轮询。",
+        "operationId": "getScanStatus",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "扫描任务 ID。",
+            "example": "LS-20260615-153012-a1b2"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "任务状态快照。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "任务不存在。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": true,
+                  "message": "任务不存在: LS-xxx",
+                  "code": 404
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan/{task_id}/stream": {
+      "get": {
+        "tags": ["扫描"],
+        "summary": "订阅扫描进度（SSE）",
+        "description": "以 Server-Sent Events 推送扫描进度快照，每 0.5 秒一帧。事件类型：默认（data，进度快照 JSON）、done（扫描进入终态）、timeout（连接达 20 秒仍未完成）、error（任务不存在或状态读取异常）。进入 done / timeout / error 后连接关闭。建议作为轮询的替代方案。",
+        "operationId": "streamScanProgress",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "扫描任务 ID。",
+            "example": "LS-20260615-153012-a1b2"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream。每帧形如 `data: {\"task_id\":\"...\",\"status\":\"running\",\"ports\":N,\"findings\":N}\\n\\n`。",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录（在 SSE 建立前返回 JSON）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/report/{scan_id}": {
+      "get": {
+        "tags": ["报告"],
+        "summary": "获取扫描报告",
+        "description": "按指定格式返回扫描报告。仅 completed / partial 状态的扫描可生成报告，其他状态返回 409。PDF 走 fpdf2 渲染并以附件形式下载。",
+        "operationId": "getReport",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "扫描记录 ID（即任务完成后入库的 scan_id）。",
+            "example": "LS-20260615-153012-a1b2"
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["markdown", "text", "pdf"],
+              "default": "markdown"
+            },
+            "description": "报告格式。非法值回退为 markdown。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "报告内容。markdown / text 为 text/plain; charset=utf-8；pdf 为 application/pdf（attachment）。",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "扫描记录不存在。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": true,
+                  "message": "扫描记录不存在: LS-xxx",
+                  "code": 404
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "扫描尚未完成，无法生成报告。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": true,
+                  "message": "扫描尚未完成，无法生成报告。当前状态: failed",
+                  "code": 409
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "仓库初始化 / 数据解析 / 报告生成失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/harden/{scan_id}": {
+      "post": {
+        "tags": ["加固"],
+        "summary": "生成加固与回滚脚本",
+        "description": "基于扫描结果，由规则引擎推荐加固项并生成脚本。受 R4 约束：confirm_ownership 必须为真值。成功后会向 session 写入 harden_confirmed_at，用于后续脚本下载端点的 R4 校验。请求体接受 JSON 或表单。",
+        "operationId": "generateHarden",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "扫描记录 ID。",
+            "example": "LS-20260615-153012-a1b2"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HardenRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/HardenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "处理完成（无论是否真的生成脚本）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HardenResult"
+                },
+                "examples": {
+                  "generated": {
+                    "summary": "已生成脚本",
+                    "value": {
+                      "success": true,
+                      "generated": true,
+                      "action_count": 5,
+                      "script_path": "reports/harden_192_168_1_10_20260615-153012.sh",
+                      "rollback_path": "reports/rollback_192_168_1_10_20260615-153012.sh",
+                      "script_filename": "harden_192_168_1_10_20260615-153012.sh",
+                      "rollback_filename": "rollback_192_168_1_10_20260615-153012.sh",
+                      "status": "success",
+                      "message": "已生成 5 条加固操作"
+                    }
+                  },
+                  "no_risk": {
+                    "summary": "无风险项",
+                    "value": {
+                      "success": true,
+                      "generated": false,
+                      "message": "未发现需要加固的风险项",
+                      "code": 200
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "os_platform 非法 / R4 未确认。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "bad_os": {
+                    "summary": "os 非法",
+                    "value": {
+                      "error": true,
+                      "message": "不支持的操作系统，请选择 linux 或 windows",
+                      "code": 400
+                    }
+                  },
+                  "r4_not_confirmed": {
+                    "summary": "R4 未确认",
+                    "value": {
+                      "error": true,
+                      "message": "[R4] 请先确认目标所有权或授权范围",
+                      "code": 400
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF 校验失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "扫描记录不存在。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "仓库读取 / 脚本生成失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/script/{scan_id}/{filename}": {
+      "get": {
+        "tags": ["加固"],
+        "summary": "下载加固 / 回滚脚本",
+        "description": "下载之前由 /api/harden 生成的脚本文件。三重校验：(1) 文件名必须在白名单内（harden_*.sh、harden_*.ps1、rollback_*.sh、rollback_*.ps1）；(2) CSRF 通过 X-CSRF-Token 头或查询参数 ?_csrf_token= / ?csrf_token= 传入；(3) session.harden_confirmed_at 必须存在（即先调用过 /api/harden 并通过 R4）。文件以 application/octet-stream 附件形式返回。",
+        "operationId": "downloadScript",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "扫描记录 ID（用于审计，不参与文件定位）。",
+            "example": "LS-20260615-153012-a1b2"
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(harden|rollback)_.*\\.(sh|ps1)$"
+            },
+            "description": "脚本文件名，必须在白名单内。",
+            "example": "harden_192_168_1_10_20260615-153012.sh"
+          },
+          {
+            "name": "_csrf_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "GET 下载的 CSRF 令牌（浏览器原生 <a download> 无法设 header 时的回退通道）。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "脚本文件。",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "attachment; filename=\"<脚本名>\""
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "文件名不在白名单内。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": true,
+                  "message": "脚本文件名不在下载白名单内",
+                  "code": 400
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF 失败 / R4 未确认。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "csrf_failed": {
+                    "summary": "CSRF 失败",
+                    "value": {
+                      "error": true,
+                      "message": "CSRF 校验失败，请刷新页面后重试",
+                      "code": 403
+                    }
+                  },
+                  "r4_not_confirmed": {
+                    "summary": "R4 未确认",
+                    "value": {
+                      "error": true,
+                      "message": "[R4] 下载脚本前请先确认目标所有权或授权范围",
+                      "code": 403
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "文件不存在。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "example": {
+                  "error": true,
+                  "message": "脚本文件不存在",
+                  "code": 404
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "触发速率限制。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
