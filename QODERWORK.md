@@ -19,6 +19,19 @@
 - v0.0.38 沙箱执行器的**真实 Docker 验证**（单测用 mock，真机验证缺位）也归你。
 - 凡长时间运行 / 有副作用 / 需环境隔离的任务，默认派你。
 
+### ✅ 上一任务已关闭（2026-06-22）：v0.0.40 执行基座真机验证
+
+> V1-V7 全部 7/7 证实，报告 `docs/e2e-v040-sandbox-verify-report.md` 交付。CC 终审：实证采信、**特权容器基座建议驳回**、拍板 **APPLY = 真机本地执行**。决策见 `docs/adr-v040-execution-substrate.md`，契约 `docs/design-v040-closed-loop.md` 已转正式版。
+
+### 🟢 当前激活任务：v0.0.40 闭环回归 Gate E 夹具（待实现阶段产出后启动）
+
+> **角色调整**：你验证得出的特权容器（`--cap-add NET_ADMIN` + bridge）**不进产品**，而是**正名为集群 E2E 测试夹具**——专用于回归测试 v0.0.40 闭环实现（`run_harden_closed_loop`）。
+>
+> - **前置**：等 Codex/Reasonix/Qoder 把闭环实现合入（verify + HostExecutor + 编排 + Web 对比页）。
+> - **任务**：在特权容器夹具里跑完整闭环 `扫描→推荐→生成→APPLY(真机语义)→复扫→verify`，作为 Gate E 回归。夹具是测试基础设施，**不混入 `lightshield/` 产品代码**。
+> - **合规**：全程 tcpdump 抓包**留实据**（上次缺这一项），证明零外联；靶机自建、仅扫内网。
+> - **接口契约（已转正式版，先读）**：[`docs/design-v040-closed-loop.md`](docs/design-v040-closed-loop.md) + ADR [`docs/adr-v040-execution-substrate.md`](docs/adr-v040-execution-substrate.md)。
+
 ## 二、LightShield 项目上下文
 
 LightShield（轻盾）是一个面向初创企业 & 个人站长的开源轻量化安全自检 + 防御加固工具。
@@ -147,8 +160,8 @@ v0.0.19  v0.0.20 E2E final review     ✅ Docker 替代执行
          8/8 完成，0 个待执行 ✅
 ```
 
-> 当前状态：**全部任务完成，零剩余。** 等待 v0.0.30 新任务分配。
-> v0.0.19 由 Docker 双容器方案替代 VM 执行，详情见下方任务记录。
+> v0.0.01–v0.0.20 阶段任务全部完成（8/8）。v0.0.19 由 Docker 双容器方案替代 VM 执行，详情见下方任务记录。
+> **当前激活：v0.0.40 自动加固执行基座真机验证**（2026-06-16 模型优势对齐后接管，详见 §一「当前激活任务」+ §八末启动提示词）。
 
 ### 任务详解 + 启动提示词
 
@@ -692,6 +705,58 @@ Step 5: 手动执行 harden.sh（iptables 封禁 23/3306/6379），重新 scan �
 - 硬编码密钥 SEC 扫描在 logger.py 中的 "Secret123!" 是测试数据，可以忽略
 - 使用 `py` 不是 `python`（Windows）——Linux VM 中用 `python3`
 - 测试完成后回滚 VM 快照
+```
+
+---
+
+### v0.0.40 — 🔴 自动加固执行基座真机验证（当前任务 🟢）
+
+#### 任务背景
+
+v0.0.40 要做自动加固闭环 `扫描 → 推荐 → 生成脚本 → 执行 → 复扫 → 验证`。前三环已就绪，v0.0.38 交付了第④环沙箱执行器——但**单测全程 mock `subprocess.run`，从未真机跑过 Docker 容器**。
+
+CC 静态分析预判：v0.0.38 的锁死容器（`--network none` + `no-new-privileges` + 默认丢弃 caps + 无 init）**跑不动真实加固脚本**（`systemctl`/`iptables`/`apt` 三杀），且 `--network none` + `--rm` 没有可复扫的持久目标。**闭环的 `APPLY`（真正应用加固）模式很可能需要一台真 VM 或特权容器，而非锁死容器。**
+
+**你的使命**：真机证实/证伪上述预判，为 v0.0.40 的 `APPLY` 基座定型。完整验证项（V1-V7）、步骤、输出契约见任务文件 `.cluster/tasks/pending/QODERWORK-v040-sandbox-verify.md`，接口契约见 `docs/design-v040-closed-loop.md`（先读，尤其 §4 + §9）。
+
+> ⚠️ 你只**验证**，不写实现代码。结论决定架构，故为 v0.0.40 阻塞性前置门禁。
+
+#### 输出
+
+`docs/e2e-v040-sandbox-verify-report.md`：V1-V7 逐项真机结果+证据、APPLY 基座可行性矩阵+倾向结论、契约 §9 五问回答、tcpdump 零外联证据、是否需补 ADR。
+
+#### v0.0.40 启动提示词（直接复制到 QoderWork）
+
+```
+你是 LightShield 项目 QoderWork Agent，在隔离 Linux VM 中执行 v0.0.40 的「自动加固执行基座真机验证」门禁任务。
+
+## 项目背景
+LightShield（轻盾）是面向初创企业的开源安全自检 + 加固工具，Python 3.10+。项目在 VM 内 clone 到 /workspace/LightShield。
+v0.0.40 要做自动加固闭环（扫描→推荐→生成脚本→执行→复扫→验证）。v0.0.38 交付的沙箱执行器单测全程 mock，从未真机验证——这就是你要补的缺口。
+
+## 先读两份文档（必须）
+1. .cluster/tasks/pending/QODERWORK-v040-sandbox-verify.md —— 本任务的完整验证项/步骤/输出契约（以它为准）
+2. docs/design-v040-closed-loop.md —— 闭环接口契约，重点看 §4（DRY_RUN vs APPLY 基座张力）和 §9（你要回答的 5 个未决问题）
+
+## 合规红线（VM 中也必须遵守）
+R1 禁攻击：目标只能是 VM 内部自建靶机，全程 tcpdump 抓包证明零外联
+R2 只扫 127.0.0.1 / VM 内网 | R4 仅自查自有资产 | R6 并发≤20、间隔≥5s
+测试前 VM 快照 → 测试 → 回滚。不得安装攻击工具。
+
+## 你的任务（不写实现代码，只验证+记录+给结论）
+1. 环境：Ubuntu 22.04 + Docker + nmap + python3.10+，pip install -r requirements.txt，建快照。
+2. DRY_RUN 验证：用 LinuxHardener.generate 生成一个含 iptables/systemctl 命令的真实加固脚本，再用 DockerSandboxExecutor().execute(..., confirm_execute=True) 真机执行它。逐条记录验证项 V1-V7（见任务文件第四节）：systemctl/iptables/apt 各报什么错？yes 自动应答是否放行 R4 交互门？超时是否被 kill 且无残留？
+3. APPLY 基座探索：在 VM 真机（非锁死容器）搭一个高危端口靶机（telnet 23/redis 6379）→ iptables 真封端口 → 复扫确认端口消失。记录"VM 真机能跑通应用加固+复扫，容器不能"。评估三种 APPLY 基座（独立 VM / 特权容器 / systemd-in-container）的可行性与合规边界，给倾向结论。
+4. 回答接口契约 §9 的 5 个未决问题，每条要有真机依据。
+
+## 输出
+生成 docs/e2e-v040-sandbox-verify-report.md（模板见任务文件第六节），结论段明确：①v0.0.38 沙箱定位 ②v0.0.40 APPLY 基座建议 ③是否需补 ADR。
+
+## 注意
+- 所有扫描只针对 127.0.0.1 / VM 内网；Linux VM 用 python3
+- 不改动任何仓库源码（你只验证）
+- 测试完回滚 VM 快照
+- 结果回传后由 Claude Code 审查，据此定稿接口契约并放行 v0.0.40 实现阶段
 ```
 
 ---
