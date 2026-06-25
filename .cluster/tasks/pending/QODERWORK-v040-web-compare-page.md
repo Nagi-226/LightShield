@@ -1,9 +1,11 @@
-# QODER 任务 — v0.0.40 Web「加固 + 复扫 + 对比」页面
+# QoderWork 任务（模式 A：IDE/前端）— v0.0.40 Web「加固 + 复扫 + 对比」页面
 
-> **Agent**：Qoder（Qwen-3.7-Max，重前端 UI 精密编辑，IDE 操作）
+> **Agent**：**QoderWork 模式 A**（原 Qoder IDE，Qwen-3.7-Max，已退役并入 QoderWork · 同模型零能力损失）
+> **执行方式**：在 Qoder IDE 中打开项目 → 复制本 prompt 到 Quest Agent → 执行
 > **版本**：v0.0.40 自动加固闭环｜**类型**：Web 前端 + 轻后端路由
-> **依赖**：消费 Reasonix 的 `ClosedLoopResult.to_dict()` 形状 + Codex 的编排端点（可按契约 §8 形状先并行做 UI，集成在两者之后）。
+> **依赖**：消费 `ClosedLoopResult.to_dict()` 形状（CodeBuddy verify 任务产出）+ Codex 的编排端点（可按契约 §8 形状先并行做 UI，集成在两者之后）。
 > **冻结接口来源**：`docs/design-v040-closed-loop.md`（正式版）§8；决策见 `docs/adr-v040-execution-substrate.md`
+> **改派记录**：2026-06-25 Qoder IDE 退役（无额度）→ 并入 QoderWork 模式 A（同模型 Qwen-3.7-Max + 同付费体系）
 
 ---
 
@@ -35,7 +37,7 @@ LightShield Web 面板（Flask + 原生 HTML/CSS，v0.0.37 已有脚本下载/SS
 
 ### 3.3 i18n（契约 §8）
 
-所有文案走 v0.0.39 `t()` / `window.t/tf`，键前缀 `closed_loop.*`（中英对称，由 Hermes 在 `locales/{zh-CN,en-US}.json` 补；**键名与 Hermes 任务对齐**，缺键先列清单同步给 Hermes）。
+所有文案走 v0.0.39 `t()` / `window.t/tf`，键前缀 `closed_loop.*`（中英对称，由 CodeBuddy i18n 任务在 `locales/{zh-CN,en-US}.json` 补；**键名与 i18n 任务对齐**，缺键先列清单同步）。
 
 ## 四、代码要求
 
@@ -51,6 +53,6 @@ LightShield Web 面板（Flask + 原生 HTML/CSS，v0.0.37 已有脚本下载/SS
 1. [ ] `POST /api/harden/<scan_id>/verify` 路由 + CSRF + 缺双确认 4xx。
 2. [ ] 页面正确渲染 overall 徽章 + before/after 对比表（三状态着色）+ 执行日志折叠 + 白名单脚本下载。
 3. [ ] DRY_RUN（after/verification=null）优雅降级不报错。
-4. [ ] 全文案 i18n（closed_loop.*），键清单已与 Hermes 对齐。
+4. [ ] 全文案 i18n（closed_loop.*），键清单已与 CodeBuddy i18n 任务对齐。
 5. [ ] Web 测试通过 + pre-commit 零违规。
-6. [ ] ⚠️ CodeWhale 审查（前端安全：XSS/CSRF/下载路径）。
+6. [ ] ⚠️ CC 安全审查（前端安全：XSS/CSRF/下载路径，见 `.guardrails/REVIEW_CHECKLIST.md`）。

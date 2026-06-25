@@ -1,0 +1,141 @@
+# 📋 LightShield 代码审查清单
+
+> **来源**：提取自 CodeWhale 的 M8 五维审查方法论（CodeWhale 已于 2026-06-25 退役）
+> **使用者**：Claude Code（所有 Agent 产出的安全终审）+ Codex（CC 自写代码的交叉审查）
+> **强制等级**：CC 审查所有 Agent 产出 ✅ | Codex 交叉审查 CC 自写代码 🔴 强制不可跳过
+
+---
+
+## 一、M8 五维扫描
+
+每次审查必须覆盖以下五个维度：
+
+### 1. 架构（Architecture）
+- [ ] 模块是否遵循适配器模式（继承 `BaseAdapter`）？
+- [ ] 新增模块是否在正确的层级（adapters/scanners/harden/rules/report/web）？
+- [ ] 接口契约是否被遵守（公开 API 签名未被修改）？
+- [ ] 是否有跨层调用（如 web 层直接调 adapters 内部方法）？
+- [ ] 新增依赖是否必要？是否在 `requirements.txt` 中声明？
+
+### 2. 安全（Security）
+- [ ] R1：无对外攻击逻辑（exploit/payload/attack 关键字扫描）
+- [ ] R2：输入校验拒绝 IP 段/CIDR/通配符，仅接受单 IP/域名
+- [ ] R3：无 `bind_shell` / `reverse_shell` / `backdoor` / `trojan`
+- [ ] R4：所有权确认门存在且不可绕过
+- [ ] R5：MSF 调用仅限 `auxiliary/scanner/*` 白名单
+- [ ] R6：扫描并发 ≤20，间隔 ≥5s
+- [ ] 敏感信息不硬编码（密码/密钥/Token 使用环境变量或配置文件）
+- [ ] 用户输入经过双重校验（前端拦截 + 后端 `validate_target()`）
+
+### 3. 性能（Performance）
+- [ ] 网络请求有超时设置（`timeout=` 参数）
+- [ ] 文件 I/O 不在热路径中
+- [ ] 大型数据结构使用了合适的容器（generator vs list）
+- [ ] 是否有不必要的重复计算/请求？
+
+### 4. 代码质量（Code Quality）
+- [ ] 异常捕获完善（网络超时、权限不足、工具调用失败）
+- [ ] 类型标注完整（mypy `check_untyped_defs=true` 零违规）
+- [ ] 圈复杂度 ≤20（ruff C90 零违规）
+- [ ] 中文注释清晰，非专业用户可理解
+- [ ] 无占位符/TODO 桩（Nagi Principle 4：可落地）
+- [ ] 代码风格与项目一致（ruff 零违规）
+
+### 5. 测试（Testing）
+- [ ] 新增模块有对应测试文件
+- [ ] 测试覆盖率不下降
+- [ ] 测试断言有效（不出现"assert 接受 GENERATED 也接受 FAILED"的弱断言）
+- [ ] Mock 使用恰当（不 mock 被测函数本身）
+- [ ] 边界条件覆盖（空输入、超时、异常路径）
+
+---
+
+## 二、R1-R6 合规红线逐条检查
+
+| 编号 | 红线 | 检查动作 | 通过 |
+|:--:|------|---------|:--:|
+| R1 | 禁止对外主动攻击 | grep `exploit\|payload\|attack\|ddos\|dos_attack\|brute_force` | ⬜ |
+| R2 | 禁止批量扫描公网 IP | 审查 `validate_target()` 调用链，确认拒 CIDR/网段/通配符 | ⬜ |
+| R3 | 禁止远控/后门/木马 | grep `bind_shell\|reverse_shell\|backdoor\|trojan\|remote_admin` | ⬜ |
+| R4 | 仅允许自查自有资产 | 确认启动/执行前有所有权确认门（`confirm_ownership=True`） | ⬜ |
+| R5 | MSF 调用限制 | 审查 MSF 调用链，确认只在 `AUXILIARY_SCANNER_WHITELIST` 范围内 | ⬜ |
+| R6 | 扫描频率限制 | 确认并发 ≤20、间隔 ≥5s（`SCAN_CONCURRENCY_LIMIT` / `SCAN_INTERVAL_SECONDS`） | ⬜ |
+
+---
+
+## 三、Gate B：范围忠实度
+
+- [ ] Agent 产出是否严格在任务文件定义的范围内？
+- [ ] 是否有"顺手重构"、"加个抽象层"等未被要求的改动？
+- [ ] 新增文件是否必要？（无"万一将来要用"的过度工程）
+- [ ] 是否有未在任务文件中声明的依赖引入？
+
+---
+
+## 四、Gate D：冲突检测
+
+- [ ] 是否修改了其他 Agent 的归属文件？
+- [ ] import 路径是否与其他模块的产出一致？
+- [ ] 接口签名是否与契约定义一致？
+- [ ] 文件归属表是否需要更新？
+
+---
+
+## 五、审查报告模板
+
+```markdown
+# 审查报告 — [版本/模块]
+
+> **审查者**：[CC / Codex] | **日期**：YYYY-MM-DD | **范围**：[文件列表]
+
+## 发现总览
+| 等级 | 数量 |
+|------|:--:|
+| 🔴 CRITICAL | 0 |
+| 🟠 HIGH | 0 |
+| 🟡 MEDIUM | 0 |
+| 🔵 LOW | 0 |
+| 💡 SUGGESTION | 0 |
+
+## 逐项发现
+### [等级] [编号] — [标题]
+- **位置**：`文件:行号`
+- **描述**：[问题描述]
+- **建议**：[修复建议]
+- **状态**：⬜ 待修复 / ✅ 已修复 / ⏸️ 已知悉不修（需理由）
+
+## 合规检查
+| 红线 | 结果 |
+|:--:|:--:|
+| R1 | ✅ |
+| R2 | ✅ |
+| R3 | ✅ |
+| R4 | ✅ |
+| R5 | ✅ |
+| R6 | ✅ |
+
+## 结论
+- [ ] 通过，可合入
+- [ ] 有条件通过（[N] 项需修复后合入）
+- [ ] 驳回（需重新实现）
+```
+
+---
+
+## 六、Codex 交叉审查 CC 自写代码 —— 强制门禁
+
+> 🔴 **不可跳过**。任何 CC 为作者（git author）的 commit，在合入前必须由 Codex (GPT-5.5) 完成独立审查。
+
+**触发条件**：
+- CC 自写的胶水代码/集成代码
+- CC 自写的架构补丁（接口契约调整等）
+- CC 自写的样板代码（原 Hermes 职责）
+
+**不触发条件**（CC 可以直接合入）：
+- CC 审查后 merge 的其他 Agent 产出（CC 只是集成者，不是作者）
+- 纯文档/配置更新（非代码逻辑）
+
+**审查记录**：每次 Codex 交叉审查结果记录在 `.guardrails/audit-log.md` 中，格式：
+```
+YYYY-MM-DD | Gate C (Codex cross-review) | [commit] | [findings] | [result]
+```

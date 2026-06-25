@@ -1,9 +1,11 @@
-# REASONIX 任务 — v0.0.40 数据结构 + verify 比对纯函数
+# CodeBuddy 任务 — v0.0.40 数据结构 + verify 比对纯函数
 
-> **Agent**：Reasonix（DeepSeek-V4-Pro，主力实现 + 测试生成）
+> **Agent**：**CodeBuddy**（原 Reasonix，DeepSeek-V4-Pro，已退役并入 CodeBuddy）
+> **【模型切换：DeepSeek-V4-Pro】** ← 在 CodeBuddy IDE 中切到此模型
 > **版本**：v0.0.40 自动加固闭环｜**类型**：纯逻辑 + 数据类 + 单测（无 I/O、无副作用）
-> **依赖**：无（本任务是闭环实现的地基，Codex/Qoder 都 import 你的产出）
+> **依赖**：无（本任务是闭环实现的地基，Codex 的 HostExecutor 都 import 你的产出）
 > **冻结接口来源**：`docs/design-v040-closed-loop.md`（正式版）§5 / §7；决策背景见 `docs/adr-v040-execution-substrate.md`
+> **改派记录**：2026-06-25 集群精简，Reasonix(DS V4-Pro)→CodeBuddy(切 DS V4-Pro，同模型零能力损失)
 
 ---
 
@@ -84,4 +86,4 @@ def verify_hardening(before: list[VulnFinding], after: list[VulnFinding], target
 2. [ ] verify_hardening 纯函数，比对键/分桶/verdict 完全符合契约。
 3. [ ] 单测全绿，覆盖三分桶+三 verdict+边界。
 4. [ ] pre-commit（ruff+mypy）零违规。
-5. [ ] **未碰 core 编排 / executor / Web**（那些是 Codex/Qoder 的）。
+5. [ ] **未碰 core 编排 / executor / Web**（那些是 Codex 的）。

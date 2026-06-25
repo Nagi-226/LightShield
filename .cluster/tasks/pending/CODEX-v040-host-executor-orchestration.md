@@ -2,7 +2,7 @@
 
 > **Agent**：Codex（GPT-5.5，安全关键 + 精密实现）
 > **版本**：v0.0.40 自动加固闭环｜**类型**：🔴 安全关键（在用户真机执行加固脚本）
-> **依赖**：⛓️ **被 Reasonix 任务阻塞**——需先合入 `HardenStatus` 扩展 + `VerificationResult` + `ClosedLoopResult` + `verify_hardening`（可先 stub-import 并行开发，合并在 Reasonix 之后）。
+> **依赖**：⛓️ **被 CodeBuddy verify 任务阻塞**——需先合入 `HardenStatus` 扩展 + `VerificationResult` + `ClosedLoopResult` + `verify_hardening`（可先 stub-import 并行开发，合并在 verify 任务之后）。
 > **冻结接口来源**：`docs/design-v040-closed-loop.md`（正式版）§4/§6；**决策与红线见 `docs/adr-v040-execution-substrate.md`（必读，尤其 §2.1 护栏）**
 
 ---
@@ -69,4 +69,4 @@ def run_harden_closed_loop(self, target, *, os_platform, confirm_ownership=False
 3. [ ] APPLY 三重前置（双确认 + DRY_RUN-first + rollback 就绪）强制生效，缺一被拒。
 4. [ ] CLI `--closed-loop`/`--apply`/`--confirm-ownership` 接线 + 缺确认报错。
 5. [ ] 单测覆盖两路径 + 闸门 + 异常；pre-commit（ruff+mypy+bandit）零违规。
-6. [ ] ⚠️ CC + CodeWhale 双审（安全关键，强制）。
+6. [ ] ⚠️ CC 安全终审（安全关键——本模块在用户真机执行加固脚本；审查清单见 `.guardrails/REVIEW_CHECKLIST.md`） + Codex 交叉审查 CC 集成胶水代码（强制）。

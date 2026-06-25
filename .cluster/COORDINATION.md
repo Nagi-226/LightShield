@@ -1,45 +1,41 @@
 # 🔗 LightShield 集群协调协议（Coordination Protocol）
 
-> **目的**：确保 9 Agent 并行开发的产出不相互冲突
+> **目的**：确保 6 Agent 并行开发的产出不相互冲突
 > **核心原则**：一个文件一个 Agent，接口契约先行，冲突自动检测
 
 ---
 
 ## 一、文件归属机制
 
-### 1.1 归属表（当前 v0.0.38）
+### 1.1 归属表（当前 v0.0.39 · 2026-06-25 集群精简后）
 
 | 文件 | 归属 Agent | 状态 |
 |------|-----------|:--:|
-| `lightshield/` 所有源码 | Claude Code（集成） | ✅ 已实现（v0.0.38） |
-| `tests/` 所有测试 | Reasonix + CC | ✅ 已实现 |
-| `requirements.txt` | Hermes | ✅ 已实现 |
-| `.gitignore` | Hermes | ✅ 已实现 |
-| 各 `__init__.py` | Hermes | ✅ 已实现 |
-| `Dockerfile`, `docker-compose.yml` | Hermes | ✅ 已实现 |
+| `lightshield/` 所有源码 | Claude Code（集成） | ✅ 已实现 |
+| `lightshield/web/` 前端模板 | QoderWork 模式 A（前端 UI，原 Qoder IDE） | 🟢 v0.0.40+ |
+| `tests/` 所有测试 | CodeBuddy（默认实现 + 测试生成）+ CC（集成审查） | ✅ 已实现 |
+| `requirements.txt` | CodeBuddy（Flash 模式，原 Hermes） | ✅ 已实现 |
+| `.gitignore` | CodeBuddy（Flash 模式，原 Hermes） | ✅ 已实现 |
+| 各 `__init__.py` | CodeBuddy（Flash 模式，原 Hermes） | ✅ 已实现 |
+| `Dockerfile`, `docker-compose.yml` | CodeBuddy（Flash 模式，原 Hermes） | ✅ 已实现 |
+| `lightshield/web/locales/` | CodeBuddy（Flash 模式，原 Hermes） | 🟢 v0.0.40+ |
 | | | |
-| `CLAUDE.md` | **ZCode 3.0** + CC（双重） | 治理段 CC / 其余 ZCode 同步 ¹ |
-| `README.md` | **ZCode 3.0** 🆕 | 文档同步 |
-| `CHANGELOG.md` | **ZCode 3.0** 🆕 | 文档同步 |
-| `docs/INSTALL.md` | **ZCode 3.0** 🆕 | 文档同步 |
-| `docs/USAGE.md` | **ZCode 3.0** 🆕 | 文档同步 |
-| `docs/FAQ.md` | **ZCode 3.0** 🆕 | 文档同步 |
-| `PROJECT_OVERVIEW.md` | **ZCode 3.0** 🆕 | 文档同步 |
+| `CLAUDE.md` | Claude Code（治理段）+ ZCode（项目身份段） | ✅ |
+| `README.md` | ZCode 3.0 | ✅ |
+| `CHANGELOG.md` | ZCode 3.0 | ✅ |
+| `docs/INSTALL.md` | ZCode 3.0 | ✅ |
+| `docs/USAGE.md` | ZCode 3.0 | ✅ |
+| `docs/FAQ.md` | ZCode 3.0 | ✅ |
+| `PROJECT_OVERVIEW.md` | ZCode 3.0 | ✅ |
 | `.guardrails/PROGRESS.md` | Claude Code | CC 自行维护 |
 | `.guardrails/audit-log.md` | Claude Code | CC 自行维护 |
+| `.guardrails/REVIEW_CHECKLIST.md` | Claude Code | CC 自行维护 |
 | | | |
 | `.cluster/CLUSTER.md` | Claude Code（集群治理） | CC 自行维护 |
 | `.cluster/COORDINATION.md` | Claude Code（集群治理） | CC 自行维护 |
-| 根目录各 `<AGENT>.md`（CODEX/REASONIX/…） | Claude Code（集群治理） | CC 自行维护 ² |
+| 根目录各 `<AGENT>.md` | Claude Code（集群治理） | CC 自行维护 ¹ |
 
-> 🆕 **ZCode 3.0 归属原则**：
-> - 面向用户文档（README/CHANGELOG/FAQ/INSTALL/USAGE）+ 导航文档（PROJECT_OVERVIEW.md）
-> - 护栏体系（`.guardrails/`）、集群治理（`.cluster/` + 根目录 `<AGENT>.md`）由 CC 自行维护
-> - 源码变更触发 ZCode 增量同步
-> - ZCode 不修改源码——只读源码 + 写文档
->
-> ¹ **CLAUDE.md 双重归属**：集群治理段（零-A 护栏 / 零-B 集群模式）+ 顶部会话纪要由 **CC** 维护；项目身份/架构/路线图等导航内容由 **ZCode** 增量同步。改这两类内容前各自不越界。
-> ² **集群治理文件**：CLUSTER.md / COORDINATION.md / 根目录 `<AGENT>.md` 描述 Agent 角色与分工，属编排范畴，由 CC（编排器）维护——例如 2026-06-16 模型优势对齐分工升级即由 CC 同步全部 `<AGENT>.md`。
+> ¹ **活跃 Agent .md**：CODEX.md / CODEBUDDY.md / KIMI.md 🆕 / QODERWORK.md / ZCODE.md。Reasonix / CodeWhale / Hermes / Qoder IDE 已于 2026-06-25 退役并删除（历史保留于 git）。
 
 ### 1.2 冲突规则
 
@@ -82,27 +78,32 @@ class LightShieldConfig:
 ### 3.1 可并行（不同文件，无依赖）
 
 ```
-Phase 1 可并行任务：
-├── LS-003 config.py (Reasonix)
-├── LS-004 validator.py (Codex)
-├── LS-005 logger.py (Reasonix)   ← 与 LS-003 同 Agent，串行
-├── LS-006 constants.py (Hermes)
-└── LS-007 infra (Hermes)         ← 与 LS-006 同 Agent，串行
+v0.0.40 可并行任务：
+├── CODEX-v040  HostExecutor + 编排（安全关键，GPT-5.5）
+├── CB-v040      verify 数据结构（切 DS V4-Pro，原 Reasonix）
+├── CB-v040      i18n 闭环 key（切 DS Flash，原 Hermes）
+├── QW-v040      Web 对比页面（QoderWork 模式 A，Qwen-3.7-Max）
+├── KIMI-A-v040  闭环实现全量审查（K2.7-code，独立模型审查）
+├── KIMI-B-v040  Web E2E 自动化测试 + 部署验证（K2.6，桌面自动化）
+└── ZCODE-XXX    文档同步（GLM-5.2，独立任务）
 ```
 
-### 3.2 必须串行（有依赖或同 Agent）
+### 3.2 必须串行（有依赖）
 
 ```
-Phase 1 依赖链：
-LS-001 base.py → LS-002 core.py → LS-003/004/005/006/007（可并行）
+v0.0.40 依赖链：
+CB verify 数据结构 → Codex HostExecutor + 编排 → QoderWork Web 对比页面(模式A) → Kimi Code 独立审查 → QoderWork Gate E(模式B)
 ```
 
 ### 3.3 Agent 内串行
 
 ```
-同一 Agent 的任务按 Task ID 顺序串行执行：
-Reasonix: LS-003 → LS-005
-Hermes:   LS-006 → LS-007
+同一 Agent 的任务按优先级串行执行：
+CodeBuddy: verify 数据结构 → i18n key
+QoderWork: Web 对比页面(模式A·IDE) → Gate E 夹具(模式B·VM，等 Kimi 审查后触发)
+Kimi Code: v0.0.40 闭环全量独立审查（在 Codex+CB 产出全部合入前触发）
+```
+```
 ```
 
 ---

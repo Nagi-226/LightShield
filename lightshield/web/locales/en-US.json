@@ -133,6 +133,28 @@
     "download_script": "Download hardening script",
     "download_rollback": "Download rollback script"
   },
+  "closed_loop": {
+    "title": "Hardening Closed-Loop",
+    "mode_dry_run": "Dry-run",
+    "mode_apply": "Apply",
+    "overall_verified": "Verified",
+    "overall_partial": "Partial",
+    "overall_failed": "Failed",
+    "overall_generated_only": "Generated only",
+    "col_type": "Type",
+    "col_port": "Port",
+    "col_severity": "Severity",
+    "col_status": "Status",
+    "status_resolved": "Resolved",
+    "status_remaining": "Remaining",
+    "status_regressed": "Regressed",
+    "exec_log": "Execution log",
+    "exec_download": "Download script",
+    "confirm_ownership": "I confirm I own this asset",
+    "confirm_execute": "Confirm applying on the real host",
+    "warn_apply": "Apply mode will really modify this host system. Run dry-run first and make sure the rollback script is ready.",
+    "empty_dryrun": "Dry-run: no re-scan performed, scripts generated for review only."
+  },
   "docs": {
     "title": "API Documentation",
     "subtitle": "Interactive LightShield REST API documentation"

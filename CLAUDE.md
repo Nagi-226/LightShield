@@ -4,10 +4,10 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-15 — v0.0.38 沙箱执行器交付（CC）+ 源码版本号补齐 0.0.37 基准 + CHANGELOG 回填。
->   - 质量基线：**664 tests** / 0 fail / 1 skip / ruff + mypy 全零违规
->   - 阶段一 ✅✅✅ 安全加固 | 阶段二 ✅✅✅✅ 能力扩展 | 阶段三 ✅⬜⬜ 自动化铺路（沙箱✅）
->   - 下次启动：v0.0.39 OpenAPI/i18n（CC + Hermes）→ v0.0.40 自动加固闭环
+> **上次会话**：2026-06-25 — 集群精简（9→5 Agent）：Reasonix/CodeWhale/Hermes→CodeBuddy(多模型)/CC(审查清单)，Qoder IDE 退役。
+>   - 质量基线：**687 tests** / 0 fail / 1 skip / ruff + mypy 全零违规
+>   - 阶段一 ✅✅✅ 安全加固 | 阶段二 ✅✅✅✅ 能力扩展 | 阶段三 ✅✅✅ 自动化铺路（全部完成）
+>   - 下次启动：v0.0.40 自动加固闭环（派工书已改派）
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
@@ -56,31 +56,35 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 
 ## 零-B、开发集群模式（重要）
 
-本项目配置了一个 **9 Agent 开发集群**，Claude Code 担任架构师+编排器角色。
+本项目配置了一个 **6 Agent 开发集群**，Claude Code 担任架构师+编排器角色。
 
-> **🔄 2026-06-16 分工升级**：按各 Agent 底层模型优势重排任务（详见 `.cluster/CLUSTER.md` §三-bis 与项目根目录各 `<AGENT>.md`）。Claude Code 已于 2026-06-15 从 DeepSeek-V4-Pro 切换为 **Opus 4.8**，回归"编排+架构+安全终审、不当默认实现者"。
+> **🔄 2026-06-25 集群精简**：Reasonix/CodeWhale/Hermes → CodeBuddy（多模型 IDE 承接，同模型零能力损失）；Qoder IDE → QoderWork（同模型 Qwen-3.7-Max + 同付费体系，双模式共存）。
+> **🆕 Kimi Code 加入**：Kimi-K2.7-code 作为第 6 Agent，担任深度调试 + 独立模型审查专员。Kimi 是集群中**唯一与所有其他 Agent 模型不同的审查者**（Kimi ≠ DS ≠ GPT ≠ Qwen ≠ GLM），填补 CodeWhale 退役后"同源盲区"的审查缺口——这一次模型真正不同。
+>
+> **CC 模型**：DeepSeek-V4-Pro（2026-06-25 切回）。
+> **CodeBuddy 多模型能力**：可随时在 IDE 中切换 DeepSeek-V4-Pro/Flash、GLM-5.2/5.0-Turbo、MiniMax-M3、Kimi-K2.7-code/2.6、Hy3-Preview——按任务需要在派工书中指定模型即可。
 
 ### 集群成员
 
 | Agent | 角色 | 底层模型 | 非交互调用 |
 |-------|------|---------|-----------|
-| **Claude Code** | 🏛️ 架构师 + 编排器 | **Opus 4.8**（原 DeepSeek-V4-Pro，6-15 切换） | —（自身） |
-| **Codex** | 💎 高级开发（安全关键+前端精密） | GPT-5.5 | `codex exec "$(cat task.md)"` |
-| **Reasonix** | 🔧 主力实现 + 测试生成 | DeepSeek-V4-Pro | `reasonix run "$(cat task.md)"` |
-| **CodeWhale** | 🔍 代码审查（每版本强制） | DeepSeek-V4-Pro | `codewhale exec "$(cat task.md)"` |
-| **Hermes** | 🛠️ 工具链 + 基础设施 | DeepSeek-V4-Flash | `hermes -z "$(cat task.md)"` |
-| **CodeBuddy** | 💻 IDE 大规模多文件开发 | DeepSeek-V4-Pro | 需人工在 IDE 中操作 |
-| **Qoder** | 🖥️ IDE 精准编辑 + 重前端 UI | Qwen-3.7-Max | 需人工在 IDE 中操作 |
-| **QoderWork** | 🏭 后台 VM 隔离执行（自动加固闭环） | Qwen-3.7-Max | 后台常驻服务 |
-| **ZCode 3.0** | 🗂️ 知识架构 + 文档自动化（OpenAPI/审计） | GLM-5.2（1M 上下文） | `zcode exec "$(cat task.md)"` |
+| **Claude Code** | 🏛️ 架构师 + 编排器 + 安全终审 | **DeepSeek-V4-Pro**（2026-06-25 切回） | —（自身） |
+| **Codex** | 💎 安全关键模块 + 精密前端 + CC 胶水代码交叉审查 | GPT-5.5 | `codex exec "$(cat task.md)"` |
+| **CodeBuddy** | 💻 多模型 IDE：默认实现 + 测试生成 + 样板/基础设施 | DeepSeek-V4-Pro（可切 Flash/GLM-5.2/Kimi/MiniMax-M3/Hy3） | 需人工在 IDE 中操作，任务文件指定模型 |
+| **Kimi** | 🔬 Kimi 统一 Agent（双模式：CLI 代码审查+深度调试 / 桌面自动化+E2E 验证） | K2.7-code（模式A）+ K2.6（模式B） | `kimi exec`（A）/ Kimi Work 桌面端（B） |
+| **QoderWork** | 🏗️ 高级开发主力（Code Arena #2 超 GPT-5.5）+ 35h 长程自主 Agent + VM 隔离 | Qwen-3.7-Max（Code Arena 1541 #2） | 后台常驻 + IDE 手动（双模式） |
+| **ZCode 3.0** | 🎯 高级开发·特种部队（与 Codex 同级——关键时刻动用，一般任务不轻易使用） | GLM-5.2（744B MoE，Code Arena #2） | `zcode exec "$(cat task.md)"` |
 
 ### 编排规则
 
-1. **Claude Code 不直接写实现代码** — 只做架构设计、接口定义、任务拆分、最终集成和合规审查
-2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文
+1. **Claude Code 负责架构设计、接口定义、任务拆分、安全终审、集成合并** — 标准实现和样板代码由 CodeBuddy 承接
+2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文。**CodeBuddy 任务须在开头标注 `【模型切换：XXX】`**
 3. **并行执行 + 集中集成** — 各 Agent 并行产出，Claude Code 审查后合并
-4. **双审机制** — CodeWhale + Claude Code 双重审查所有代码（**每版本强制一次 CodeWhale 独立审查**，消除同源盲区）
-5. **模型优势对齐**（2026-06-16）— 按底层模型分派：安全关键→Codex(GPT-5.5)；批量实现+测试→Reasonix(Pro)；重前端 UI→Qoder(Qwen-Max)；VM 隔离执行→QoderWork(Qwen-Max)；文档/OpenAPI/审计→ZCode(GLM-5.2)；样板/基础设施→Hermes(Flash)。CC 不做默认实现者。
+4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）；CC 自写代码由 Codex（GPT-5.5）交叉审查（强制不可跳过）；**Kimi Code 每版本强制一次独立审查**（Kimi-K2.7-code 是集群唯一与所有 Agent 模型不同的审查者，真正消除同源盲区）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
+5. **模型优势对齐（按 Code Arena 排名）** — 
+   - 🎯 **高级开发层**：安全关键→Codex(GPT-5.5)；高级实现主力→QoderWork(Qwen-3.7-Max，Code Arena #2 1541 超 GPT-5.5)；特种部队→ZCode(GLM-5.2，1M 上下文，关键时刻动用)
+   - 🔧 **常规开发层**：默认实现+测试+样板→CodeBuddy(多模型按需切换)
+   - 🔬 **专业角色层**：独立审查+深度调试(MCP)→Kimi 模式A(K2.7-code)；桌面自动化+E2E→Kimi 模式B(K2.6)
 
 ### 任务文件模板规范
 

@@ -29,6 +29,9 @@ class HardenStatus(Enum):
     GENERATED = "generated"  # 已生成脚本（未执行）
     NO_ACTION = "no_action"  # 无推荐项，无需操作
     FAILED = "failed"  # 生成/执行失败
+    EXECUTED = "executed"  # v0.0.40: 脚本已执行（不代表已验证）
+    VERIFIED = "verified"  # v0.0.40: 复扫确认风险已消除
+    REGRESSED = "regressed"  # v0.0.40: 复扫发现仍存在 / 引入新风险
 
 
 @dataclass

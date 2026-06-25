@@ -1,9 +1,11 @@
-# HERMES 任务 — v0.0.40 闭环页面 i18n 文案（closed_loop.*）
+# CodeBuddy 任务 — v0.0.40 闭环页面 i18n 文案（closed_loop.*）
 
-> **Agent**：Hermes（DeepSeek-V4-Flash，工具链 + 基础设施 + 样板）
+> **Agent**：**CodeBuddy**（原 Hermes，DeepSeek-V4-Flash，已退役并入 CodeBuddy）
+> **【模型切换：DeepSeek-V4-Flash】** ← 在 CodeBuddy IDE 中切到此模型（零推理量样板任务）
 > **版本**：v0.0.40 自动加固闭环｜**类型**：i18n locale 补全（中英对称）
-> **依赖**：键名与 **Qoder 任务**（Web 对比页）对齐——以页面实际用到的键为准，缺则补齐。
+> **依赖**：键名与 Web 对比页面实际用到的键对齐——缺则补齐。
 > **冻结接口来源**：`docs/design-v040-closed-loop.md`（正式版）§8；延续 v0.0.39 i18n 体系
+> **改派记录**：2026-06-25 集群精简，Hermes(DS Flash)→CodeBuddy(切 DS Flash，同模型零能力损失)
 
 ---
 
@@ -21,7 +23,7 @@ v0.0.39 已建中英双语体系：`lightshield/web/locales/{zh-CN,en-US}.json`�
 
 `lightshield/web/locales/zh-CN.json` 与 `en-US.json` 同步新增 `closed_loop` 命名空间，**两边键集完全对称**（v0.0.39 已有对称校验，勿破）。
 
-### 3.2 必备键集（起步清单，最终以 Qoder 页面为准对齐）
+### 3.2 必备键集（起步清单，最终以 Web 对比页面为准对齐）
 
 ```
 closed_loop.title              加固闭环对比 / Hardening Closed-Loop
@@ -46,7 +48,7 @@ closed_loop.warn.apply         应用模式将真实修改本机系统，请先�
 closed_loop.empty.dryrun       预检模式未复扫 / Dry-run: no re-scan performed
 ```
 
-（数量/命名最终与 Qoder 对齐；Qoder 会回传页面实际键清单。）
+（数量/命名最终与 Web 对比页面对齐；页面完成后回传实际键清单。）
 
 ## 四、代码要求
 
@@ -61,5 +63,5 @@ closed_loop.empty.dryrun       预检模式未复扫 / Dry-run: no re-scan perfo
 1. [ ] zh-CN.json / en-US.json 同步新增 closed_loop.* 且键集对称。
 2. [ ] 必备键全覆盖，APPLY 风险文案如实。
 3. [ ] i18n 对称性测试通过。
-4. [ ] 键清单已与 Qoder 页面对齐（无悬空键/缺键）。
+4. [ ] 键清单已与 Web 对比页面对齐（无悬空键/缺键）。
 5. [ ] pre-commit 零违规。

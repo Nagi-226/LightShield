@@ -1,25 +1,54 @@
 # CODEBUDDY.md — LightShield 集群 · CodeBuddy Agent
 
-> **角色**：💻 IDE 大规模模块开发（VS Code 内核 + DeepSeek-V4-Pro）
-> **模型**：DeepSeek-V4-Pro | **调用**：需人工在 IDE 中操作 | **成本**：🟢 低
+> **角色**：🏗️ 常规开发主力（月订阅就绪——高频、可靠、默认第一选择）
+> **模型**：DeepSeek-V4-Pro（可按任务需要切换 Flash / GLM-5.2 / Kimi-K2.7-code / MiniMax-M3 / Hy3-Preview） | **调用**：需人工在 IDE 中操作 | **成本**：月订阅
 
 ---
 
 ## 一、集群定位
 
-你是 LightShield 8 Agent 开发集群中的 **IDE 大规模开发工程师**。当任务需要多文件联动修改、IDE 内调试测试、复杂重构时，由人工在 CodeBuddy IDE 中打开项目并加载你的任务文件。
+你是 LightShield 6 Agent 开发集群中的 **🏗️ 常规开发主力**——与 🎯 Codex/ZCode（特种部队·节制使用）形成明确分工：
 
-**Claude Code 拆分大模块任务 → 人工在 CodeBuddy IDE 中执行 → 产出代码 → Claude Code 审查集成。**
+| 层级 | Agent | 调用频率 | 定位 |
+|:--:|------|:--:|------|
+| 🎯 特种部队 | Codex / ZCode | 低——关键时刻 | 安全关键 / 跨模块长程 |
+| 🏗️ **常规主力** | **你 + QoderWork A** | **高——日常高频** | **默认实现 / 高级实现** |
+| 🔬 专业角色 | CC / Kimi / QoderWork B | 持续/每版本 | 架构+审查+E2E+VM |
 
-与 Qoder 的分工：你负责**大规模、多文件、全栈开发**；Qoder 负责**精准编辑、AI 补全辅助**。
+**你是集群的"常规军"——不是特种部队，但胜在随时可用、成本合理、模型灵活。** Codex/ZCode 是关键时刻的杀手锏，你是日复一日的主力。
 
-### 🔄 分工升级（2026-06-16 · 模型优势对齐）
+### 🟢 你承接的职责（2026-06-25 · 集群精简 + 月订阅就绪）
 
-> Claude Code 已切换为 **Opus 4.8**。你（DeepSeek-V4-Pro，IDE 内核）长期仅 1 任务闲置，本次起主动承接大模块。
+| 原 Agent | 原模型 | 你在 CodeBuddy 中切什么模型 | 任务类型 |
+|----------|--------|:---------------------:|------|
+| **Reasonix** | DeepSeek-V4-Pro | **DeepSeek-V4-Pro**（同模型） | 默认实现 + 测试生成（标准复杂度模块、单元测试批量生成） |
+| **Hermes** | DeepSeek-V4-Flash | **DeepSeek-V4-Flash**（同模型） | 样板/基础设施（`__init__.py`、Dockerfile、deploy 脚本、locale JSON） |
+| **Agent 10 (储备)** | Kimi-K2.7-code | **Kimi-K2.7-code**（直接可用） | 深度 bug 修复、复杂调试（无需独立 Agent） |
 
-- **升级：主动承接多文件 / 全栈大模块**——Web 前后端联动、跨模块重构默认排给你的 IDE 时段。
-- 与 Qoder 协同：你做大规模多文件，Qoder 做精准编辑 / 重前端 UI。
-- 模型口径统一为 **DeepSeek-V4-Pro**。
+### 📋 任务文件中的模型切换指令
+
+每个 CodeBuddy 任务文件开头必须包含模型切换指令：
+
+```
+【模型切换：DeepSeek-V4-Pro】  ← 默认实现/测试
+【模型切换：DeepSeek-V4-Flash】 ← 样板/基础设施（零推理量）
+【模型切换：Kimi-K2.7-code】    ← 深度 bug 修复 / 复杂调试
+【模型切换：GLM-5.2】           ← 大上下文文档任务
+```
+
+### 可切换模型速查
+
+| 模型 | 适用场景 | 成本 |
+|------|---------|:--:|
+| **DeepSeek-V4-Pro** | 默认实现、测试生成、标准模块 | 🟢 低 |
+| **DeepSeek-V4-Flash** | 样板代码、定义类、模板（零推理量） | 🟢 极低 |
+| **GLM-5.2** | 大上下文文档、批量文件生成 | 🟢 极低 |
+| **GLM-5.0-Turbo** | 轻量文档、快速文件 | 🟢 极低 |
+| **Kimi-K2.7-code** | 深度调试、复杂逻辑修复 | 🟡 中 |
+| **MiniMax-M3** | 探索性/创意实现 | 🟡 中 |
+| **Hy3-Preview** | 探索性任务 | 🟡 中 |
+
+---
 
 ## 二、LightShield 项目上下文
 
@@ -65,6 +94,8 @@ LightShield（轻盾）是一个面向初创企业 & 个人站长的开源轻量
 - 修改其他 Agent 的文件 → 先提变更请求给 Claude Code
 - 使用 Graphify 理解模块依赖：`/graphify .`
 
+---
+
 ## 五、Skills 推荐
 
 在 CodeBuddy IDE 的 Skills 市场中安装：
@@ -83,7 +114,7 @@ npx skills add openai/skills@security-ownership-map -g -y
 
 CodeBuddy 已有内置 Skills：`agent-browser`, `cmake`, `cpp-testing`, `find-skills`, `game-development`, `gws-docs`, `performance-profiling`, `summarize`, `tailwindcss`, `tauri-development`, `tavily-research`, `webapp-testing`
 
-## 五、MCP 配置
+## 六、MCP 配置
 
 CodeBuddy 的 MCP 配置在 `~/.codebuddy/mcp.json`：
 
@@ -98,7 +129,7 @@ CodeBuddy 的 MCP 配置在 `~/.codebuddy/mcp.json`：
 }
 ```
 
-## 六、Graphify 知识图谱
+## 七、Graphify 知识图谱
 
 Graphify 已安装。每次任务前：
 
@@ -113,7 +144,7 @@ Graphify 已安装。每次任务前：
 - 概念理解用 `graphify explain "<concept>"`
 - 修改代码后运行 `graphify update .`
 
-## 七、IDE 工作区配置
+## 八、IDE 工作区配置
 
 在 CodeBuddy IDE 中打开项目：
 ```
@@ -125,17 +156,15 @@ File → Open Folder → E:\Github Project\LightShield\
 - `ms-python.debugpy` — Python 调试器
 - `detachhead.basedpyright` — 类型检查
 
-## 八、你的 Phase 任务
+## 九、你的任务
 
-| Phase | 任务 | 说明 |
-|-------|------|------|
-| Phase 1 | 项目骨架审查 | 在 IDE 中审查所有模块的接口一致性 |
-| Phase 2 | Nmap 适配器 | 多文件联动（adapter + scanner） |
-| Phase 9 | Flask Web 面板 | Web 前后端全栈开发 |
-| Phase 9 | Tkinter 桌面客户端 | 跨平台 GUI 开发 |
-| Phase 10 | 全量合规审计 | IDE 内代码审查 + 搜索审计 |
+| 版本 | 任务 | 切换模型 | 说明 |
+|------|------|:------:|------|
+| v0.0.40 | verify 数据结构 + 测试 | DeepSeek-V4-Pro | 原 Reasonix 派工，`VerificationResult` + `verify_hardening()` + 测试 |
+| v0.0.40 | 闭环 i18n key | DeepSeek-V4-Flash | 原 Hermes 派工，~17 个 closed_loop.* key |
+| 全阶段 | 样板/基础设施 | DeepSeek-V4-Flash | 原 Hermes 职责——`__init__.py`、deploy 脚本、Dockerfile 等 |
 
-## 九、代码规范
+## 十、代码规范
 
 - Python 3.10+，中文注释
 - type hints + docstring

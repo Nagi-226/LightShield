@@ -1,8 +1,9 @@
 # LightShield 开发集群（Dev Cluster）
 
-> **集群角色**：将本机 9 个 AI Agent/IDE 协同编排，形成多角色开发流水线。
-> **总指挥**：Claude Code（架构师 + 编排器，**Opus 4.8** · 2026-06-15 起由 DeepSeek-V4-Pro 切换）
-> **🔄 当前分工**：2026-06-16 起按底层模型优势对齐重排，**当前生效分工以 §三-bis 为准**（§三/§四 为历史存档）。
+> **集群角色**：将本机 6 个 AI Agent/IDE 协同编排，形成多角色开发流水线。
+> **总指挥**：Claude Code（架构师 + 编排器 + 安全终审，**DeepSeek-V4-Pro** · 2026-06-25 切回）
+> **🔄 精简记录**：2026-06-25 集群精简 9→5 Agent + 🆕 Kimi Code 加入 = 6 Agent。Reasonix/CodeWhale/Hermes→CodeBuddy(多模型 IDE 承接)，Qoder IDE→QoderWork(同模型+同付费)。Kimi Code(Kimi-K2.7-code) 填补 CodeWhale 退役后的独立审查缺口——且模型真正不同。
+> **🏗️ ZCode 定位定稿**：长程主力实现 + 全量代码审查（§八）。GLM-5.2 集群编码最强 + 1M 上下文最大——不可替代。
 
 ---
 
@@ -11,87 +12,65 @@
 ```
                         ┌──────────────────────┐
                         │   Claude Code (CLI)   │
-                        │   🏛️ 架构师 + 编排器   │
-                        │   复杂推理、全局调度    │
+                        │   🏛️ 架构师+编排+      │
+                        │   安全终审+集成        │
+                        │   DeepSeek-V4-Pro     │
                         └──────┬───────────────┘
                                │ 任务下发 & 结果审查
-        ┌──────────────────────┼──────────────────────────┐
-        │                      │                          │
-        ▼                      ▼                          ▼
-┌───────────────┐    ┌───────────────┐    ┌───────────────────────┐
-│  Codex (CLI)  │    │ Reasonix(CLI) │    │ CodeWhale (CLI)       │
-│  💎 高级开发   │    │ 🔧 成本优化开发│    │ 🔍 代码审查专员        │
-│  脚本/模块实现  │    │ 中文任务/测试  │    │ diff审查/质量把控      │
-└───────────────┘    └───────────────┘    └───────────────────────┘
-        │                      │                          │
-        └──────────────────────┼──────────────────────────┘
+          ┌────────────────────┼──────────────────────────────┐
+          │                    │                              │
+          ▼                    ▼                              ▼
+┌───────────────┐  ┌────────────────────┐  ┌──────────────────────────┐
+│  Codex (CLI)  │  │ CodeBuddy (IDE)    │  │ Kimi Code (CLI)           │
+│  💎 安全关键   │  │ 💻 多模型开发主力   │  │ 🔬 深度调试+独立审查       │
+│  GPT-5.5      │  │ DS Pro/Flash/      │  │ Kimi-K2.7-code            │
+│               │  │ GLM/MiniMax/Hy3    │  │ 256K 上下文 · MCP 最强     │
+└───────────────┘  └────────────────────┘  └──────────────────────────┘
+          │                    │                              │
+          └────────────────────┼──────────────────────────────┘
                                │
-                               ▼
-        ┌──────────────────────────────────────────────────┐
-        │              Hermes (CLI)                         │
-        │              🛠️ 工具链 + 基础设施                  │
-        │              依赖管理/环境搭建/MCP集成               │
-        └──────────────────────────────────────────────────┘
-                               │
-                               ▼
-        ┌──────────────────────┬───────────────────────────┐
-        │  CodeBuddy (IDE)     │  Qoder (IDE + Quest)      │
-        │  💻 大规模模块开发    │  🖥️ UI/前端/编辑器内开发    │
-        │  VS Code 内核        │  Cursor-like AI补全        │
-        └──────────────────────┘───────────────────────────┘
-                               │
-                               ▼
-                        ┌──────────────────┐
-                        │ QoderWork (CLI)  │
-                        │ 🏭 后台任务执行器 │
-                        │ VM隔离/长时间任务 │
-                        └──────────────────┘
-                               │
-                               ▼
-                        ┌──────────────────────────┐
-                        │  ZCode 3.0 (CLI)         │
-                        │  🗂️ 知识架构师 + 文档自动化│
-                        │  1M上下文 / Zread知识库   │
-                        │  GLM-5.2 · 异步任务       │
-                        └──────────────────────────┘
+          ┌────────────────────┴────────────────────┐
+          ▼                                         ▼
+┌──────────────────┐                    ┌──────────────────────┐
+│ QoderWork (CLI)  │                    │  ZCode 3.0 (CLI)     │
+│ 🏭 Qoder 统一     │                    │  🗂️ 知识架构+文档     │
+│ Qwen-3.7-Max     │                    │  GLM-5.2 (1M 上下文)  │
+│ 双模式:VM+前端    │                    │ 🏗️ 长程实现+全量审查  │
+└──────────────────┘                    └──────────────────────┘
 ```
 
 ### 详细能力画像
 
 | 工具 | 类型 | 底层模型 | 核心能力 | 非交互模式 | 适用场景 |
 |------|------|---------|---------|-----------|---------|
-| **Claude Code** | CLI | Claude Opus 4.8 | 复杂推理、架构设计、多文件编排 | —（自身即编排器） | 架构设计、合规审计、全局集成 |
-| **Codex** | CLI | OpenAI GPT-5.5 | 代码生成、单文件实现、脚本 | `codex exec "prompt"` | 🔑 安全关键模块、精密前端逻辑 |
-| **Reasonix** | CLI | DeepSeek-V4-Pro | 批量实现、测试生成、缓存命中 | `reasonix run "task"` | 主力实现、单元测试、中文文档 |
-| **CodeWhale** | CLI | DeepSeek-V4-Pro | 代码审查、diff分析 | `codewhale exec "prompt"` | 每版本强制独立审查、合规检查 |
-| **Hermes** | CLI | DeepSeek-V4-Flash | MCP集成、工具链、部署 | `hermes -z "prompt"` | 环境搭建、依赖管理、i18n locale 骨架 |
-| **CodeBuddy** | IDE | DeepSeek-V4-Pro | 编辑器内大模块开发 | — | 多文件联动、全栈大模块 |
-| **Qoder** | IDE | Qwen-3.7-Max | AI补全 + Quest Agent | — | 重前端 UI、多文件精准编辑 |
-| **QoderWork** | CLI | Qwen-3.7-Max | 后台执行、VM隔离 | 后台常驻 | 自动加固 VM 闭环、长时任务、真机验证 |
-| **ZCode 3.0** | CLI | GLM-5.2 (744B MoE) | 全量文档同步、知识库生成、合规审计 | `zcode exec "$(cat task.md)"` | 文档/知识/审计——异步任务 |
+| **Claude Code** | CLI | DeepSeek-V4-Pro | 架构设计、任务编排、安全终审、集成合并 | —（自身即编排器） | 架构设计、合规审计、接口契约、全局集成 |
+| **Codex** | CLI | OpenAI GPT-5.5 | 安全关键代码、精密前端逻辑 | `codex exec "prompt"` | 🔑 安全关键模块、CC 自写代码交叉审查 |
+| **CodeBuddy** | IDE | DS V4-Pro（可切 Flash/GLM-5.2/MiniMax-M3/Hy3） | 多模型切换：默认实现+测试+样板 | —（需人工在 IDE 中操作，任务文件指定模型） | 承接 Reasonix(Pro)、Hermes(Flash) |
+| **Kimi** 🆕 | CLI + 桌面端 | K2.7-code（模式A）+ K2.6（模式B）| 双模式：🔬 深度调试+独立审查(MCP) / 🖥️ 桌面自动化+E2E(300子Agent并行) | `kimi exec`（A）/ Kimi Work GUI（B） | 唯一不同模型审查者 + 唯一桌面自动化层——两模式模型不同，角色完全不重叠 |
+| **QoderWork** | CLI + IDE | Qwen-3.7-Max（Code Arena 1541 #2，超 GPT-5.5） | 🏗️ 高级开发主力（常规高级实现+全栈Web）+ 🤖 35h 长程自主 Agent + VM 隔离执行 | 后台常驻 + IDE 手动 | 高级模块实现、Gate E、长程无人值守任务——**集群编码 #2，常规高级开发第一选择** |
+| **ZCode 3.0** | CLI | GLM-5.2（744B MoE，1M 上下文） | 🎯 特种部队——跨模块长程实现、全量代码审查、大型重构（与 Codex 同级，关键时刻动用） | `zcode exec "$(cat task.md)"` | Code Arena #2（1595）+ 1M 上下文——**集群编码最强 + 上下文最大**，但配额消耗高/速度慢，一般任务不轻易使用 |
 
 ---
 
 ## 二、任务协调协议
 
-### 2.1 任务定义格式（JSON Schema）
+### 2.1 任务定义格式
 
 ```json
 {
-  "task_id": "LIGHTSHIELD-001",
-  "phase": "Phase 1 — 项目骨架",
-  "title": "实现 config.py",
-  "description": "...",
-  "assigned_to": "codex",
+  "task_id": "LIGHTSHIELD-040",
+  "title": "实现 verify 数据结构",
+  "assigned_to": "codebuddy",
+  "model_switch": "DeepSeek-V4-Pro",
   "priority": "P0",
   "depends_on": [],
-  "input_files": ["CLAUDE.md", "PROJECT_OVERVIEW.md"],
-  "output_files": ["lightshield/config.py"],
+  "output_files": ["lightshield/harden/verify.py", "tests/test_verify_hardening.py"],
   "compliance_checklist": ["R1", "R2", "R3"],
-  "context_prompt": "...",
   "status": "pending"
 }
 ```
+
+> **CodeBuddy 任务必有 `model_switch` 字段**，指定在 IDE 中切换的目标模型。
 
 ### 2.2 状态流转
 
@@ -106,6 +85,7 @@ pending → claimed → in_progress → completed → verified
 ```
 .cluster/
 ├── CLUSTER.md              ← 本文档
+├── COORDINATION.md         ← 协调协议
 ├── tasks/
 │   ├── pending/            ← 待分配
 │   ├── in_progress/        ← 执行中
@@ -117,220 +97,128 @@ pending → claimed → in_progress → completed → verified
 
 ---
 
-## 三、各 Agent 任务分配原则
+## 三、各 Agent 任务分配原则（当前生效）
 
-> ⚠️ **本节为分工原则的历史叙述**。**2026-06-16 模型优势对齐后的当前生效分工以 [§三-bis](#三-bis模型优势对齐分工2026-06-16--当前生效) 为准**——若本节描述与 §三-bis 冲突，以 §三-bis 为准。
+> **2026-06-25 集群精简后生效**。§三-bis（2026-06-16 模型对齐）和 §四（Phase 1 历史存档）保留于 git 历史 `b071423`。
 
-### 3.1 Claude Code（架构师 + 编排器）
+### 3.1 Claude Code（架构师 + 编排器 + 安全终审）— DeepSeek-V4-Pro
 
-**不参与具体代码实现，专注**：
-- 模块接口设计（定义每个模块的公开 API）
-- 架构决策记录（ADR）
-- 任务拆分和下发
-- 最终代码审查和集成
+**职责**：
+- 架构设计 + 接口契约定义（ADR）
+- 任务拆分和下发（给 Codex / CodeBuddy / QoderWork / ZCode）
+- **所有 Agent 产出的安全终审**（跨模型审查——CC 审 GPT-5.5/Qwen/GLM 产出，视角天然不同）
+- 集成合并 + git tag
+- 样板代码（原 Hermes 职责）——CC 直接写，不再维护独立 Agent
 - 合规红线验证（R1-R6）
 
-**调用方式**：自身即执行体
+**CC 自写代码的审查**：CC 自写的胶水代码/集成代码由 **Codex (GPT-5.5) 交叉审查**（强制不可跳过）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`。
 
-### 3.2 Codex（高级开发工程师）
+### 3.2 Codex（安全关键模块 + 交叉审查）— GPT-5.5
 
-**负责**：需要精准实现的独立模块
-- 给定接口规范，实现具体逻辑
-- 单文件 Python 模块
-- 脚本和工具函数
+**职责**：
+- 🔑 安全关键模块（validator R2 / payload 检测 / CSRF / 鉴权）
+- 精密前端逻辑
+- **CC 自写代码的交叉审查**（GPT-5.5 独立视角，替代原 CodeWhale 角色）
+- GPT-5.5 很贵，非安全关键任务不给 Codex
 
-**调用方式**（非交互）：
+**调用方式**：
 ```bash
-codex exec "@.cluster/tasks/pending/LIGHTSHIELD-XXX.md"
+codex exec "$(cat .cluster/tasks/pending/CODEX-XXX.md)"
 ```
 
-**优点**：OpenAI 模型代码生成能力强，适合"给定接口→实现模块"的工作流
+### 3.3 CodeBuddy（多模型 IDE 开发主力）
 
-### 3.3 Reasonix（开发工程师 — DeepSeek 原生）
+**职责**——集群的模型聚合器，承接以下全部角色：
 
-**负责**：大量重复性、低 token 成本任务
-- 单元测试批量生成
-- 中文文档和注释
-- 规则库 JSON 文件生成
+| 原 Agent | 切什么模型 | 任务类型 |
+|----------|:--------:|------|
+| Reasonix | **DeepSeek-V4-Pro** | 默认实现 + 测试生成 |
+| Hermes | **DeepSeek-V4-Flash** | 样板/基础设施（`__init__.py`、Dockerfile、deploy 脚本、locale JSON） |
+| Agent 10 (储备) | **Kimi-K2.7-code** | 深度 bug 修复、复杂调试 |
 
-**调用方式**（非交互）：
-```bash
-reasonix run "@.cluster/tasks/pending/LIGHTSHIELD-XXX.md"
-```
+**使用方式**：人工在 CodeBuddy IDE 中打开项目，复制任务文件 prompt。**任务文件开头必须有 `【模型切换：XXX】` 指令。**
 
-**优点**：DeepSeek 缓存命中率高，token 成本低，中文能力强
+**CodeBuddy 可用的模型清单**：
 
-### 3.4 CodeWhale（代码审查专员）
+| 模型 | 适用场景 | 成本 |
+|------|---------|:--:|
+| DeepSeek-V4-Pro | 默认实现、测试生成、标准模块 | 🟢 低 |
+| DeepSeek-V4-Flash | 样板代码、定义类、模板（零推理量） | 🟢 极低 |
+| GLM-5.2 | 大上下文文档、批量文件生成 | 🟢 极低 |
+| GLM-5.0-Turbo | 轻量文档、快速文件 | 🟢 极低 |
+| Kimi-K2.7-code | 深度调试、复杂逻辑修复 | 🟡 中 |
+| MiniMax-M3 | 探索性/创意实现 | 🟡 中 |
+| Hy3-Preview | 探索性任务 | 🟡 中 |
 
-**负责**：独立视角的代码审查
-- diff 审查（`codewhale review`）
-- 合规检查清单验证
-- 与 Claude Code 形成双审机制
+### 3.4 Kimi（Kimi 统一 Agent · 双模式）🆕
 
-**调用方式**（非交互）：
-```bash
-codewhale exec "@.cluster/tasks/pending/LIGHTSHIELD-XXX-review.md"
-```
+**模式 A：Kimi Code（CLI · K2.7-code）— 🔬 代码审查 + 深度调试**：
+- 🔬 独立模型审查（集群唯一不同模型审查者——Kimi ≠ DS ≠ GPT ≠ Qwen ≠ GLM）
+- 🐛 深度 Bug 分析 + 根因追踪
+- 🛠️ MCP 工具链集成（MCP 81.1，集群最强）
+- 📐 跨模块重构评估（256K 上下文）
 
-**优点**：独立于 Claude/OpenAI 的第三方视角，避免审查同源偏差
+**模式 B：Kimi Work（桌面端 · K2.6）— 🖥️ 桌面自动化 + E2E 验证**：
+- 🧪 Web E2E 自动化测试（操控浏览器执行完整用户流程）
+- 🚀 部署验证（Docker compose up → 访问面板 → 验证 API → 清理）
+- 📸 文档截图生成（中英文界面批量截图，300 子 Agent 并行）
+- 🔄 发布检查清单（版本号一致性 + pre-commit + CHANGELOG + GitHub Release）
+- ⏱️ 13h 连续执行，4000+ 工具调用，300 子 Agent 并行
 
-### 3.5 Hermes（工具链 + 基础设施）⚡ Flash 模型即可
+**调用方式**：模式 A `kimi exec` / 模式 B Kimi Work 桌面端 GUI
+**模型差异**：K2.7-code (代码精修，编码更强) vs K2.6 (通用旗舰，桌面操控独有)。任务类型天然区分，不会混淆。
 
-**负责**：环境搭建、依赖管理、MCP 集成
-- `requirements.txt` 依赖管理
-- 部署脚本生成和测试
-- 外部工具链集成
-- `__init__.py` 样板代码和目录骨架
+### 3.5 QoderWork（Qoder 统一 Agent · 双模式）— Qwen-3.7-Max
 
-**调用方式**（非交互，强制使用 Flash）：
-```bash
-# ⚡ 所有 Hermes 任务一律使用 deepseek-v4-flash，禁止使用 Pro
-hermes -m deepseek-v4-flash -z "$(cat .cluster/tasks/pending/LS-007-infra.md)"
-```
+**模式 A：IDE/前端模式**（承接原 Qoder IDE，同模型零能力损失）：
+- Web 前端页面开发（Flask + Jinja2 + 原生 HTML/CSS/JS）
+- 多文件精准编辑、UI 审查
+- Qwen-3.7-Max 编码能力仅次于 GPT-5.5，中文前端表现优异
 
-**为什么 Flash 足够**：
-- Hermes 在 LightShield 中的任务全是样板代码/定义类（requirements.txt、.gitignore、`__init__.py`）
-- 这些任务零推理复杂度，本质是"按模板输出"
-- Flash 模型在此场景下与 Pro 质量无差别，但 token 费用节省约 70%
+**模式 B：后台执行模式**（VM 隔离）：
+- **自动加固 VM 闭环**：`harden → execute → re-scan → verify`
+- **Gate E 回归验证**：集群唯一的回归验证执行者
+- Docker 容器管理、tcpdump 网络取证
+- 长时运行、有副作用、需环境隔离的任务
 
-### 3.6 CodeBuddy（IDE — 需要人工交互）
+**调用方式**：模式 A 需人工在 Qoder IDE 中操作；模式 B 后台常驻服务或 `qoderwork exec`。
+**付费**：下月起双模式共享 59元/月套餐的 Qwen-3.7-Max 配额。
 
-**负责**：编辑器内的大规模模块开发
-- 多文件联动修改
-- IDE 内调试和测试
-- 复杂重构
+**调用方式**：后台常驻服务，CC 下发任务后自动执行。
 
-**使用方式**：人工在 CodeBuddy IDE 中打开项目，加载对应任务文件
+> **与 Qoder IDE 的关系**：Qoder IDE 已于 2026-06-25 退役并入本 Agent（同模型 Qwen-3.7-Max + 同付费体系），前端 UI 职责由模式 A 承接。
 
-### 3.7 Qoder + Quest（IDE — 需要人工交互）
+### 3.6 ZCode 3.0（长程主力实现 + 全量代码审查）— GLM-5.2
 
-**负责**：精准代码修改、AI 补全辅助
-- UI 代码（Flask/Tkinter）
-- 代码补全和局部修改
-- 前端页面开发
+**编码能力**：Code Arena #2（1595）仅次于未开放的 Fable 5，**超过 GPT-5.5**，FrontierSWE 与 Opus 4.8 差距 <1%。Design Arena #1（1360）。AIME 2026 数学推理 99.2（超 Opus 4.8）。**集群编码最强。**
 
-**使用方式**：人工在 Qoder IDE 中打开项目
+**职责**：
+- 🏗️ **跨模块长程实现**：1M 上下文一次理解整个项目（~200 文件），单 Agent 完成"理解全貌→设计→实现→自测"
+- 🔍 **全量代码审查**：一次读取所有源码，追踪跨文件调用链，发现受限于上下文窗口的其他 Agent 无法发现的深层问题
+- 📐 **大型重构**：重构影响面分析一步到位（全项目在上下文内），不遗漏任何受影响文件
+- 📋 **文档 + 知识库**（天然优势）：OpenAPI、CHANGELOG、README 同步、Zread 知识库、合规审计
 
-### 3.8 QoderWork（后台任务执行器）
-
-**负责**：长时间运行、VM 隔离的任务
-- 部署脚本测试
-- 沙箱环境验证
-- 扫描功能集成测试（在隔离 VM 中运行）
-
-### 3.9 ZCode 3.0（知识架构师 + 文档自动化专员）🆕
-
-**负责**：利用 1M 上下文全量读取项目，生成/同步文档和知识库
-- 全量文档同步（CLAUDE.md / README / CHANGELOG / FAQ / INSTALL / USAGE）
-- Zread 知识库生成（结构化项目文档，比 graphify 更叙事化）
-- 合规审计报告（R1-R6 全量扫描）
-- API 文档生成（从 routes.py 提取端点文档）
-- 新成员上手指南
-
-**调用方式**（非交互）：
+**调用方式**：
 ```bash
 zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 ```
 
-**优点**：
-- **1M 上下文**——集群中唯一能一次读取整个项目的 Agent
-- **Zread 知识库**——独有功能，自动生成结构化文档
-- **工具调用 100% JSON 合法率**——批量合规扫描零格式错误
-- **MIT 开源**——无许可风险
+**工作模式**：异步——推理速度比 Opus 慢 30-50%，不适合实时交互。发下去→等结果→CC 审查。免费额度 300 万 token/天，成本极低。
 
-**注意事项**：
-- ⚠️ 推理速度比 Claude Opus 慢 ~30%，所有任务为异步模式（发下去→等结果→审查）
-- ⚠️ 多步指令偶有缺失，任务文件必须分步明确
-- ⚠️ 不发安全关键模块实现（由 CC/Codex 负责）
-- ⚠️ 不发实时代码审查（由 CodeWhale/CC 负责）
-
-**详细配置**：见 `.cluster/agents/ZCODE.md`
+> **ZCode 不可被 CodeBuddy 替代**：即使 CodeBuddy 可切换 GLM-5.2，ZCode 的 CLI 非交互模式 + 异步长任务执行 + 独立调度能力是 CodeBuddy（IDE 需人工操作）无法复制的。ZCode 是集群中**编码最强 + 上下文最大 + 成本最低**的 Agent，地位不可动摇。
 
 ---
 
-## 三-bis、模型优势对齐分工（2026-06-16 · 当前生效）
-
-> **触发**：Claude Code 于 2026-06-15 从 DeepSeek-V4-Pro 切换为 **Opus 4.8**。借此对全集群按"底层模型优势"重排任务，纠正三处错配：① CC 长期超载兼任默认实现者；② Qoder/QoderWork（Qwen-3.7-Max，编码很强）长期闲置（各仅 1 任务）；③ 多数版本仅 CC 自审、CodeWhale 强制审查缺位（同源盲区）。
->
-> **核心原则**：**按底层模型优势分派，CC 不当默认实现者。**
-
-### 权威分工表（与各 `<AGENT>.md` 同源）
-
-| Agent | 底层模型 | 当前职责（升级后） | 相对此前的变化 |
-|-------|---------|------------------|---------------|
-| **Claude Code** | **Opus 4.8** | 编排 + 架构设计 + 接口契约 + 安全终审 + 集成 | 🔻 卸下默认实现者；常规实现/测试下沉 Reasonix |
-| **Codex** | GPT-5.5 | 🔑 安全关键模块（validator R2 / payload 检测 / CSRF / 鉴权）+ 精密前端逻辑 | 🔻 移出 CVE 录入、规则批量扩充（→ Reasonix/ZCode），不浪费贵 token |
-| **Reasonix** | DeepSeek-V4-Pro | **默认实现 + 测试生成主力**：标准复杂度模块 + 单元测试默认派此 | 🔺 升级——承接原压在 CC 上的常规实现/测试 |
-| **CodeWhale** | DeepSeek-V4-Pro | **每版本强制一次独立审查**（合入前必须） | 🔺 升级——从"偶尔审"到"强制审"，与 CC 构成真双审 |
-| **Hermes** | DeepSeek-V4-Flash | 样板/基础设施（依赖/部署/`__init__`）+ **i18n locale 机械骨架** | ➡️ 维持 Flash + 新增 v0.0.39 locale 键值骨架 |
-| **CodeBuddy** | DeepSeek-V4-Pro | **主动承接多文件/全栈大模块**（Web 前后端联动、跨模块重构） | 🔺 升级——从闲置（1 任务）到主力 IDE 大模块 |
-| **Qoder** | Qwen-3.7-Max | **重前端 / 多文件 UI 主力**；v0.0.40 Web"一键加固+复扫+对比"页面主导 | 🔺 升级——从闲置到重前端主力（比 GPT-5.5 便宜且强） |
-| **QoderWork** | Qwen-3.7-Max | **接管 v0.0.40 自动加固 VM 闭环**（`harden→execute→re-scan→verify`）+ v0.0.38 真机 Docker 验证 | 🔺 大幅启用——VM 隔离正是自动加固最缺的能力 |
-| **ZCode 3.0** | GLM-5.2（1M） | 文档自动化（**OpenAPI/审计**）+ Zread 知识库 + 全量文档同步 | 🆕 承接 v0.0.39 OpenAPI 文档生成 |
-
-### 改派后的近期版本归属
-
-| 版本 | 主交付 | 归属（升级后） |
-|:--:|------|---------------|
-| **v0.0.39** | OpenAPI 文档 + i18n | **ZCode**（OpenAPI/Swagger 从 routes 提取）+ **Hermes**（zh-CN/en-US locale 骨架）+ **CC**（集成接线 + 翻译复核） |
-| **v0.0.40** | 自动加固闭环 + 发布 | **QoderWork**（VM 闭环执行）+ **Qoder**（Web 加固页面）+ **CodeWhale**（强制全量审查）+ **CC**（架构 + 集成 + git tag） |
-
----
-
-## 四、LightShield Phase 1 任务拆分方案（历史存档）
-
-> 📦 **历史存档**：本节为 Phase 1（v0.0.01-0.0.10）当时的任务拆分与模型配置，模型列反映**当时**状态（CC 当时为 DeepSeek-V4）。**当前生效分工见 §三-bis**。
-
-### Phase 1 目标：项目骨架
-**产出**：`core.py`, `config.py`, `validator.py`, `logger.py`, `base.py`, `constants.py`, `__init__.py`, `requirements.txt`, `.gitignore`
-
-### 任务分配表
-
-| Task ID | 模块 | 分配给 | 模型 | 理由 |
-|---------|------|--------|------|------|
-| LS-001 | `base.py` — Adapter 抽象基类 | **Claude Code** | DeepSeek-V4 | 架构核心接口，需要全局视角和模块间权衡 |
-| LS-002 | `core.py` — 主调度器 | **Claude Code** | DeepSeek-V4 | 编排逻辑，依赖 LS-001 接口定义 |
-| LS-003 | `config.py` — 配置管理 | **Reasonix** | DeepSeek-V4 | 标准配置加载模式，DeepSeek-V4 足够 |
-| LS-004 | `validator.py` — 输入校验 | **Codex** | GPT-5.5 | 🔑 安全关键模块，正则精密度要求高，最强模型值得 |
-| LS-005 | `logger.py` — 日志系统 | **Reasonix** | DeepSeek-V4 | logging 标准封装，无复杂推理 |
-| LS-006 | `constants.py` — 常量枚举 | **Hermes** | DeepSeek-V4-flash | 纯数据定义，零推理 |
-| LS-007 | `requirements.txt` + 骨架 | **Hermes** | DeepSeek-V4-flash | 纯样板代码 |
-| LS-008 | 代码审查（合规+质量） | **CodeWhale** + **Qoder** | DeepSeek-V4 + Qwen-3.7-max | 双模型双审，消除单模型盲区 |
-
-### 集群模型实际配置
+## 四、集群模型实际配置
 
 | Agent | 模型 | 编码能力 | 成本 | 非交互调用 |
 |-------|------|:--:|:--:|:--:|
-| **Claude Code** | **Opus 4.8** | 🟢 **最强** | 🔴 高 | —（2026-06-15 起，原 DeepSeek-V4） |
+| **Claude Code** | **DeepSeek-V4-Pro** | 🟡 良好 | 🟢 低 | —（2026-06-25 切回，原 Opus 4.8） |
 | **Codex** | **GPT-5.5** | 🟢 **最强** | 🔴 高 | `codex exec` |
-| **Reasonix** | DeepSeek-V4-Pro | 🟡 良好 | 🟢 低 | `reasonix run` |
-| **CodeWhale** | DeepSeek-V4-Pro | 🟡 良好 | 🟢 低 | `codewhale exec` |
-| **Hermes** | DeepSeek-V4-Flash | 🟠 一般 | 🟢 极低 | `hermes -z` |
-| **CodeBuddy** | DeepSeek-V4-Pro | 🟡 良好 | 🟢 低 | 需人工 |
-| **Qoder** | **Qwen-3.7-max** | 🟢 **很强** | 🟡 中 | 需人工 |
-| **QoderWork** | **Qwen-3.7-max** | 🟢 **很强** | 🟡 中 | 后台常驻 |
-| **ZCode 3.0** | **GLM-5.2** | 🟢 **很强** | 🟢 极低（免费） | `zcode exec` |
-
-### 任务分配逻辑（已优化）
-
-> **GPT-5.5 很贵，要用在刀刃上。Qwen-3.7-max 编码很强但不能 CLI 调用，留给 IDE 场景。**
-
-1. **Codex (GPT-5.5)**：仅分配安全关键、精密度要求最高的模块。本次 Phase 1 只有 `validator.py`（R2 防线）。配置加载、日志封装等普通任务不给 Codex——成本浪费。
-2. **Qoder (Qwen-3.7-max)**：编码能力仅次于 GPT-5.5。Phase 1 不能 CLI 调用，但 Phase 9（Flask Web + Tkinter UI）以及多文件重构时发挥最大价值。Phase 1 中作为 CodeWhale 的双审搭档。
-3. **Reasonix (DeepSeek-V4-Pro)**：主力开发。处理大多数标准模块实现。成本低，能批量产出。
-4. **Hermes (DeepSeek-V4-Flash)**：样板代码和定义类任务。纯模板输出，Flash 绰绰有余。
-5. **CodeWhale (DeepSeek-V4-Pro)**：独立视角审查。搭配 Qoder（Qwen-3.7-max）形成**双模型双审**机制。
-
-**Hermes 在 LightShield 全局使用 Flash**：
-
-| Phase | Hermes 任务 | 复杂度 | 模型 |
-|-------|------------|:--:|:--:|
-| Phase 1 | `requirements.txt`、`.gitignore`、`__init__.py` | 纯样板 | ⚡ Flash |
-| Phase 7 | Linux/Windows 加固脚本模板 | 模板生成 | ⚡ Flash |
-| Phase 8 | `deploy_linux.sh`、`deploy_win.ps1` | Shell 脚本 | ⚡ Flash |
-| 全阶段 | 依赖更新、环境检查 | 工具链操作 | ⚡ Flash |
-
-**结论**：Hermes 在 LightShield 项目中 **100% 的任务都适合 Flash 模型**，无需使用 Pro。配置已内置于任务文件中。
+| **CodeBuddy** | **多模型**（DS Pro/Flash/GLM/MiniMax/Hy3） | 🟡~🟢 可调 | 🟢 低 | 需人工 |
+| **Kimi** 🆕 | **K2.7-code**（A）/ **K2.6**（B） | 🟢 **很强** | 🟡 中 | `kimi exec`（A）/ GUI（B） |
+| **QoderWork** | **Qwen-3.7-Max** | 🟢 **集群 #2**（Code Arena 1541 #2，超 GPT-5.5） | 🟡 中（59元/月套餐） | 后台常驻 + IDE 手动 |
+| **ZCode 3.0** | **GLM-5.2** | 🟢 **集群最强**（Code Arena 1595 #2） | 🟡 配额消耗高（免费额度但单次消耗大——特种部队节制使用） | `zcode exec` |
 
 ---
 
@@ -341,31 +229,38 @@ zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 1. 创建任务文件到 `.cluster/tasks/pending/`
 2. 每个任务包含完整上下文提示词（嵌入 CLAUDE.md 关键约束）
 3. 明确接口契约（每个模块的输入/输出/异常）
+4. CodeBuddy 任务必须标注 `【模型切换：XXX】`
 
 ### 第二步：各 Agent 并行执行
 
 ```bash
-# 并行启动各 Agent（不同终端窗口/后台进程）
-# Codex:
-codex exec "$(cat .cluster/tasks/pending/LS-003-config.md)"
+# Codex（安全关键模块）:
+codex exec "$(cat .cluster/tasks/pending/CODEX-XXX.md)"
 
-# Reasonix:
-reasonix run "$(cat .cluster/tasks/pending/LS-005-logger.md)"
+# Kimi Code（独立审查/深度调试）:
+kimi exec "$(cat .cluster/tasks/pending/KIMI-XXX.md)"
 
-# Hermes:
-hermes -z "$(cat .cluster/tasks/pending/LS-007-requirements.md)"
+# ZCode（文档任务）:
+zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 
-# CodeWhale（在代码产出后执行）:
-codewhale exec "$(cat .cluster/tasks/pending/LS-008-review.md)"
+# CodeBuddy（需人工在 IDE 中操作）:
+# 1. 打开项目
+# 2. 切模型到任务文件指定的模型
+# 3. 复制任务 prompt
+# 4. 产出代码
+
+# QoderWork（后台常驻，等待实现阶段产出后触发）:
+# Gate E 回归验证
 ```
 
 ### 第三步：架构师审查集成（Claude Code 执行）
 
 1. 审查各 Agent 产出的代码
 2. 对照合规红线（R1-R6）逐条验证
-3. 修正接口不一致
-4. 合并到主分支
-5. 任务状态 → `verified`
+3. CC 自写代码提交给 Codex 交叉审查（强制，不可跳过）
+4. 修正接口不一致
+5. 合并到主分支
+6. 任务状态 → `verified`
 
 ---
 
@@ -388,7 +283,27 @@ codewhale exec "$(cat .cluster/tasks/pending/LS-008-review.md)"
 
 ## 七、注意事项
 
-1. **IDE 类工具（CodeBuddy/Qoder）需人工参与**：它们无法通过 CLI 全自动调用，需要人打开 IDE 并输入任务
-2. **Codex/Reasonix/CodeWhale/Hermes 支持非交互模式**：可直接通过命令行传参调用
-3. **任务文件是最小上下文单元**：每份任务文件是一个自包含的 prompt，Agent 无需了解项目全貌
-4. **Claude Code 作为唯一集成点**：所有产出代码经 Claude Code 审查后才合入主分支
+1. **CodeBuddy 是唯一的 IDE 类 Agent**：需人工参与，任务文件必须包含模型切换指令
+2. **Codex 和 ZCode 支持非交互模式**：可直接通过命令行传参调用
+3. **QoderWork 是唯一的 VM 隔离执行环境**：长时任务、有副作用、需隔离的任务默认派此
+4. **任务文件是最小上下文单元**：每份任务文件是一个自包含的 prompt，Agent 无需了解项目全貌
+5. **Claude Code 作为唯一集成点**：所有产出代码经 Claude Code 审查后才合入主分支
+
+---
+
+## 八、ZCode 定位定稿（2026-06-25）
+
+> **结论**：ZCode **不可被替代**，独立保留。理由：
+> 1. GLM-5.2 是集群编码最强的模型（Code Arena #2 1595，超 GPT-5.5，与 Opus 4.8 差距 <1%）——不是"文档工具"
+> 2. 1M 无损上下文 + Opus 级编码 = 跨模块长程实现的独特能力，集群无其他 Agent 可复制
+> 3. CLI 非交互 + 异步长任务执行——即使 CodeBuddy 可切 GLM-5.2，IDE 手动模式无法替代 ZCode 的独立调度
+> 4. 免费额度 300 万 token/天 + MIT 开源——成本优势和许可优势双重不可替代
+
+## 九、精简审计
+
+| 日期 | 事件 |
+|------|------|
+| 2026-06-16 | 模型优势对齐升级：9 Agent分工按底层模型重排，CC 切 Opus 4.8 |
+| **2026-06-25** | **集群精简 9→5 Agent**：Reasonix/CodeWhale/Hermes→CodeBuddy，Qoder IDE→QoderWork。CC 切回 DeepSeek-V4-Pro |
+| **2026-06-25** | **🆕 Kimi 加入为第 6 Agent**：K2.7-code 模式 A（代码审查+深度调试）+ K2.6 模式 B（桌面自动化+E2E 验证）。双模式合入同一 `KIMI.md` |
+| **2026-06-25** | **🆙 双层升级（基于 Code Arena 实测数据）**：①ZCode/GLM-5.2→🎯 高级开发·特种部队（与 Codex 同级，关键时刻动用，一般任务不轻易使用——配额消耗高+速度慢）；②QoderWork/Qwen-3.7-Max→🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5 + 35h 长程自主 Agent）——纠正此前"VM+前端"的严重低估 |

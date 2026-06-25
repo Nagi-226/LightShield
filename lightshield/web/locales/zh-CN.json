@@ -133,6 +133,28 @@
     "download_script": "下载加固脚本",
     "download_rollback": "下载回滚脚本"
   },
+  "closed_loop": {
+    "title": "加固闭环对比",
+    "mode_dry_run": "预检模式",
+    "mode_apply": "应用模式",
+    "overall_verified": "已验证",
+    "overall_partial": "部分修复",
+    "overall_failed": "未修复",
+    "overall_generated_only": "仅生成（未复扫）",
+    "col_type": "风险类型",
+    "col_port": "端口",
+    "col_severity": "严重度",
+    "col_status": "状态",
+    "status_resolved": "已修复",
+    "status_remaining": "仍存在",
+    "status_regressed": "新增风险",
+    "exec_log": "执行日志",
+    "exec_download": "下载脚本",
+    "confirm_ownership": "我确认拥有该资产的所有权",
+    "confirm_execute": "确认在真机执行加固操作",
+    "warn_apply": "应用模式将真实修改本机系统配置。请先完成预检（Dry-Run），并确认回滚脚本已就绪。",
+    "empty_dryrun": "预检模式未执行复扫，仅生成脚本供审阅。"
+  },
   "docs": {
     "title": "API 文档",
     "subtitle": "LightShield REST API 交互式文档"

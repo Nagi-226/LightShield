@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-21 | **当前版本**：v0.0.39 ✅（已推送 GitHub：commit aebaeee + tag v0.0.39）| **下一目标**：v0.0.40
-> **会话状态**：v0.0.39 OpenAPI + i18n 中英双语交付（ZCode→OpenAPI/Swagger，Hermes→locale，CC→i18n.py 桥接+6 页面接线+测试）。`/docs` Swagger UI、`/lang/<code>` 切换、Accept-Language 协商、JS i18n 桥（window.t/tf）。687 passed / 1 skip，五道门禁全绿（含 Gate A 合规）。阶段三 2/2 ✅。
-> **下次启动**：v0.0.40 自动加固闭环（QoderWork VM + Qoder Web + CodeWhale 审查 + CC 架构/集成）
+> **最后更新**：2026-06-25 | **当前版本**：v0.0.39 ✅（commit aebaeee + tag v0.0.39）| **进行中**：v0.0.40（基座定稿+派工改派，实现未合入）| **已定稿**：v0.0.41-50 路线图（通往 v1.0.0·生产硬化）
+> **会话状态**：**集群精简 9→5 Agent + 🆕 Kimi Code = 6 Agent**（Reasonix/CodeWhale/Hermes→CodeBuddy，Qoder IDE→QoderWork，Kimi-K2.7-code 加入为独立审查专员）。CC 切回 DeepSeek-V4-Pro。v0.0.40 派工书已改派。687 passed / 1 skip，五道门禁全绿。
+> **下次启动**：v0.0.40 实现集成——CodeBuddy(verify+i18n+Web 对比页) + Codex(HostExecutor+编排) → CC 集成+tag
 
 ---
 
@@ -256,21 +256,20 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 
 ---
 
-## Agent 完成统计（累计）
+## Agent 完成统计（累计 · 2026-06-25 集群精简后）
 
-> 待完成列按 2026-06-16 模型优势对齐分工的 v0.0.39/40 归属重算。
-
-| Agent | 已完成 | 待完成 | 待办（升级后） |
+| Agent | 已完成 | 待完成 | 备注 |
 |------|:--:|:--:|------|
-| Claude Code | 17 | 2 | v0.0.39 集成 + v0.0.40 架构/集成（不再当默认实现者） |
-| Codex | 11 | 0 | — （安全关键模块按需触发） |
-| Hermes | 6 | 1 | v0.0.39 i18n locale 骨架 |
-| Reasonix | 4 | 0 | — （后续标准模块/测试默认派此） |
-| CodeWhale | 3 | 1 | v0.0.40 强制全量审查（每版本强制审查升级） |
-| Qoder | 1 | 1 | v0.0.40 Web 加固页面（重前端主力升级） |
-| QoderWork | 1 | 1 | v0.0.40 VM 自动加固闭环 + v0.0.38 真机验证 |
-| CodeBuddy | 1 | 0 | — （多文件大模块按需触发） |
-| **ZCode 3.0** 🆕 | 0 | 1 | v0.0.39 OpenAPI 文档（+ 持续文档同步） |
+| Claude Code | 18 | 1 | v0.0.40 架构/集成；已切回 DeepSeek-V4-Pro；吸收 Hermes 样板职责 + CodeWhale 审查方法论 |
+| Codex | 11 | 1 | v0.0.40 HostExecutor+编排（安全关键）；新增 CC 胶水代码交叉审查 |
+| CodeBuddy | 2 | 2 | v0.0.40 verify+i18n（两任务）；吸收 Reasonix+Hermes |
+| Kimi 🆕 | 0 | 3 | 双模式：模式A(K2.7-code) v0.0.40 闭环全量独立审查 + 安全关键路径复查；模式B(K2.6) v0.0.40 Web E2E 自动化测试 + 部署验证 + 文档截图 |
+| QoderWork | 10 | 2 | 🆙 角色升级：从"VM+前端"→"🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5）+ 35h 长程自主 Agent"。v0.0.40 Web 对比页 + Gate E 夹具 |
+| ZCode 3.0 | 1 | 0 | 🆙 角色升级：从"文档自动化"→"🎯 高级开发·特种部队（与 Codex 同级，关键时刻动用）"。GLM-5.2 Code Arena #2（1595）、FrontierSWE 与 Opus 差距<1%、Design Arena #1。配额消耗高+速度慢 → 一般任务不轻易使用 |
+| ~~Reasonix~~ | ~~6~~ | — | 🪦 2026-06-25 退役 → CodeBuddy (DS V4-Pro) |
+| ~~CodeWhale~~ | ~~3~~ | — | 🪦 2026-06-25 退役 → CC + 审查清单 + Codex 交叉审 |
+| ~~Hermes~~ | ~~8~~ | — | 🪦 2026-06-25 退役 → CodeBuddy (DS Flash) |
+| ~~Qoder IDE~~ | ~~1~~ | — | 🪦 2026-06-25 退役 → QoderWork 模式 A（同模型 Qwen-3.7-Max + 同付费体系） |
 
 ---
 
@@ -297,3 +296,7 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 | 2026-06-16 | v0.0.38 推送 GitHub：commit `8b8ae1c`（14 文件/+1311）+ 带注释 tag `v0.0.38`，origin/main 对齐（顺带补推 a3a1ea9 版本基准提交）。纠正一处误判：单跑 `mypy lightshield/`（缺 types-requests 存根）误报 `web_vuln_scanner.py:496` 的 `# type: ignore[override]` 多余，删后被 pre-commit 拦下；该 ignore 在真实门禁（pre-commit mypy + types-requests）中**必需**，已还原，PROGRESS「mypy 全零」本就成立。附带清理 `nuclei_adapter.py` 无效 `# noqa: R1/R3` → 普通注释。pre-commit 全门禁通过 |
 | 2026-06-20 | v0.0.39 OpenAPI + i18n 交付（ZCode + Hermes + CC 集成）：ZCode→`static/openapi.json`(8 端点)+自托管 Swagger UI(`/docs`)+`docs/API.md`；Hermes→`zh-CN`/`en-US` locale（中英对称）；CC→`i18n.py`（locale 加载/翻译/语言协商/JS 桥扁平字典）+ 6 个 Web 模板接入 `t()`/`window.t`/`window.tf` + `/lang/<code>` 切换（白名单+同源重定向防护）+ `harden_page` 服务端 translate + 版本 0.0.38→0.0.39 三处。新增 `tests/test_web_i18n.py`（23 条）。687 passed / 1 skip / ruff+mypy+bandit+Gate A 全过。阶段三 2/2 ✅ |
 | 2026-06-21 | v0.0.39 推送 GitHub：commit `aebaeee`（27 文件/+2988-149）+ 带注释 tag `v0.0.39`，origin/main 对齐。**决策点收尾**：自托管 Swagger UI 的 `swagger-ui-bundle.js`（≈1.49MB）超 `check-added-large-files` 500KB 门禁 → 用户决策「入库 + 门禁加白名单」；落地为 pre-commit **顶层全局 `exclude: ^lightshield/web/static/vendor/`**（vendored 资产豁免所有 hook，保持与上游字节一致；**自研源码仍受 500KB + 全部卫生约束**；Gate A 走独立 bash 不受 exclude 影响）。附带接受 ruff 安全修复 `lru_cache(maxsize=None)`→`functools.cache`（i18n.py，语义等价）。687 passed / 1 skip / 五门禁全绿 |
+| **2026-06-25** | **集群精简 9→5 Agent**：Reasonix→CodeBuddy(DS V4-Pro)；CodeWhale→CC(审查清单)+Codex(交叉审)；Hermes→CodeBuddy(DS Flash)；Qoder IDE→QoderWork(同模型 Qwen-3.7-Max + 双模式)。CC 切回 DeepSeek-V4-Pro。落盘：全部治理文件更新、4 退役 Agent .md 删除、CODEBUDDY.md/QODERWORK.md 重写、`.guardrails/REVIEW_CHECKLIST.md` 新建。v0.0.40 派工书已改派 |
+| **2026-06-25** | **🆕 Kimi 统一 Agent 加入为第 6 Agent**：双模式合入同一 `KIMI.md`——模式 A：Kimi Code (K2.7-code · CLI) 深度调试+独立模型审查+MCP 工具链；模式 B：Kimi Work (K2.6 · 桌面端) 桌面自动化+Web E2E+300 子 Agent 并行+13h 长程执行。模型不同（K2.7-code 代码更强，K2.6 通用旗舰），角色完全不重叠（代码 vs 桌面）。Kimi 是集群唯一不同模型审查者 + 唯一桌面自动化层 |
+| **2026-06-25** | **🆙 ZCode 角色重大升级**：从"文档自动化（去留待议）"→"🏗️ 长程主力实现 + 全量代码审查"→"🎯 高级开发·特种部队（与 Codex 同级）"。基于 GLM-5.2 实测（Code Arena #2 1595 超 GPT-5.5、FrontierSWE 差距<1%、Design Arena #1、AIME 99.2 超 Opus、1M 上下文实际可用、"御三家"共识、"无法与 Opus 区分"）。配额消耗高/速度慢 → 一般任务不轻易使用——关键时刻的杀手锏。新建 `ZCODE.md`（项目根），旧 `.cluster/agents/ZCODE.md` 删除 |
+| **2026-06-25** | **🆙 QoderWork 角色重大升级**：从"VM 执行+前端 UI"→"🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5）+ 35h 长程自主 Agent"。基于 Qwen-3.7-Max 实测（Code Arena #2 1541 超 GPT-5.5、SWE-Multilingual 78.4 全球纪录、IFBench 81.2 指令遵循新高、35h 无人值守 1158 次工具调用 10x 性能提升）。此为集群 2026-06-25 最大认知偏差修正——Qwen-3.7-Max 是被严重低估的顶级编程模型 |
