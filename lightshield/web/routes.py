@@ -32,7 +32,7 @@ from lightshield.utils.constants import RiskLevel, ScanStatus
 from lightshield.utils.logger import get_logger
 from lightshield.utils.validator import TargetValidator
 from lightshield.web.auth import login, login_required, logout
-from lightshield.web.csrf import csrf_exempt
+from lightshield.web.csrf import csrf_exempt, csrf_protect
 
 # ---------------------------------------------------------------------------
 # 蓝图
@@ -360,6 +360,98 @@ def api_generate_harden(scan_id: str):
             "message": f"已生成 {result.action_count} 条加固操作",
         }
     ), 200
+
+
+@api_bp.route("/harden/<scan_id>/verify", methods=["POST"])
+@login_required
+@csrf_protect
+def api_harden_closed_loop(scan_id: str):
+    """v0.0.40 加固闭环——触发 run_harden_closed_loop，返回全链路结果。
+
+    请求体（JSON）：
+        mode: "dry_run" | "apply"（默认 dry_run）
+        os_platform: "linux" | "windows"（默认 linux）
+        confirm_ownership: bool（APPLY 必须 true）
+        confirm_execute: bool（APPLY 必须 true）
+
+    APPLY 模式缺双确认 → 400 + 错误文案。
+    DRY_RUN 模式 → overall="generated_only"，不改系统。
+    """
+    from lightshield.utils.constants import OSPlatform
+
+    logger = get_logger()
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+
+    # ---- 参数解析 + 校验 ----
+    mode = str(data.get("mode", "dry_run")).lower()
+    if mode not in ("dry_run", "apply"):
+        return jsonify({"error": True, "message": "mode 必须是 dry_run 或 apply", "code": 400}), 400
+
+    os_platform_str = str(data.get("os_platform", "linux")).lower()
+    try:
+        os_platform = OSPlatform(os_platform_str)
+    except ValueError:
+        return jsonify({"error": True, "message": "不支持的操作系统，请选择 linux 或 windows", "code": 400}), 400
+
+    confirm_ownership = _is_truthy(data.get("confirm_ownership"))
+    confirm_execute = _is_truthy(data.get("confirm_execute"))
+
+    # APPLY 双确认闸门（前端已拦，后端二次校验——R4 防线不可绕过）
+    if mode == "apply" and (not confirm_ownership or not confirm_execute):
+        return jsonify(
+            {
+                "error": True,
+                "message": "[R4] APPLY 真机执行需要同时确认所有权和执行授权。"
+                "请勾选「我确认拥有该资产」和「确认在真机执行加固」。",
+                "code": 400,
+            }
+        ), 400
+
+    # ---- 加载扫描记录 → 获取 target ----
+    config: LightShieldConfig = current_app.config["LIGHTSHIELD_CONFIG"]
+    db_url = config.db_url or "data/lightshield.db"
+    try:
+        repo = get_repository("sqlite", db_url=db_url)
+        scan_data = repo.get(scan_id)
+    except Exception as exc:
+        return jsonify({"error": True, "message": f"扫描记录读取失败：{exc}", "code": 500}), 500
+
+    if scan_data is None:
+        return jsonify({"error": True, "message": f"扫描记录不存在: {scan_id}", "code": 404}), 404
+
+    target = scan_data.get("target") or scan_data.get("raw_result", {}).get("target", "unknown")
+
+    # ---- 执行闭环 ----
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    session["harden_confirmed_at"] = datetime.now(timezone.utc).isoformat()
+
+    logger.info("web", f"闭环启动: scan_id={scan_id} target={target} mode={mode}")
+
+    try:
+        result = core.run_harden_closed_loop(
+            target=target,
+            os_platform=os_platform,
+            confirm_ownership=confirm_ownership,
+            mode=mode,
+            confirm_execute=confirm_execute,
+        )
+    except Exception as exc:
+        logger.error("web", f"闭环执行异常: scan_id={scan_id} {exc}")
+        return jsonify({"error": True, "message": f"闭环执行失败：{exc}", "code": 500}), 500
+
+    # ---- 构造响应 ----
+    response_data = result.to_dict()
+    response_data["success"] = result.overall in ("verified", "partial", "generated_only")
+    response_data["scan_id"] = scan_id
+
+    status_code = 200 if result.overall != "failed" else 422  # 422 Unprocessable Entity → 前端展示失败但不崩
+
+    logger.info(
+        "web",
+        f"闭环完成: scan_id={scan_id} overall={result.overall} "
+        f"resolved={len(result.verification.get('resolved', [])) if result.verification else 0}",
+    )
+    return jsonify(response_data), status_code
 
 
 @api_bp.route("/script/<scan_id>/<path:filename>", methods=["GET"])
