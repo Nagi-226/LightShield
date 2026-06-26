@@ -22,6 +22,8 @@
 |------|------|------|
 | `.guardrails/PROJECT_CONTRACT.md` | 项目契约：范围/架构/红线/里程碑 | Nagi M1+M2 |
 | `.guardrails/QUALITY_GATES.md` | CI/CD 五道门禁 + 审计模板 | Nagi M6+M8+M9 |
+| `.guardrails/AGENT_CODE_OF_CONDUCT.md` | 🆕 Agent 八荣八耻行为准则 + 置信度标注规范 | 开发者社区 + 实战验证 |
+| `.guardrails/REVIEW_CHECKLIST.md` | M8 五维扫描审查清单 | CodeWhale 方法论 |
 | `.guardrails/audit-log.md` | 门禁触发审计日志 | 跨层审计 |
 | `.cluster/COORDINATION.md` | 多 Agent 冲突预防 + 知识缺口防护 | Nagi M5+M7 |
 | `.githooks/pre-commit` | Gate A 自动合规扫描脚本 | 自动化执行 |
@@ -36,13 +38,14 @@ Gate D: 冲突检测   → 多 Agent 产出兼容性 + Graphify 一致性
 Gate E: 回归验证   → QoderWork VM 中 smoke test
 ```
 
-### 五大铁律（Nagi Five Iron Principles）
+### 六大铁律（Nagi Six Iron Principles）
 
 1. **不盲从**：用户指令有技术错误 → 纠正后再开工
 2. **不脑补**：需求模糊 → 问清楚再写，不自行假设
 3. **实事求是**：能力边界外的工作 → 明确告知局限
 4. **可落地**：所有代码可运行，无占位符/TODO桩
 5. **确认再开工**：非微调任务先确认方案 → 再写代码
+6. **理解再改**：修改任何文件前先 Read 完整上下文，理解原作者意图；重构不改行为，改行为不重构，一次只改一件事
 
 ### 范围漂移阀值
 
@@ -81,7 +84,7 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文。**CodeBuddy 任务须在开头标注 `【模型切换：XXX】`**
 3. **并行执行 + 集中集成** — 各 Agent 并行产出，Claude Code 审查后合并
 4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）；CC 自写代码由 Codex（GPT-5.5）交叉审查（强制不可跳过）；**Kimi Code 每版本强制一次独立审查**（Kimi-K2.7-code 是集群唯一与所有 Agent 模型不同的审查者，真正消除同源盲区）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
-5. **模型优势对齐（按 Code Arena 排名）** — 
+5. **模型优势对齐（按 Code Arena 排名）** —
    - 🎯 **高级开发层**：安全关键→Codex(GPT-5.5)；高级实现主力→QoderWork(Qwen-3.7-Max，Code Arena #2 1541 超 GPT-5.5)；特种部队→ZCode(GLM-5.2，1M 上下文，关键时刻动用)
    - 🔧 **常规开发层**：默认实现+测试+样板→CodeBuddy(多模型按需切换)
    - 🔬 **专业角色层**：独立审查+深度调试(MCP)→Kimi 模式A(K2.7-code)；桌面自动化+E2E→Kimi 模式B(K2.6)
@@ -92,7 +95,9 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 - 项目上下文（简短）
 - ⚠️ 合规约束片段（R1-R6）
 - 接口契约（明确的输入/输出/异常）
+- **🆕 不确定性声明**：Agent 必须列出本次任务中置信度🟡中/🔴低的技术判断，标注替代方案或待确认点（详见 `.guardrails/AGENT_CODE_OF_CONDUCT.md §三`）
 - 代码要求（注释、异常处理、类型标注）
+- 验收清单
 
 详见 `.cluster/CLUSTER.md` 和 `.cluster/tasks/pending/` 下的任务文件。
 
