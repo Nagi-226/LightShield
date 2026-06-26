@@ -18,11 +18,13 @@ from lightshield.sandbox.base import (
     SandboxSecurityError,
 )
 from lightshield.sandbox.docker_executor import DockerSandboxExecutor
+from lightshield.sandbox.host_executor import HostExecutor
 
 __all__ = [
     "DockerSandboxExecutor",
     "ExecutionResult",
     "ExecutionStatus",
+    "HostExecutor",
     "SandboxExecutor",
     "SandboxSecurityError",
     "get_executor",
@@ -33,8 +35,10 @@ def get_executor(backend: str = "docker", **kwargs) -> SandboxExecutor:
     """按后端名返回沙箱执行器实例。
 
     Args:
-        backend: 沙箱后端标识，当前支持 "docker"
-        **kwargs: 透传给具体执行器构造函数（image / timeout / memory 等）
+        backend: 沙箱后端标识
+            - "docker" — Docker 隔离容器（DRY_RUN 预检，v0.0.38）
+            - "host"  — 宿主机本机执行（APPLY 真机应用，v0.0.40）
+        **kwargs: 透传给具体执行器构造函数（timeout 等）
 
     Returns:
         对应的 SandboxExecutor 子类实例
@@ -45,4 +49,6 @@ def get_executor(backend: str = "docker", **kwargs) -> SandboxExecutor:
     backend_normalized = (backend or "").lower().strip()
     if backend_normalized == "docker":
         return DockerSandboxExecutor(**kwargs)
-    raise ValueError(f"不支持的沙箱后端: {backend}（当前仅支持 docker）")
+    if backend_normalized == "host":
+        return HostExecutor(**kwargs)
+    raise ValueError(f"不支持的沙箱后端: {backend}（支持: docker / host）")

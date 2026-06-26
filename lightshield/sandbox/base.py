@@ -1,14 +1,18 @@
 """LightShield 沙箱执行器抽象基类
 
 v0.0.38：为"自动加固"（v0.0.40）铺路——提供在隔离环境中安全执行加固脚本的统一接口。
+v0.0.40：扩展为双模式——隔离预检执行（Docker 后端）与真机应用执行（Host 后端）。
 
 与 harden/base.py 的分工：
   - HardenBase.generate() 负责"生成"加固脚本（默认不执行）。
-  - SandboxExecutor.execute() 负责"在隔离沙箱中执行"这些脚本。
-  二者解耦，构成未来闭环：生成 → 审阅 → （可选）沙箱执行 → （v0.0.40）复扫验证。
+  - SandboxExecutor.execute() 负责执行这些脚本——
+    · DRY_RUN 模式：隔离容器中预检（DockerSandboxExecutor，backend="docker"）
+    · APPLY 模式：宿主机本机执行（HostExecutor，backend="host"，v0.0.40 新增）
+  二者解耦，构成闭环：生成 → 审阅 → DRY_RUN 预检 → APPLY 真机执行 → 复扫验证。
 
 设计原则（合规）：
-  - 绝不在宿主机直接执行脚本——只在隔离沙箱（Docker 容器）中运行（R1）。
+  - DRY_RUN（backend="docker"）：锁死容器（--network none）中预检，不改系统（R1）。
+  - APPLY（backend="host"）：宿主机本机执行防御命令，以用户当前权限运行（R1/R4）。
   - 执行是危险操作，必须显式 confirm_execute=True 才放行（防误执行，对齐 R4 双确认）。
   - 每次执行审计留痕（logger.audit_harden_action）。
   - 超时强制终止 + 完整输出捕获。
@@ -16,11 +20,14 @@ v0.0.38：为"自动加固"（v0.0.40）铺路——提供在隔离环境中安�
 新增沙箱后端只需：
   1. 继承 SandboxExecutor
   2. 实现 is_available() 与 _run_script() 两个抽象方法
-  3. （可选）在 sandbox/__init__.py 的 get_executor() 工厂中注册
+  3. 在 sandbox/__init__.py 的 get_executor() 工厂中注册
 
 用法：
-    from lightshield.sandbox import DockerSandboxExecutor
-    executor = DockerSandboxExecutor()
+    from lightshield.sandbox import get_executor
+    # DRY_RUN（预检）
+    executor = get_executor("docker")
+    # APPLY（真机执行）
+    executor = get_executor("host")
     result = executor.execute("reports/harden_x.sh", confirm_execute=True)
     print(result.status, result.exit_code)
 """
@@ -121,8 +128,13 @@ class SandboxExecutor(ABC):
     """所有沙箱执行器的抽象基类。
 
     采用模板方法模式：公共的 execute() 负责安全闸门 + 校验 + 审计，
-    实际的隔离执行委托给子类实现的 _run_script()。
-    核心调度器只依赖此抽象接口，不直接依赖具体沙箱技术（Docker / 未来的 gVisor 等）。
+    实际的执行委托给子类实现的 _run_script()。
+
+    v0.0.40 双模式：
+      - DockerSandboxExecutor：DRY_RUN 预检，锁死容器（--network none），不改系统
+      - HostExecutor：APPLY 真机执行，宿主机 subprocess，改真实系统
+
+    核心调度器只依赖此抽象接口，不直接依赖具体执行技术。
     """
 
     def __init__(self, name: str = "", timeout: int = SANDBOX_DEFAULT_TIMEOUT):

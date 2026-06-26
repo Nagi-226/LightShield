@@ -17,9 +17,8 @@ import json
 import pytest
 
 from lightshield.adapters.base import VulnFinding
-from lightshield.harden.verify import VerificationResult, verify_hardening
+from lightshield.harden.verify import verify_hardening
 from lightshield.utils.constants import RiskLevel
-
 
 # =============================================================================
 # 测试辅助
@@ -85,7 +84,8 @@ class TestBucketing:
         assert len(r.regressed) == 0
 
     def test_only_regressed_no_resolved(self):
-        """resolved 为空 + regressed 非空 → failed。
+        """Resolved 为空 + regressed 非空 → failed。
+
         before 有 A/22；after 仍有 A/22 且多了 B/3306。
         即 A/22 未消除（resolved=0），同时引入 B/3306（regressed=1）。
         """
@@ -139,7 +139,9 @@ class TestVerdictBoundary:
     def test_verified_exact(self):
         """resolved>0, remaining=0, regressed=0 → verified。"""
         r = verify_hardening(
-            [_finding("a", 1)], [], "x",
+            [_finding("a", 1)],
+            [],
+            "x",
         )
         assert r.verdict == "verified"
 
@@ -172,6 +174,7 @@ class TestVerdictBoundary:
 
     def test_failed_regressed_only(self):
         """regressed>0 且 resolved=0 → failed。
+
         原风险未消除 + 新风险出现 = 加固失败。
         """
         r = verify_hardening(
@@ -203,7 +206,9 @@ class TestEdgeCases:
     def test_empty_before_nonempty_after(self):
         """加固前无风险、加固后有风险 → failed（全是 regressed，无 resolved）。"""
         r = verify_hardening(
-            [], [_finding("high_risk_port", 22)], "x",
+            [],
+            [_finding("high_risk_port", 22)],
+            "x",
         )
         assert r.verdict == "failed"
         assert len(r.regressed) == 1
@@ -212,7 +217,9 @@ class TestEdgeCases:
     def test_nonempty_before_empty_after(self):
         """加固前有风险、加固后为空 → verified（全部修复）。"""
         r = verify_hardening(
-            [_finding("high_risk_port", 22)], [], "x",
+            [_finding("high_risk_port", 22)],
+            [],
+            "x",
         )
         assert r.verdict == "verified"
         assert len(r.resolved) == 1
@@ -239,7 +246,7 @@ class TestEdgeCases:
         assert r.verdict == "verified"
 
     def test_target_passed_through(self):
-        """target 字段正确透传。"""
+        """Target 字段正确透传。"""
         r = verify_hardening([], [], "example.com")
         assert r.target == "example.com"
 
@@ -267,17 +274,25 @@ class TestToDict:
     def test_dict_fields_complete(self):
         """to_dict 包含所有契约字段。"""
         r = verify_hardening(
-            [_finding("a", 1)], [_finding("a", 1)], "t",
+            [_finding("a", 1)],
+            [_finding("a", 1)],
+            "t",
         )
         d = r.to_dict()
         expected_keys = {
-            "target", "resolved", "remaining", "regressed",
-            "before_count", "after_count", "verdict", "audit_id",
+            "target",
+            "resolved",
+            "remaining",
+            "regressed",
+            "before_count",
+            "after_count",
+            "verdict",
+            "audit_id",
         }
         assert set(d.keys()) == expected_keys
 
     def test_dict_nested_fields_present(self):
-        """resolved 中的 finding dict 包含关键字段。"""
+        """Resolved 中的 finding dict 包含关键字段。"""
         r = verify_hardening(
             [_finding("high_risk_port", 22)],
             [],
@@ -294,7 +309,9 @@ class TestToDict:
     def test_dict_counts_are_ints(self):
         """before_count / after_count 为整数类型。"""
         r = verify_hardening(
-            [_finding("a"), _finding("b")], [], "x",
+            [_finding("a"), _finding("b")],
+            [],
+            "x",
         )
         d = r.to_dict()
         assert isinstance(d["before_count"], int)

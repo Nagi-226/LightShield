@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 
 from lightshield.adapters.base import VulnFinding
 
-
 # =============================================================================
 # 数据结构
 # =============================================================================

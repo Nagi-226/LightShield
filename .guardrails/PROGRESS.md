@@ -1,8 +1,8 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-25 | **当前版本**：v0.0.39 ✅（commit aebaeee + tag v0.0.39）| **进行中**：v0.0.40（基座定稿+派工改派，实现未合入）| **已定稿**：v0.0.41-50 路线图（通往 v1.0.0·生产硬化）
-> **会话状态**：**集群精简 9→5 Agent + 🆕 Kimi Code = 6 Agent**（Reasonix/CodeWhale/Hermes→CodeBuddy，Qoder IDE→QoderWork，Kimi-K2.7-code 加入为独立审查专员）。CC 切回 DeepSeek-V4-Pro。v0.0.40 派工书已改派。687 passed / 1 skip，五道门禁全绿。
-> **下次启动**：v0.0.40 实现集成——CodeBuddy(verify+i18n+Web 对比页) + Codex(HostExecutor+编排) → CC 集成+tag
+> **最后更新**：2026-06-26 | **当前版本**：v0.0.40 🟡（核心实现中——HostExecutor + 闭环编排 ✅，暂未合入）| **已定稿**：v0.0.41-50 路线图（通往 v1.0.0·生产硬化）
+> **会话状态**：**集群精简 9→5 Agent + 🆕 Kimi Code = 6 Agent**（Reasonix/CodeWhale/Hermes→CodeBuddy，Qoder IDE→QoderWork，Kimi-K2.7-code 加入为独立审查专员）。CC 切回 DeepSeek-V4-Pro。v0.0.40 核心模块已交付。735 passed / 1 skip，五道门禁全绿。
+> **下次启动**：v0.0.40 收尾——QoderWork Web 对比页 + i18n closed_loop locale + Codex 交叉审查 + CC 集成+tag
 
 ---
 
@@ -227,7 +227,7 @@ CC: 6 task    Codex: 3 task    Reasonix: 2 task    Hermes: 1 task    CodeWhale: 
 
 | 版本 | 目标 | Agent | 关键交付 | 状态 |
 |:--:|------|:--:|------|:--:|
-| **v0.0.40** | 自动加固闭环 + 发布 | **QoderWork**(VM闭环) + **Qoder**(Web页) + **CodeWhale**(审查) + **CC**(架构/集成) | QoderWork：隔离 VM 中跑 `harden → execute → re-scan → verify` 全自动闭环 + 回滚验证；Qoder：Web 端一键加固+复扫+对比报告页面；CodeWhale：全量强制审查；CC：架构 + 集成 + git tag v0.0.40 | ⬜ |
+| **v0.0.40** | 自动加固闭环 + 发布 | **CC**(核心实现) + **QoderWork**(Web页+VM验证) + **CodeBuddy**(i18n) | 🟡 2026-06-26 CC 交付：HostExecutor（真机执行）+ run_harden_closed_loop（7步闭环编排）+ CLi 接线 + 25 条新测试。待完成：QoderWork Web 对比页 + CodeBuddy closed_loop i18n locale + Codex 交叉审查 + CC 集成+tag | 🟡 |
 
 ---
 
@@ -299,4 +299,5 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 | **2026-06-25** | **集群精简 9→5 Agent**：Reasonix→CodeBuddy(DS V4-Pro)；CodeWhale→CC(审查清单)+Codex(交叉审)；Hermes→CodeBuddy(DS Flash)；Qoder IDE→QoderWork(同模型 Qwen-3.7-Max + 双模式)。CC 切回 DeepSeek-V4-Pro。落盘：全部治理文件更新、4 退役 Agent .md 删除、CODEBUDDY.md/QODERWORK.md 重写、`.guardrails/REVIEW_CHECKLIST.md` 新建。v0.0.40 派工书已改派 |
 | **2026-06-25** | **🆕 Kimi 统一 Agent 加入为第 6 Agent**：双模式合入同一 `KIMI.md`——模式 A：Kimi Code (K2.7-code · CLI) 深度调试+独立模型审查+MCP 工具链；模式 B：Kimi Work (K2.6 · 桌面端) 桌面自动化+Web E2E+300 子 Agent 并行+13h 长程执行。模型不同（K2.7-code 代码更强，K2.6 通用旗舰），角色完全不重叠（代码 vs 桌面）。Kimi 是集群唯一不同模型审查者 + 唯一桌面自动化层 |
 | **2026-06-25** | **🆙 ZCode 角色重大升级**：从"文档自动化（去留待议）"→"🏗️ 长程主力实现 + 全量代码审查"→"🎯 高级开发·特种部队（与 Codex 同级）"。基于 GLM-5.2 实测（Code Arena #2 1595 超 GPT-5.5、FrontierSWE 差距<1%、Design Arena #1、AIME 99.2 超 Opus、1M 上下文实际可用、"御三家"共识、"无法与 Opus 区分"）。配额消耗高/速度慢 → 一般任务不轻易使用——关键时刻的杀手锏。新建 `ZCODE.md`（项目根），旧 `.cluster/agents/ZCODE.md` 删除 |
+| **2026-06-26** | **v0.0.40 核心实现**：HostExecutor（跨平台真机执行，Win .bat/.ps1 + Linux .sh）+ run_harden_closed_loop（①-⑦ 7步编排：扫描→推荐→生成→DRY_RUN预检/APPLY真机执行→复扫→验证→汇总）+ CLI --closed-loop/--apply/--confirm-ownership 接线 + _run_dry_run_precheck/_run_apply_and_verify 助理解耦。Gate A 更新：R1_ATTACK_KEYWORDS 新增至 constants.py + 过滤规则。25 条新测试（test_host_executor 15 + test_closed_loop 10）。735 passed / 1 skip / 五门禁全绿 |
 | **2026-06-25** | **🆙 QoderWork 角色重大升级**：从"VM 执行+前端 UI"→"🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5）+ 35h 长程自主 Agent"。基于 Qwen-3.7-Max 实测（Code Arena #2 1541 超 GPT-5.5、SWE-Multilingual 78.4 全球纪录、IFBench 81.2 指令遵循新高、35h 无人值守 1158 次工具调用 10x 性能提升）。此为集群 2026-06-25 最大认知偏差修正——Qwen-3.7-Max 是被严重低估的顶级编程模型 |

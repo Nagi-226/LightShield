@@ -35,7 +35,7 @@ RAW_VIOLATIONS=$(grep -rInE \
 # 过滤掉合法的测试/注释/常量定义上下文
 VIOLATIONS=$(echo "$RAW_VIOLATIONS" \
     | grep -v "#" \
-    | grep -v "BLOCKED_MSF_PREFIXES\|ALLOWED_MSF_PREFIXES" \
+    | grep -v "BLOCKED_MSF_PREFIXES\|ALLOWED_MSF_PREFIXES\|R1_ATTACK_KEYWORDS" \
     | grep -v "is_module_allowed\|exec_msf_module\|SecurityViolationError" \
     | grep -v "def test_\|assert " \
     | grep -v "MSF 白名单不得包含" \

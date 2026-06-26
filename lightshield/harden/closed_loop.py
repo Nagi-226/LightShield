@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 
 from lightshield.utils.constants import OSPlatform
 
-
 # =============================================================================
 # 数据结构
 # =============================================================================

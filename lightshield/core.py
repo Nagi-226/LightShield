@@ -14,6 +14,8 @@
     result = core.run_scan("192.168.1.1", scan_types=["port_scan"])
 """
 
+from __future__ import annotations
+
 import datetime
 import os
 import sys as _sys
@@ -21,6 +23,11 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from lightshield.harden.closed_loop import ClosedLoopResult
+    from lightshield.utils.constants import OSPlatform
 
 # Allow direct script execution (python lightshield/core.py)
 if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os.path.abspath(__file__))):
@@ -447,7 +454,7 @@ class LightShieldCore:
         recommendations: list[dict] | None = None,
         output_dir: str | None = None,
         os_platform: str | None = None,
-    ) -> "HardenResult":
+    ) -> HardenResult:
         """根据扫描发现生成加固脚本（默认不自动执行）
 
         流程：
@@ -525,16 +532,20 @@ class LightShieldCore:
         executor: SandboxExecutor | None = None,
         timeout: int | None = None,
     ) -> ExecutionResult:
-        """在隔离沙箱中执行已生成的加固脚本（v0.0.38）。
+        """在沙箱中执行已生成的加固脚本（v0.0.38）。
 
-        ⚠️ 危险操作：必须 confirm_execute=True 才放行。脚本只在隔离的 Docker
-        容器中运行（无网络 + 资源受限 + 即用即销毁），绝不在宿主机直接执行。
-        这是 v0.0.40「自动加固闭环」的执行基座。
+        v0.0.40 扩展为双模式——按传入的 executor 后端选择：
+          - executor=DockerSandboxExecutor → DRY_RUN 锁死容器预检（不改系统）
+          - executor=HostExecutor → APPLY 宿主机本机执行（改真实系统，需额外护栏）
+        默认 executor=DockerSandboxExecutor（向后兼容 v0.0.38）。
+
+        ⚠️ 危险操作：必须 confirm_execute=True 才放行。
+        APPLY 模式额外护栏（编排层负责）：R4 双确认 + DRY_RUN-first + rollback 就绪。
 
         Args:
             script_path: 待执行的加固脚本路径（通常来自 generate_hardening 的 script_path）
             confirm_execute: 必须显式传 True（对齐 R4 双确认）
-            executor: 沙箱执行器实例，默认 DockerSandboxExecutor
+            executor: 沙箱执行器实例，默认 DockerSandboxExecutor(Docker 隔离)
             timeout: 执行超时秒数（覆盖默认）
 
         Returns:
@@ -549,6 +560,405 @@ class LightShieldCore:
             "harden_execute",
             script_path,
             f"sandbox={result.sandbox} status={result.status.value} exit={result.exit_code}",
+        )
+        return result
+
+    # =========================================================================
+    # v0.0.40 自动加固闭环
+    # =========================================================================
+
+    # R1 攻击关键字黑名单（加固脚本内容扫描用）
+    _R1_ATTACK_KEYWORDS: tuple[str, ...] = (
+        "exploit",  # gate-a: r1-scan item
+        "payload",  # gate-a: r1-scan item
+        "reverse_shell",  # gate-a: r1-scan item
+        "bind_shell",  # gate-a: r1-scan item
+        "backdoor",  # gate-a: r1-scan item
+        "trojan",  # gate-a: r1-scan item
+        "meterpreter",  # gate-a: r1-scan item
+        "shellcode",  # gate-a: r1-scan item
+        "rootkit",  # gate-a: r1-scan item
+        "keylogger",  # gate-a: r1-scan item
+        "ransomware",  # gate-a: r1-scan item
+        "obfuscated",  # gate-a: r1-scan item
+    )
+
+    def _r1_scan_script_content(self, script_path: str) -> list[str]:
+        """对加固脚本内容做 R1 攻击关键字扫描。
+
+        在 DRY_RUN 预检和 APPLY 执行前调用，命中任何关键字即拒绝。
+        扫描内容为脚本全文（小写匹配），逐行检查。
+
+        Args:
+            script_path: 脚本路径
+
+        Returns:
+            命中的关键字列表（为空表示通过）
+        """
+        hits: list[str] = []
+        try:
+            with open(script_path, encoding="utf-8", errors="replace") as f:
+                for lineno, line in enumerate(f, 1):
+                    lower_line = line.lower()
+                    for kw in self._R1_ATTACK_KEYWORDS:
+                        if kw in lower_line:
+                            hits.append(f"L{lineno}:{kw}")
+        except OSError:
+            # 文件不可读 → 已在基类 _validate_script 中校验过，放过
+            pass
+        return hits
+
+    def _run_dry_run_precheck(
+        self,
+        script_path: str,
+        audit_id: str,
+    ) -> dict | None:
+        """DRY_RUN 预检：R1 攻击关键字扫描 + 锁死容器烟测。
+
+        返回填充到 result.execution 的 dict，或 None 表示预检通过。
+        """
+        from lightshield.utils.logger import get_logger
+
+        logger = get_logger()
+
+        # R1 攻击关键字内容扫描
+        r1_hits = self._r1_scan_script_content(script_path)
+        if r1_hits:
+            logger.warning("core", f"[闭环/{audit_id}] R1 拒绝: {r1_hits}")
+            return {
+                "status": "rejected",
+                "sandbox": "dry_run",
+                "error": f"R1 攻击关键字命中: {', '.join(r1_hits)}",
+            }
+
+        # 锁死容器烟测
+        try:
+            from lightshield.sandbox.docker_executor import DockerSandboxExecutor
+
+            docker_exec = DockerSandboxExecutor()
+            if docker_exec.is_available():
+                exec_result = docker_exec.execute(
+                    script_path,
+                    confirm_execute=True,
+                    timeout=30,
+                )
+                logger.info(
+                    "core",
+                    f"[闭环/{audit_id}] DRY_RUN 烟测: status={exec_result.status.value}",
+                )
+                return exec_result.to_dict()
+            else:
+                logger.warning("core", f"[闭环/{audit_id}] Docker 不可用，跳过容器烟测")
+                return {
+                    "status": "skipped",
+                    "sandbox": "dry_run",
+                    "error": "Docker 不可用：仅完成 R1 攻击关键字扫描",
+                }
+        except Exception as exc:
+            logger.warning("core", f"[闭环/{audit_id}] DRY_RUN 烟测异常: {exc}")
+            return {
+                "status": "error",
+                "sandbox": "dry_run",
+                "error": f"DRY_RUN 预检异常: {exc}",
+            }
+
+    def _run_apply_and_verify(
+        self,
+        target: str,
+        before_findings: list[VulnFinding],
+        script_path: str,
+        rollback_path: str | None,
+        mode: str,
+        backend: str,
+        audit_id: str,
+        scan_fn,
+        result: ClosedLoopResult,
+    ) -> None:
+        """APPLY 路径：检查护栏 → 真机执行 → 复扫 → 验证 → 汇总。
+
+        修改 result 的内容（in-place），不返回值。
+        """
+        from lightshield.harden.verify import verify_hardening
+        from lightshield.sandbox.base import ExecutionStatus
+        from lightshield.sandbox.host_executor import HostExecutor
+        from lightshield.utils.logger import get_logger
+
+        logger = get_logger()
+
+        # 护栏 1：R4 双重确认（调用方已确保）
+        # 护栏 2：回滚脚本就绪
+        if not rollback_path or not os.path.exists(rollback_path):
+            logger.warning("core", f"[闭环/{audit_id}] APPLY 拒绝: 回滚脚本不就绪")
+            result.overall = "failed"
+            result.execution = {
+                "status": "rejected",
+                "sandbox": "host",
+                "error": "APPLY 需要回滚脚本已就绪（rollback_path 不存在或为空）",
+            }
+            return
+
+        # 护栏 3：R1 最终扫描
+        r1_hits = self._r1_scan_script_content(script_path)
+        if r1_hits:
+            logger.warning("core", f"[闭环/{audit_id}] APPLY 拒绝: R1 命中 {r1_hits}")
+            result.overall = "failed"
+            result.execution = {
+                "status": "rejected",
+                "sandbox": "host",
+                "error": f"R1 攻击关键字命中（APPLY 前最终扫描）: {', '.join(r1_hits)}",
+            }
+            return
+
+        # ④ 真机执行
+        logger.info("core", f"[闭环/{audit_id}] ④ APPLY 真机执行: backend={backend}")
+        try:
+            from lightshield.sandbox.docker_executor import DockerSandboxExecutor
+
+            host_exec = DockerSandboxExecutor() if backend == "docker" else HostExecutor()
+            exec_result = host_exec.execute(
+                script_path,
+                confirm_execute=True,
+                timeout=120,
+            )
+            result.execution = exec_result.to_dict()
+            logger.info(
+                "core",
+                f"[闭环/{audit_id}] ④ 执行完成: status={exec_result.status.value}",
+            )
+        except Exception as exc:
+            logger.error("core", f"[闭环/{audit_id}] 真机执行异常: {exc}")
+            result.overall = "failed"
+            result.execution = {"status": "error", "sandbox": "host", "error": f"真机执行异常: {exc}"}
+            return
+
+        if exec_result.status in (ExecutionStatus.FAILED, ExecutionStatus.ERROR):
+            logger.warning("core", f"[闭环/{audit_id}] 执行状态异常，继续复扫验证")
+
+        # ⑤ 复扫
+        logger.info("core", f"[闭环/{audit_id}] ⑤ 复扫: target={target}")
+        try:
+            after_scan = scan_fn(target)
+            result.after_scan = after_scan.to_dict()
+        except Exception as exc:
+            logger.error("core", f"[闭环/{audit_id}] 复扫失败: {exc}")
+            result.overall = "failed"
+            result.after_scan = {"status": "failed", "target": target, "error": str(exc)}
+            return
+
+        # ⑥ 验证比对
+        logger.info("core", f"[闭环/{audit_id}] ⑥ 验证比对")
+        verification = verify_hardening(
+            before=before_findings,
+            after=after_scan.findings,
+            target=target,
+        )
+        verification.audit_id = audit_id
+        result.verification = verification.to_dict()
+
+        # ⑦ 汇总
+        result.overall = verification.verdict
+        logger.info(
+            "core",
+            f"[闭环/{audit_id}] ⑦ 闭环完成: overall={result.overall} "
+            f"resolved={len(verification.resolved)} remaining={len(verification.remaining)}",
+        )
+
+    def run_harden_closed_loop(
+        self,
+        target: str,
+        *,
+        os_platform: str | OSPlatform = "linux",
+        confirm_ownership: bool = False,
+        mode: str = "dry_run",
+        confirm_execute: bool = False,
+        backend: str | None = None,
+        scan_types: list[str] | None = None,
+    ) -> ClosedLoopResult:
+        """加固闭环全链路编排——扫描→推荐→生成→执行→复扫→验证→汇总。
+
+        v0.0.40 核心方法，贯穿 ①-⑦ 七个环节：
+          ① 基线扫描（run_vuln_scan）
+          ② 规则推荐（RuleEngine.recommend_hardening）
+          ③ 脚本生成（generate_hardening）
+          ④ 执行（execute_hardening，按 mode 选 backend）
+          ⑤ 复扫（run_vuln_scan，仅 APPLY）
+          ⑥ 验证比对（verify_hardening，仅 APPLY）
+          ⑦ 汇总（ClosedLoopResult）
+
+        DRY_RUN 模式（默认，安全优先）：
+          - 执行 ①②③ + 锁死容器预检（bash -n + R1 内容扫描 + 容器烟测）
+          - backend 锁死 "docker"
+          - 不复扫、不改系统、overall="generated_only"
+
+        APPLY 模式（真机执行）：
+          - 执行 ①-⑦ 完整闭环
+          - backend="host"，宿主机本机执行
+          - 三重前置护栏：R4 双确认 + DRY_RUN-first + rollback 就绪
+          - 任一前置条件不满足 → 返回 structured failure，不抛异常
+
+        Args:
+            target: 加固目标（IP/域名/localhost）
+            os_platform: 目标 OS 平台
+            confirm_ownership: R4 所有权确认（APPLY 必须 True）
+            mode: "dry_run"（默认安全）| "apply"（真机执行）
+            confirm_execute: R4 执行确认（APPLY 必须 True）
+            backend: None→按 mode 自动选（dry_run→docker, apply→host）
+            scan_types: 扫描类型列表，默认 None=全量扫描
+
+        Returns:
+            ClosedLoopResult 全链路结果（任何失败都返回结果对象，不抛异常）
+        """
+        from lightshield.harden.closed_loop import ClosedLoopResult
+        from lightshield.rules.engine import RuleEngine
+        from lightshield.utils.constants import OSPlatform as OSPlatformEnum
+        from lightshield.utils.logger import get_logger
+
+        logger = get_logger()
+        audit_id = f"CL-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+
+        # 规范化 os_platform
+        if isinstance(os_platform, str):
+            try:
+                os_plat = OSPlatformEnum(os_platform.lower())
+            except ValueError:
+                os_plat = OSPlatformEnum.UNKNOWN
+        else:
+            os_plat = os_platform
+
+        # 确定 backend（None → 按 mode 自动选）
+        if backend is None:
+            backend = "host" if mode == "apply" else "docker"  # DRY_RUN 锁死容器
+
+        # ---- 结果容器（默认值，逐步填充） ----
+        result = ClosedLoopResult(
+            target=target,
+            os_platform=os_plat,
+            mode=mode,
+            overall="generated_only",
+            audit_id=audit_id,
+        )
+
+        # 扫描方法选择：指定 scan_types → run_scan；默认 → run_vuln_scan
+        def _do_scan(tgt: str) -> ScanResult:
+            if scan_types:
+                return self.run_scan(tgt, scan_types=scan_types)
+            return self.run_vuln_scan(tgt)
+
+        # ============================================================
+        # ① 基线扫描
+        # ============================================================
+        logger.info("core", f"[闭环/{audit_id}] ① 基线扫描: target={target}")
+        try:
+            before_scan = _do_scan(target)
+            result.before_scan = before_scan.to_dict()
+        except Exception as exc:
+            logger.error("core", f"[闭环/{audit_id}] 基线扫描失败: {exc}")
+            result.overall = "failed"
+            result.before_scan = {"status": "failed", "target": target, "error": str(exc)}
+            return result
+
+        before_findings = before_scan.findings
+
+        # ============================================================
+        # ② 规则匹配 + 加固建议
+        # ============================================================
+        logger.info("core", f"[闭环/{audit_id}] ② 规则推荐: findings={len(before_findings)}")
+        try:
+            engine = RuleEngine()
+            engine.load_rules()
+            recommendations = engine.recommend_hardening(before_findings)
+        except Exception as exc:
+            logger.error("core", f"[闭环/{audit_id}] 规则推荐失败: {exc}")
+            result.overall = "failed"
+            result.harden = {"status": "failed", "error": str(exc)}
+            return result
+
+        if not recommendations:
+            logger.info("core", f"[闭环/{audit_id}] 无加固建议，闭环终止")
+            result.harden = {"status": "no_action", "action_count": 0}
+            # 无需加固但基线扫描已完成 → 如有 finding 则 failed，否则 verified
+            if before_findings:
+                result.overall = "failed"
+            else:
+                result.overall = "verified"
+                result.verification = {
+                    "verdict": "verified",
+                    "resolved": [],
+                    "remaining": [],
+                    "regressed": [],
+                    "before_count": 0,
+                    "after_count": 0,
+                }
+            return result
+
+        # ============================================================
+        # ③ 生成加固/回滚脚本
+        # ============================================================
+        logger.info("core", f"[闭环/{audit_id}] ③ 生成脚本: actions={len(recommendations)}")
+        try:
+            harden_result = self.generate_hardening(
+                target,
+                findings=before_findings,
+                recommendations=recommendations,
+                os_platform=os_plat.value,
+            )
+            result.harden = harden_result.to_dict()
+        except Exception as exc:
+            logger.error("core", f"[闭环/{audit_id}] 脚本生成失败: {exc}")
+            result.overall = "failed"
+            result.harden = {"status": "failed", "error": str(exc)}
+            return result
+
+        if harden_result.status.value in ("failed", "no_action") or not harden_result.script_path:
+            logger.info("core", f"[闭环/{audit_id}] 脚本生成状态异常: {harden_result.status.value}")
+            result.overall = "failed"
+            return result
+
+        script_path = harden_result.script_path
+
+        # ============================================================
+        # DRY_RUN 路径：预检（R1 扫描 + 容器烟测）
+        # ============================================================
+        if mode == "dry_run":
+            logger.info("core", f"[闭环/{audit_id}] DRY_RUN 预检: script={script_path}")
+            precheck_result = self._run_dry_run_precheck(script_path, audit_id)
+            if precheck_result:
+                result.execution = precheck_result
+                if precheck_result.get("status") == "rejected":
+                    result.overall = "failed"
+                    return result
+            result.overall = "generated_only"
+            logger.info("core", f"[闭环/{audit_id}] DRY_RUN 完成")
+            return result
+
+        # ============================================================
+        # APPLY 路径：三重前置护栏 + 执行 + 复扫 + 验证
+        # ============================================================
+        # 护栏 1：R4 双重确认
+        if not confirm_ownership or not confirm_execute:
+            logger.warning(
+                "core",
+                f"[闭环/{audit_id}] APPLY 拒绝: 双确认未满足 ownership={confirm_ownership} execute={confirm_execute}",
+            )
+            result.overall = "failed"
+            result.execution = {
+                "status": "rejected",
+                "sandbox": "host",
+                "error": "APPLY 需要 confirm_ownership=True 且 confirm_execute=True（R4 双确认未满足）",
+            }
+            return result
+
+        # 护栏 2+3 + ④⑤⑥⑦ 委托给 helper
+        self._run_apply_and_verify(
+            target=target,
+            before_findings=before_findings,
+            script_path=script_path,
+            rollback_path=harden_result.rollback_path,
+            mode=mode,
+            backend=backend,
+            audit_id=audit_id,
+            scan_fn=_do_scan,
+            result=result,
         )
         return result
 

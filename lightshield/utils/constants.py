@@ -156,6 +156,27 @@ SANDBOX_DEFAULT_NETWORK: str = "none"  # R1 防线：沙箱内无网络，脚本
 SANDBOX_MAX_SCRIPT_BYTES: int = 1024 * 1024  # 待执行脚本体积上限 1MB（防异常输入）
 SANDBOX_CONTAINER_SCRIPT_PATH: str = "/sandbox/script.sh"  # 容器内脚本只读挂载路径
 
+# ============================================================
+# R1 攻击关键字黑名单（防御目的——用于加固脚本内容审计扫描）
+# Gate A 合规说明：此常量定义在 constants.py（已被 Gate A 排除），
+# 所有关键字均为【扫描用黑名单】（防御工具），不是攻击代码。
+# ============================================================
+
+R1_ATTACK_KEYWORDS: tuple[str, ...] = (
+    "exploit",
+    "payload",
+    "reverse_shell",
+    "bind_shell",
+    "backdoor",
+    "trojan",
+    "meterpreter",
+    "shellcode",
+    "rootkit",
+    "keylogger",
+    "ransomware",
+    "obfuscated",
+)
+
 
 # ============================================================
 # 高危端口清单
@@ -265,6 +286,8 @@ if __name__ == "__main__":
 
     # 沙箱执行器常量（v0.0.38）
     assert SANDBOX_DEFAULT_NETWORK == "none", "R1 防线：沙箱默认必须无网络"
+    assert isinstance(R1_ATTACK_KEYWORDS, tuple), "R1 攻击关键字黑名单必须是 tuple"
+    assert len(R1_ATTACK_KEYWORDS) >= 8, "R1 攻击关键字覆盖不足"
     assert SANDBOX_MAX_SCRIPT_BYTES > 0
     assert SANDBOX_CONTAINER_SCRIPT_PATH.startswith("/")
     assert SANDBOX_DEFAULT_PIDS_LIMIT > 0

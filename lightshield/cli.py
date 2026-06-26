@@ -280,6 +280,10 @@ def run_harden_command(args: argparse.Namespace) -> int:
         print(f" 回滚脚本：{harden_result.rollback_path}")
         print(f" 安全报告：{report_path}")
 
+        # v0.0.40: --closed-loop 加固闭环（DRY_RUN 或 APPLY）
+        if getattr(args, "closed_loop", False):
+            return _run_closed_loop(core, scan_result, all_findings, recommendations, args)
+
         # v0.0.38: --execute 在 Docker 沙箱中执行加固脚本
         if getattr(args, "execute", False):
             return _run_sandbox_execution(core, harden_result, args)
@@ -287,6 +291,7 @@ def run_harden_command(args: argparse.Namespace) -> int:
         print("")
         print(" ⚠️  请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
         print("     如需在隔离沙箱中试运行，可加 --execute 参数（v0.0.38）。")
+        print("     🆕 v0.0.40：加 --closed-loop 启用自动加固闭环（扫描→推荐→生成→执行→复扫→验证）。")
         return 0
 
     except KeyboardInterrupt:
@@ -480,6 +485,17 @@ def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="跳过 --execute 的交互确认（仅用于自动化/CI，请谨慎）",
     )
+    parser.add_argument(
+        "--closed-loop",
+        action="store_true",
+        help="🆕 v0.0.40：启用加固闭环（扫描→推荐→生成→执行→复扫→验证），默认 DRY_RUN 模式（不改系统）",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="🆕 v0.0.40：配合 --closed-loop 启用 APPLY 模式（真机执行加固，改真实系统）。必须同时传 --confirm-ownership",
+    )
+    parser.add_argument("--os-platform", choices=["linux", "windows"], default="linux", help="目标 OS 平台，默认 linux")
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
 
@@ -520,13 +536,16 @@ def _ensure_ownership(target: str, confirmed: bool) -> bool:
 
 
 def _ensure_execute(script_path: str, pre_confirmed: bool) -> bool:
-    """--execute 危险操作二次确认：未预确认时必须交互输入 EXECUTE。"""
+    """危险操作二次确认：未预确认时必须交互输入 EXECUTE。
+
+    v0.0.38：Docker 沙箱执行确认（隔离，不改宿主机）。
+    v0.0.40：APPLY 真机执行确认（改真实系统，风险更高）。
+    """
     if pre_confirmed:
         return True
 
     print("")
-    print("⚠️  [危险操作] 即将在 Docker 沙箱中执行加固脚本。")
-    print("    脚本将在隔离容器（无网络 + 资源受限 + 即用即销毁）中运行，不影响宿主机。")
+    print("⚠️  [危险操作] 即将执行加固脚本。")
     print(f"    脚本：{script_path}")
     answer = input("如确认执行，请输入 EXECUTE 继续：").strip()
     return answer == "EXECUTE"
@@ -562,6 +581,126 @@ def _run_sandbox_execution(core: LightShieldCore, harden_result: Any, args: argp
     )
     _print_execution_result(result)
     return 0 if result.status == ExecutionStatus.SUCCESS else 1
+
+
+def _run_closed_loop(
+    core: LightShieldCore,
+    scan_result: Any,
+    all_findings: list[Any],
+    recommendations: list[dict],
+    args: argparse.Namespace,
+) -> int:
+    """v0.0.40 加固闭环——DRY_RUN 或 APPLY 全链路编排。
+
+    Args:
+        core: 已配置的核心调度器
+        scan_result: 基线扫描结果
+        all_findings: 全量漏洞发现（扫描 + 规则匹配）
+        recommendations: 规则引擎加固建议
+        args: CLI 参数
+
+    Returns:
+        0 成功，1 失败
+    """
+    apply_mode = getattr(args, "apply", False)
+
+    # APPLY 模式强制要求 --confirm-ownership
+    if apply_mode and not args.confirm_ownership:
+        print("[错误] --apply 真机执行需要同时传 --confirm-ownership（R4 双确认）。")
+        print("       用法: lightshield harden 127.0.0.1 --closed-loop --apply --confirm-ownership")
+        return 1
+
+    # APPLY 模式额外交互确认（用户需要输入 EXECUTE）
+    if apply_mode:
+        print("")
+        print("⚠️  [危险操作·真机执行] 即将在宿主机本机执行加固脚本，会真实修改系统配置。")
+        print(f"    加固建议 {len(recommendations)} 条，已生成回滚脚本。")
+        print("    请确认：① 你拥有此目标 ② 已审阅加固脚本 ③ 回滚脚本已就绪。")
+        if not _ensure_execute("加固脚本（真机）", False):
+            print("已取消：APPLY 真机执行未经用户确认。")
+            return 1
+
+    mode = "apply" if apply_mode else "dry_run"
+    confirm_exec = apply_mode  # APPLY 需要双确认
+    os_platform = getattr(args, "os_platform", "linux")
+
+    print("")
+    if apply_mode:
+        print("[闭环/APPLY] 正在真机执行加固闭环...")
+        print("  ① 基线扫描 ✅（已在前面完成）")
+        print("  ② 规则推荐 ✅")
+        print("  ③ 脚本生成 ✅")
+        print("  ④ 真机执行中...")
+    else:
+        print("[闭环/DRY_RUN] 正在预检加固脚本（不改系统）...")
+        print("  ① 基线扫描 ✅")
+        print("  ② 规则推荐 ✅")
+        print("  ③ 脚本生成 ✅")
+        print("  ④ 预检中（R1 扫描 + 容器烟测）...")
+
+    try:
+        result = core.run_harden_closed_loop(
+            target=scan_result.target,
+            os_platform=os_platform,
+            confirm_ownership=args.confirm_ownership,
+            mode=mode,
+            confirm_execute=confirm_exec,
+            scan_types=None,  # 全量扫描
+        )
+    except Exception as exc:
+        print(f"[错误] 闭环执行异常：{exc}")
+        if args.verbose:
+            raise
+        return 1
+
+    # ---- 打印闭环结果 ----
+    print("")
+    print("=" * 60)
+    print(f"  加固闭环结果 — {result.target}")
+    print(f"  模式  ：{result.mode}")
+    print(f"  OS    ：{result.os_platform.value}")
+    print(f"  审计ID：{result.audit_id}")
+    print("  ─────────────────────────────────────────")
+    print(
+        f"  基线扫描：{result.before_scan.get('status', '?')} "
+        f"({result.before_scan.get('findings_count', len(result.before_scan.get('findings', [])))} 条风险)"
+    )
+    print(f"  加固建议：{result.harden.get('action_count', 0)} 条操作")
+    if result.execution:
+        print(f"  执行状态：{result.execution.get('status', '?')}")
+        if result.execution.get("exit_code") is not None:
+            print(f"  退出码  ：{result.execution['exit_code']}")
+    if result.after_scan:
+        print(f"  复扫状态：{result.after_scan.get('status', '?')}")
+        after_findings = result.after_scan.get("findings", [])
+        print(f"  复扫发现：{len(after_findings)} 条风险")
+    if result.verification:
+        v = result.verification
+        print("  ─────────────────────────────────────────")
+        print(f"  验证判定：{v.get('verdict', '?')}")
+        print(f"  已修复  ：{len(v.get('resolved', []))} 条")
+        print(f"  仍存在  ：{len(v.get('remaining', []))} 条")
+        print(f"  新增风险：{len(v.get('regressed', []))} 条")
+    print("  ─────────────────────────────────────────")
+    overall_label = {
+        "verified": "✅ 验证通过",
+        "partial": "⚠️ 部分修复",
+        "failed": "❌ 未修复",
+        "generated_only": "📋 仅生成（未复扫）",
+    }.get(result.overall, result.overall)
+    print(f"  总判定  ：{overall_label}")
+    print("=" * 60)
+
+    if result.execution and result.execution.get("stdout"):
+        print("")
+        print("--- 执行输出（末尾 20 行）---")
+        stdout_lines = result.execution["stdout"].strip().splitlines()
+        for line in stdout_lines[-20:]:
+            print(f"  {line}")
+
+    if result.overall in ("verified", "generated_only"):
+        return 0
+    return 1
 
 
 def _print_execution_result(result: Any) -> None:
