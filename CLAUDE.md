@@ -4,10 +4,10 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-25 — 集群精简（9→5 Agent）：Reasonix/CodeWhale/Hermes→CodeBuddy(多模型)/CC(审查清单)，Qoder IDE 退役。
->   - 质量基线：**687 tests** / 0 fail / 1 skip / ruff + mypy 全零违规
->   - 阶段一 ✅✅✅ 安全加固 | 阶段二 ✅✅✅✅ 能力扩展 | 阶段三 ✅✅✅ 自动化铺路（全部完成）
->   - 下次启动：v0.0.40 自动加固闭环（派工书已改派）
+> **上次会话**：2026-06-26 — v0.0.40 全部实现交付（6 commits）：闭环编排 + Loop Hook + 八荣八耻 + Web 路由 + 对比页面。CodeBuddy(i18n) + QoderWork(Web页) 双 Agent 并行交付，CC 集成。
+>   - 质量基线：**771 tests** / 0 fail / 1 skip / 12 门禁全绿（ruff+mypy+bandit+Gate A）
+>   - 六大铁律 + 八荣八耻 Agent 行为准则正式生效
+>   - 下次启动：Codex 交叉审查 → git tag v0.0.40 → push
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
