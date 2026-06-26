@@ -1,67 +1,65 @@
-# CodeBuddy 任务 — v0.0.40 闭环页面 i18n 文案（closed_loop.*）
+# CodeBuddy 任务 — v0.0.40 closed_loop i18n 文案补全
 
-> **Agent**：**CodeBuddy**（原 Hermes，DeepSeek-V4-Flash，已退役并入 CodeBuddy）
-> **【模型切换：DeepSeek-V4-Flash】** ← 在 CodeBuddy IDE 中切到此模型（零推理量样板任务）
-> **版本**：v0.0.40 自动加固闭环｜**类型**：i18n locale 补全（中英对称）
-> **依赖**：键名与 Web 对比页面实际用到的键对齐——缺则补齐。
-> **冻结接口来源**：`docs/design-v040-closed-loop.md`（正式版）§8；延续 v0.0.39 i18n 体系
-> **改派记录**：2026-06-25 集群精简，Hermes(DS Flash)→CodeBuddy(切 DS Flash，同模型零能力损失)
+> **Agent**：CodeBuddy · **模型切换：DeepSeek-V4-Flash**（零推理量样板任务）
+> **状态**：🟢 可开工 — 后端路由已就绪（`POST /api/harden/<scan_id>/verify`），Web 对比页并行开发中
+> **类型**：纯文案，零代码逻辑
+> **文件**：`lightshield/web/locales/zh-CN.json` + `lightshield/web/locales/en-US.json`
 
 ---
 
-## 一、项目上下文（简短）
+## 当前状态
 
-v0.0.39 已建中英双语体系：`lightshield/web/locales/{zh-CN,en-US}.json`（含 `_meta`，键集必须中英对称），运行期 `i18n.py` 加载、模板 `t()` / 前端 `window.t/tf` 消费。v0.0.40 新增「加固+复扫+对比」页面，需补 `closed_loop.*` 文案。
-
-## 二、⚠️ 合规约束（R1-R6）
-
-纯文案任务，不涉执行。注意：APPLY（真改系统）相关文案要**如实传达风险**——所有权确认、二次确认、回滚提示用语准确，不淡化（呼应 R4）。不得出现诱导用户扫描他人资产的措辞。
-
-## 三、接口契约（严格按此）
-
-### 3.1 文件
-
-`lightshield/web/locales/zh-CN.json` 与 `en-US.json` 同步新增 `closed_loop` 命名空间，**两边键集完全对称**（v0.0.39 已有对称校验，勿破）。
-
-### 3.2 必备键集（起步清单，最终以 Web 对比页面为准对齐）
+closed_loop 命名空间已有 **20 个键**，均为空占位，需要填充中英文案：
 
 ```
-closed_loop.title              加固闭环对比 / Hardening Closed-Loop
-closed_loop.mode.dry_run       预检模式 / Dry-run
-closed_loop.mode.apply         应用模式 / Apply
-closed_loop.overall.verified   已验证 / Verified
-closed_loop.overall.partial    部分修复 / Partial
-closed_loop.overall.failed     未修复 / Failed
-closed_loop.overall.generated_only  仅生成（未复扫） / Generated only
-closed_loop.col.type           风险类型 / Type
-closed_loop.col.port           端口 / Port
-closed_loop.col.severity       严重度 / Severity
-closed_loop.col.status         状态 / Status
-closed_loop.status.resolved    已修复 / Resolved
-closed_loop.status.remaining   仍存在 / Remaining
-closed_loop.status.regressed   新增风险 / Regressed
-closed_loop.exec.log           执行日志 / Execution log
-closed_loop.exec.download      下载脚本 / Download script
-closed_loop.confirm.ownership  我确认拥有该资产 / I confirm I own this asset
-closed_loop.confirm.execute    确认在真机执行加固 / Confirm applying on the real host
-closed_loop.warn.apply         应用模式将真实修改本机系统，请先预检并确认回滚脚本就绪 / Apply mode will really modify this host — run dry-run first and ensure the rollback script is ready
-closed_loop.empty.dryrun       预检模式未复扫 / Dry-run: no re-scan performed
+col_port, col_severity, col_status, col_type,
+confirm_execute, confirm_ownership, empty_dryrun,
+exec_download, exec_log, mode_apply, mode_dry_run,
+overall_failed, overall_generated_only, overall_partial, overall_verified,
+status_regressed, status_remaining, status_resolved,
+title, warn_apply
 ```
 
-（数量/命名最终与 Web 对比页面对齐；页面完成后回传实际键清单。）
+---
 
-## 四、代码要求
+## 你的任务
 
-- 严格中英对称（缺一边即破 v0.0.39 校验）；`_meta` 按现有格式更新（如版本/键数）。
-- 译文自然、准确；APPLY 警示文案不得弱化风险。
-- JSON 合法（无尾逗号/重复键）；UTF-8。
-- 跑现有 i18n 对称性测试（`tests/test_web_i18n.py` 体系）确保通过。
-- `python -m pre_commit run --files <改动>` 过门禁。
+为以上 20 个键填充**中英对称**文案。要求：
 
-## 五、验收
+1. **中英键集严格对称**——zh-CN 有的 en-US 必须有，反之亦然（v0.0.39 已有自动校验）
+2. **APPLY 风险文案如实传达**——`confirm_execute` / `confirm_ownership` / `warn_apply` 不得淡化风险
+3. **JSON 合法**——无尾逗号、无重复键、UTF-8
 
-1. [ ] zh-CN.json / en-US.json 同步新增 closed_loop.* 且键集对称。
-2. [ ] 必备键全覆盖，APPLY 风险文案如实。
-3. [ ] i18n 对称性测试通过。
-4. [ ] 键清单已与 Web 对比页面对齐（无悬空键/缺键）。
-5. [ ] pre-commit 零违规。
+### 参考译文
+
+| 键 | zh-CN | en-US |
+|---|------|------|
+| `title` | 加固闭环对比 | Hardening Closed-Loop |
+| `mode_dry_run` | 预检模式 | Dry Run |
+| `mode_apply` | 应用模式 | Apply |
+| `overall_verified` | 已验证 | Verified |
+| `overall_partial` | 部分修复 | Partial |
+| `overall_failed` | 未修复 | Failed |
+| `overall_generated_only` | 仅生成（未复扫） | Generated Only |
+| `col_type` | 风险类型 | Type |
+| `col_port` | 端口 | Port |
+| `col_severity` | 严重度 | Severity |
+| `col_status` | 状态 | Status |
+| `status_resolved` | 已修复 | Resolved |
+| `status_remaining` | 仍存在 | Remaining |
+| `status_regressed` | 新增风险 | Regressed |
+| `exec_log` | 执行日志 | Execution Log |
+| `exec_download` | 下载脚本 | Download Script |
+| `confirm_ownership` | 我确认拥有该资产 | I confirm I own this asset |
+| `confirm_execute` | 确认在真机执行加固 | Confirm applying on the real host |
+| `warn_apply` | 应用模式将真实修改本机系统，请先预检并确认回滚脚本就绪 | Apply mode will really modify this host — run dry-run first and ensure the rollback script is ready |
+| `empty_dryrun` | 预检模式未复扫 | Dry-run: no re-scan performed |
+
+---
+
+## 验收
+
+1. [ ] zh-CN.json / en-US.json 的 closed_loop.* 全部 20 键已填充，中英对称
+2. [ ] APPLY 风险文案如实（confirm_execute / warn_apply 不含弱化措辞）
+3. [ ] `python -m pytest tests/test_web_i18n.py` 通过
+4. [ ] `python -m pre_commit run --files lightshield/web/locales/zh-CN.json lightshield/web/locales/en-US.json` 零违规
