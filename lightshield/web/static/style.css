@@ -999,3 +999,137 @@ code,
     width: 100%;
   }
 }
+
+/* =========================================================================
+   Closed-Loop Verify Page
+   ========================================================================= */
+
+.cl-mode-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 1.5rem;
+}
+
+.cl-tab {
+  padding: 0.65rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.cl-tab:hover {
+  color: var(--text);
+}
+
+.cl-tab.active {
+  color: var(--accent-2);
+  border-bottom-color: var(--accent-2);
+}
+
+.apply-gate {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.apply-gate .warning-note {
+  margin-bottom: 0.75rem;
+}
+
+.apply-gate .check-row {
+  margin-bottom: 0.5rem;
+}
+
+.cl-overall {
+  margin: 1.5rem 0;
+}
+
+.cl-compare-table {
+  width: 100%;
+}
+
+.cl-st-resolved {
+  background: rgba(67, 217, 173, 0.18) !important;
+  color: #0a6b52 !important;
+}
+
+.cl-st-remaining {
+  background: rgba(243, 156, 18, 0.18) !important;
+  color: #6e4700 !important;
+}
+
+.cl-st-regressed {
+  background: rgba(231, 76, 60, 0.18) !important;
+  color: #7a1d16 !important;
+}
+
+[data-theme="dark"] .cl-st-resolved {
+  background: rgba(67, 217, 173, 0.14) !important;
+  color: #5be8c0 !important;
+}
+
+[data-theme="dark"] .cl-st-remaining {
+  background: rgba(243, 156, 18, 0.14) !important;
+  color: #f5c96a !important;
+}
+
+[data-theme="dark"] .cl-st-regressed {
+  background: rgba(231, 76, 60, 0.14) !important;
+  color: #f28b82 !important;
+}
+
+.cl-exec-details {
+  margin-top: 1.5rem;
+}
+
+.cl-exec-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0.5rem 0;
+}
+
+.cl-log-output {
+  background: var(--pre-bg);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.cl-log-output:empty {
+  display: none;
+}
+
+.cl-log-error {
+  color: var(--error-text);
+}
+
+.cl-download-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.closed-loop-page .scan-form {
+  margin-bottom: 1.5rem;
+}
+
+.closed-loop-page .primary-button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('closed_loop.title') }} - {{ t('common.brand') }}{% endblock %}
+
+{% block nav_actions %}
+<a class="ghost-button" href="{{ url_for('pages.harden_page', scan_id=scan_id) }}">{{ t('harden.back_report') }}</a>
+{% endblock %}
+
+{% block content %}
+<section class="closed-loop-page" aria-labelledby="cl-title">
+  <div class="workspace-head">
+    <div>
+      <p class="eyebrow">Closed-Loop Workspace</p>
+      <h1 id="cl-title">{{ t('closed_loop.title') }}</h1>
+    </div>
+    <div class="harden-summary">
+      <span>{{ t('harden.summary_scan') }}</span>
+      <code>{{ scan_id }}</code>
+      <span>{{ t('common.target') }}</span>
+      <strong>{{ target }}</strong>
+    </div>
+  </div>
+
+  {# ── Mode Tabs ── #}
+  <div class="cl-mode-tabs" role="tablist" aria-label="Execution mode">
+    <button role="tab" id="tab-dry" class="cl-tab active" aria-selected="true" data-mode="dry_run">
+      {{ t('closed_loop.mode_dry_run') }}
+    </button>
+    <button role="tab" id="tab-apply" class="cl-tab" aria-selected="false" data-mode="apply">
+      {{ t('closed_loop.mode_apply') }}
+    </button>
+  </div>
+
+  {# ── Apply Confirmations (hidden in dry_run) ── #}
+  <div id="apply-gate" class="apply-gate" hidden>
+    <div class="warning-note">{{ t('closed_loop.warn_apply') }}</div>
+    <label class="check-row" for="cl-confirm-ownership">
+      <input id="cl-confirm-ownership" type="checkbox">
+      <span>{{ t('closed_loop.confirm_ownership') }}</span>
+    </label>
+    <label class="check-row" for="cl-confirm-execute">
+      <input id="cl-confirm-execute" type="checkbox">
+      <span>{{ t('closed_loop.confirm_execute') }}</span>
+    </label>
+  </div>
+
+  {# ── OS Platform + Trigger ── #}
+  <form id="cl-form" class="scan-form" data-api-url="{{ url_for('api.api_harden_closed_loop', scan_id=scan_id) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <label for="cl-os-platform">{{ t('harden.os_label') }}</label>
+    <select id="cl-os-platform" name="os_platform">
+      <option value="linux">Linux</option>
+      <option value="windows">Windows</option>
+    </select>
+
+    <p id="cl-error" class="form-error" role="alert" hidden></p>
+
+    <button id="cl-run-button" class="primary-button" type="submit">
+      {{ t('closed_loop.title') }}
+    </button>
+  </form>
+
+  {# ── Results (hidden until API returns) ── #}
+  <div id="cl-results" hidden aria-live="polite">
+    {# Overall badge #}
+    <div class="cl-overall">
+      <span id="cl-badge" class="status-badge"></span>
+    </div>
+
+    {# Comparison table #}
+    <div class="table-wrap">
+      <table class="history-table cl-compare-table">
+        <thead>
+          <tr>
+            <th>{{ t('closed_loop.col_type') }}</th>
+            <th>{{ t('closed_loop.col_port') }}</th>
+            <th>{{ t('closed_loop.col_severity') }}</th>
+            <th>{{ t('closed_loop.col_status') }}</th>
+          </tr>
+        </thead>
+        <tbody id="cl-tbody"></tbody>
+      </table>
+    </div>
+
+    {# Empty state for DRY_RUN (no after_scan) #}
+    <div id="cl-empty-dryrun" class="empty-state" hidden>
+      <p>{{ t('closed_loop.empty_dryrun') }}</p>
+    </div>
+
+    {# Execution log (collapsible) #}
+    <details id="cl-exec-log" class="cl-exec-details">
+      <summary>{{ t('closed_loop.exec_log') }}</summary>
+      <pre id="cl-stdout" class="cl-log-output"></pre>
+      <pre id="cl-stderr" class="cl-log-output cl-log-error"></pre>
+    </details>
+
+    {# Script download #}
+    <div id="cl-download-row" class="cl-download-row" hidden>
+      <a id="cl-download-script" class="ghost-button script-download" href="#" download>{{ t('closed_loop.exec_download') }}</a>
+      <a id="cl-download-rollback" class="ghost-button script-download" href="#" download>{{ t('harden.download_rollback') }}</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const scanId = {{ scan_id|tojson }};
+  const clForm = document.getElementById("cl-form");
+  const clRunBtn = document.getElementById("cl-run-button");
+  const clError = document.getElementById("cl-error");
+  const clResults = document.getElementById("cl-results");
+  const clBadge = document.getElementById("cl-badge");
+  const clTbody = document.getElementById("cl-tbody");
+  const clEmptyDry = document.getElementById("cl-empty-dryrun");
+  const clExecLog = document.getElementById("cl-exec-log");
+  const clStdout = document.getElementById("cl-stdout");
+  const clStderr = document.getElementById("cl-stderr");
+  const clDownloadRow = document.getElementById("cl-download-row");
+  const clDownloadScript = document.getElementById("cl-download-script");
+  const clDownloadRollback = document.getElementById("cl-download-rollback");
+  const applyGate = document.getElementById("cl-apply-gate");
+  const confirmOwn = document.getElementById("cl-confirm-ownership");
+  const confirmExec = document.getElementById("cl-confirm-execute");
+  const osPlatform = document.getElementById("cl-os-platform");
+
+  let currentMode = "dry_run";
+
+  /* ── Mode tabs ── */
+  document.querySelectorAll(".cl-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".cl-tab").forEach((t) => {
+        t.classList.remove("active");
+        t.setAttribute("aria-selected", "false");
+      });
+      tab.classList.add("active");
+      tab.setAttribute("aria-selected", "true");
+      currentMode = tab.dataset.mode;
+      applyGate.hidden = currentMode !== "apply";
+      updateButtonState();
+    });
+  });
+
+  /* ── Button enable/disable for APPLY mode ── */
+  function updateButtonState() {
+    if (currentMode === "apply") {
+      clRunBtn.disabled = !(confirmOwn.checked && confirmExec.checked);
+    } else {
+      clRunBtn.disabled = false;
+    }
+  }
+  confirmOwn?.addEventListener("change", updateButtonState);
+  confirmExec?.addEventListener("change", updateButtonState);
+
+  /* ── Helpers ── */
+  function setError(msg) {
+    clError.textContent = msg;
+    clError.hidden = !msg;
+  }
+
+  const OVERALL_LABELS = {
+    verified: window.t("closed_loop.overall_verified"),
+    partial: window.t("closed_loop.overall_partial"),
+    failed: window.t("closed_loop.overall_failed"),
+    generated_only: window.t("closed_loop.overall_generated_only"),
+  };
+
+  const OVERALL_CLASS = {
+    verified: "status-completed",
+    partial: "status-partial",
+    failed: "status-failed",
+    generated_only: "status-running",
+  };
+
+  const STATUS_LABELS = {
+    resolved: window.t("closed_loop.status_resolved"),
+    remaining: window.t("closed_loop.status_remaining"),
+    regressed: window.t("closed_loop.status_regressed"),
+  };
+
+  const STATUS_CLASS = {
+    resolved: "cl-st-resolved",
+    remaining: "cl-st-remaining",
+    regressed: "cl-st-regressed",
+  };
+
+  function basenameFromPath(path) {
+    return String(path || "").replaceAll("\\", "/").split("/").pop() || "";
+  }
+
+  function scriptDownloadUrl(filename) {
+    const params = new URLSearchParams({ _csrf_token: window.LightShield.csrfToken });
+    return `/api/script/${encodeURIComponent(scanId)}/${encodeURIComponent(filename)}?${params.toString()}`;
+  }
+
+  /* ── Build comparison rows ── */
+  function buildCompareRows(verification, beforeFindings) {
+    if (!verification) return [];
+    const rows = [];
+
+    (verification.resolved || []).forEach((item) => {
+      const bf = beforeFindings.find((f) => f.vuln_type === item.vuln_type && (f.port || null) === (item.port || null));
+      rows.push({
+        vuln_type: item.vuln_type,
+        port: item.port ?? "-",
+        severity: bf?.severity || item.severity || "info",
+        status: "resolved",
+      });
+    });
+
+    (verification.remaining || []).forEach((item) => {
+      const bf = beforeFindings.find((f) => f.vuln_type === item.vuln_type && (f.port || null) === (item.port || null));
+      rows.push({
+        vuln_type: item.vuln_type,
+        port: item.port ?? "-",
+        severity: bf?.severity || item.severity || "info",
+        status: "remaining",
+      });
+    });
+
+    (verification.regressed || []).forEach((item) => {
+      rows.push({
+        vuln_type: item.vuln_type,
+        port: item.port ?? "-",
+        severity: item.severity || "info",
+        status: "regressed",
+      });
+    });
+
+    return rows;
+  }
+
+  function renderTable(rows) {
+    clTbody.innerHTML = "";
+    rows.forEach((r) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        `<td>${r.vuln_type}</td>` +
+        `<td><code>${r.port}</code></td>` +
+        `<td><span class="status-badge risk-${r.severity}">${r.severity}</span></td>` +
+        `<td><span class="status-badge ${STATUS_CLASS[r.status] || ""}">${STATUS_LABELS[r.status] || r.status}</span></td>`;
+      clTbody.appendChild(tr);
+    });
+  }
+
+  /* ── Form submit ── */
+  clForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setError("");
+    clResults.hidden = true;
+
+    if (currentMode === "apply" && !(confirmOwn.checked && confirmExec.checked)) {
+      setError(window.t("harden.err_r4"));
+      return;
+    }
+
+    clRunBtn.disabled = true;
+    const origText = clRunBtn.textContent;
+    clRunBtn.textContent = "…";
+
+    const body = {
+      mode: currentMode,
+      os_platform: osPlatform.value,
+    };
+    if (currentMode === "apply") {
+      body.confirm_ownership = true;
+      body.confirm_execute = true;
+    }
+
+    try {
+      const response = await fetch(clForm.dataset.apiUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: window.LightShield.csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(body),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message || "Request failed");
+      }
+
+      /* ── Render results ── */
+      clResults.hidden = false;
+
+      /* Badge */
+      const overall = data.overall || "generated_only";
+      clBadge.textContent = OVERALL_LABELS[overall] || overall;
+      clBadge.className = `status-badge ${OVERALL_CLASS[overall] || ""}`;
+
+      /* Comparison table */
+      const beforeFindings = data.before_scan?.findings || [];
+      const rows = buildCompareRows(data.verification, beforeFindings);
+
+      if (rows.length > 0) {
+        renderTable(rows);
+        clEmptyDry.hidden = true;
+      } else if (!data.after_scan && !data.verification) {
+        /* DRY_RUN: no after_scan/verification */
+        clTbody.innerHTML = "";
+        clEmptyDry.hidden = false;
+      } else {
+        clTbody.innerHTML = "";
+        clEmptyDry.hidden = false;
+      }
+
+      /* Execution log */
+      if (data.execution) {
+        clExecLog.hidden = false;
+        clStdout.textContent = data.execution.stdout || "";
+        clStderr.textContent = data.execution.stderr || "";
+      } else {
+        clExecLog.hidden = true;
+      }
+
+      /* Script downloads */
+      const hardenData = data.harden || {};
+      const scriptFn = hardenData.script_filename || basenameFromPath(hardenData.script_path);
+      const rollbackFn = hardenData.rollback_filename || basenameFromPath(hardenData.rollback_path);
+
+      if (scriptFn || rollbackFn) {
+        clDownloadRow.hidden = false;
+        if (scriptFn) {
+          clDownloadScript.href = scriptDownloadUrl(scriptFn);
+          clDownloadScript.hidden = false;
+        } else {
+          clDownloadScript.hidden = true;
+        }
+        if (rollbackFn) {
+          clDownloadRollback.href = scriptDownloadUrl(rollbackFn);
+          clDownloadRollback.hidden = false;
+        } else {
+          clDownloadRollback.hidden = true;
+        }
+      } else {
+        clDownloadRow.hidden = true;
+      }
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      clRunBtn.disabled = false;
+      clRunBtn.textContent = origText;
+      updateButtonState();
+    }
+  });
+</script>
+{% endblock %}

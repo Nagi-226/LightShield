@@ -138,6 +138,35 @@ def harden_page(scan_id: str):
     )
 
 
+@pages_bp.route("/harden/<scan_id>/verify")
+def harden_verify_page(scan_id: str):
+    """Render the hardening closed-loop verification page."""
+    if "user" not in session:
+        return redirect(url_for("pages.index"))
+
+    config = current_app.config.get("LIGHTSHIELD_CONFIG")
+    db_url = getattr(config, "db_url", "") or "data/lightshield.db"
+
+    try:
+        repo = get_repository("sqlite", db_url=db_url)
+        scan_data = repo.get(scan_id)
+    except Exception:
+        scan_data = None
+
+    target = translate("common.unknown")
+    if scan_data:
+        raw = scan_data.get("raw_result", scan_data)
+        target = scan_data.get("target") or raw.get("target", translate("common.unknown"))
+
+    return render_template(
+        "harden_verify.html",
+        scan_id=scan_id,
+        target=target,
+        show_nav=True,
+        username=session.get("user", "?"),
+    )
+
+
 def _reconstruct_findings(findings_data: list[dict]) -> list[VulnFinding]:
     """Rebuild VulnFinding instances from repository dictionaries."""
     findings: list[VulnFinding] = []

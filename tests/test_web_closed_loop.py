@@ -249,3 +249,99 @@ class TestEdgeCases:
                 headers=csrf_header,
             )
             assert resp.status_code == 404
+
+
+# =============================================================================
+# 页面渲染测试
+# =============================================================================
+
+
+class TestPageRender:
+    """GET /harden/<scan_id>/verify 页面渲染。"""
+
+    def test_verify_page_requires_login(self, client):
+        """未登录 → 302 重定向到登录页。"""
+        resp = client.get("/harden/LS-test/verify")
+        assert resp.status_code == 302
+        assert resp.headers["Location"].endswith("/")
+
+    def test_verify_page_renders_with_scan_data(self, auth_client):
+        """已登录 + 有效 scan → 渲染闭环页面，含关键 DOM 元素。"""
+        repo = mock.Mock()
+        repo.get.return_value = {
+            "scan_id": "LS-test",
+            "target": "127.0.0.1",
+            "status": "completed",
+            "raw_result": {"target": "127.0.0.1", "findings": []},
+        }
+
+        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+            resp = auth_client.get("/harden/LS-test/verify")
+
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+
+        # 闭环页面核心元素
+        assert "closed-loop-page" in html
+        assert "cl-form" in html
+        assert 'id="cl-confirm-ownership"' in html
+        assert 'id="cl-confirm-execute"' in html
+        assert "cl-mode-tabs" in html
+        assert "/api/harden/LS-test/verify" in html
+
+        # CSRF token
+        assert 'name="_csrf_token"' in html
+
+        # i18n 键（通过 t() 渲染的中文文案）
+        assert "加固闭环对比" in html or "closed_loop.title" in html
+
+        # 导航
+        assert "show_nav" not in html or "username" not in html  # 这些不直接出现在 HTML
+
+    def test_verify_page_handles_missing_scan(self, auth_client):
+        """Scan 数据不存在 → 页面仍能渲染（使用 unknown target）。"""
+        repo = mock.Mock()
+        repo.get.return_value = None
+
+        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+            resp = auth_client.get("/harden/LS-missing/verify")
+
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "closed-loop-page" in html
+        assert "cl-form" in html
+
+    def test_verify_page_contains_apply_gate(self, auth_client):
+        """APPLY 模式双确认闸门区域存在且默认隐藏。"""
+        repo = mock.Mock()
+        repo.get.return_value = {
+            "scan_id": "LS-test",
+            "target": "10.0.0.1",
+            "status": "completed",
+            "raw_result": {"target": "10.0.0.1", "findings": []},
+        }
+
+        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+            resp = auth_client.get("/harden/LS-test/verify")
+
+        html = resp.get_data(as_text=True)
+        assert "apply-gate" in html
+        assert "hidden" in html.split("apply-gate", 1)[1].split(">", 1)[0]
+
+    def test_verify_page_has_script_download_support(self, auth_client):
+        """页面包含脚本下载相关元素（复用白名单 /api/script/ 端点）。"""
+        repo = mock.Mock()
+        repo.get.return_value = {
+            "scan_id": "LS-test",
+            "target": "127.0.0.1",
+            "status": "completed",
+            "raw_result": {"target": "127.0.0.1", "findings": []},
+        }
+
+        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+            resp = auth_client.get("/harden/LS-test/verify")
+
+        html = resp.get_data(as_text=True)
+        assert "cl-download-script" in html
+        assert "cl-download-rollback" in html
+        assert "scriptDownloadUrl" in html
