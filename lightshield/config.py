@@ -67,6 +67,10 @@ class LightShieldConfig:
     harden_dry_run: bool = True
     harden_backup: bool = True
 
+    # ---- Loop Hook 配置（v0.0.40） ----
+    bark_key: str = ""  # Bark 设备 Key（App 首页获取），用于扫描/闭环完成手机推送
+    report_auto_archive: bool = True  # 扫描完成后自动归档报告到按日期组织的子目录
+
     # =========================================================================
     # 未来扩展（v1.0.0 — v2.0.0 预留，当前不生效）
     # =========================================================================
@@ -196,6 +200,7 @@ class LightShieldConfig:
             "LS_LOG_LEVEL": ("log_level", str),
             "LS_HARDEN_DRY_RUN": ("harden_dry_run", lambda v: v.lower() in ("true", "1", "yes")),
             "LS_HARDEN_BACKUP": ("harden_backup", lambda v: v.lower() in ("true", "1", "yes")),
+            "LS_BARK_KEY": ("bark_key", str),
         }
 
         for env_var, (attr, converter) in overrides.items():

@@ -183,6 +183,19 @@ def run_scan_command(args: argparse.Namespace) -> int:
 
         if scan_result.error:
             print(f"[警告] 部分扫描提示：{scan_result.error}")
+
+        # v0.0.40 Loop Hook：通知推送 + 报告归档
+        _run_hooks(
+            target=target,
+            report_path=report_path,
+            finding_count=len(all_findings),
+            critical_count=sum(
+                1 for f in all_findings if getattr(f, "severity", None) and f.severity.value == "critical"
+            ),
+            high_count=sum(1 for f in all_findings if getattr(f, "severity", None) and f.severity.value == "high"),
+            duration_seconds=scan_result.duration_seconds,
+            args=args,
+        )
         return 0
     except KeyboardInterrupt:
         print("\n已取消扫描。")
@@ -287,6 +300,16 @@ def run_harden_command(args: argparse.Namespace) -> int:
         # v0.0.38: --execute 在 Docker 沙箱中执行加固脚本
         if getattr(args, "execute", False):
             return _run_sandbox_execution(core, harden_result, args)
+
+        # v0.0.40 Loop Hook：通知推送 + 报告归档
+        _run_hooks(
+            target=target,
+            report_path=report_path,
+            finding_count=len(all_findings),
+            harden_action_count=harden_result.action_count,
+            duration_seconds=scan_result.duration_seconds,
+            args=args,
+        )
 
         print("")
         print(" ⚠️  请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
@@ -496,6 +519,11 @@ def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
         help="🆕 v0.0.40：配合 --closed-loop 启用 APPLY 模式（真机执行加固，改真实系统）。必须同时传 --confirm-ownership",
     )
     parser.add_argument("--os-platform", choices=["linux", "windows"], default="linux", help="目标 OS 平台，默认 linux")
+    parser.add_argument(
+        "--bark-key",
+        default="",
+        help="🆕 v0.0.40 Loop Hook：Bark 设备 Key（App 首页获取），扫描/闭环完成后推送通知到手机。也可通过 LS_BARK_KEY 环境变量设置",
+    )
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
 
@@ -521,6 +549,11 @@ def _add_scan_arguments(parser: argparse.ArgumentParser, default_scan_types: str
     )
     parser.add_argument("--timeout", type=int, default=60, help="单个扫描器超时时间，默认 60 秒")
     parser.add_argument("--rules-url", help="从远程 URL 导入额外规则（v0.0.26）")
+    parser.add_argument(
+        "--bark-key",
+        default="",
+        help="Bark 设备 Key，扫描完成后推送通知到手机（也可通过 LS_BARK_KEY 环境变量设置）",
+    )
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
 
@@ -698,9 +731,81 @@ def _run_closed_loop(
         for line in stdout_lines[-20:]:
             print(f"  {line}")
 
+    # v0.0.40 Loop Hook：闭环完成后通知推送
+    _run_closed_loop_hooks(result, args)
+
     if result.overall in ("verified", "generated_only"):
         return 0
     return 1
+
+
+def _resolve_bark_key(args: argparse.Namespace) -> str:
+    """解析 Bark Key：CLI 参数 > 环境变量 > 配置文件。"""
+    key = getattr(args, "bark_key", "") or ""
+    if key:
+        return key
+    # 环境变量兜底
+    env_key = os.environ.get("LS_BARK_KEY", "")
+    return env_key
+
+
+def _run_hooks(
+    target: str = "",
+    report_path: str = "",
+    finding_count: int = 0,
+    critical_count: int = 0,
+    high_count: int = 0,
+    harden_action_count: int = 0,
+    duration_seconds: float = 0.0,
+    args: argparse.Namespace | None = None,
+) -> None:
+    """v0.0.40 Loop Hook：扫描/加固完成后 → 报告归档 + 通知推送。
+
+    失败静默——不影响安全扫描主流程。
+    """
+    # ---- 报告归档 ----
+    if report_path and os.path.isfile(report_path):
+        from lightshield.utils.report_archiver import archive_report
+
+        archived = archive_report(report_path, target=target or "unknown")
+        if archived:
+            # 归档成功后静默
+            pass
+
+    # ---- Bark 通知推送 ----
+    if args:
+        bark_key = _resolve_bark_key(args)
+        if bark_key and target:
+            from lightshield.utils.notifier import notify_scan_complete
+
+            notify_scan_complete(
+                target=target,
+                finding_count=finding_count,
+                critical_count=critical_count,
+                high_count=high_count,
+                duration_seconds=duration_seconds,
+                bark_key=bark_key,
+            )
+
+
+def _run_closed_loop_hooks(result, args: argparse.Namespace) -> None:
+    """v0.0.40 Loop Hook：加固闭环完成后 → 通知推送。"""
+    bark_key = _resolve_bark_key(args)
+    if not bark_key:
+        return
+
+    from lightshield.utils.notifier import notify_closed_loop_complete
+
+    verification = result.verification or {}
+    notify_closed_loop_complete(
+        target=result.target,
+        overall=result.overall,
+        mode=result.mode,
+        resolved_count=len(verification.get("resolved", [])),
+        remaining_count=len(verification.get("remaining", [])),
+        regressed_count=len(verification.get("regressed", [])),
+        bark_key=bark_key,
+    )
 
 
 def _print_execution_result(result: Any) -> None:
