@@ -4,10 +4,7 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-27 — Codex 交叉审查 v0.0.40 进行中。建立了三阶段全项目组合排查审查体系 + ZCode 架构二审机制。
->   - 质量基线：**771 tests** / 0 fail / 1 skip / 12 门禁全绿（ruff+mypy+bandit+Gate A）
->   - 六大铁律 + 八荣八耻 Agent 行为准则正式生效
->   - 下次启动：Codex 审查完成后 → git tag v0.0.40 → push；启动三阶段审计（Kimi BUG + ZCode 耦合 + Codex 可行性）
+> **上次会话**：2026-06-27 — Codex 交叉审查完成（有条件通过，2H 已修复）。Kimi Phase 1-A BUG 排查完成（18 项：4C/6H/8M）。ZCode 下线 → CodeBuddy+GLM-5.2 替补体系建立。全项目三阶段审计 Phase 1 进行中（Kimi✅ + CB-GLM-5.2 进行中）。
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
