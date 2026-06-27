@@ -137,7 +137,8 @@ graphify affected "config.py"
 |:--:|------|:--:|:--:|
 | **v0.0.34** | PDF 报告导出 | ✅ | `PdfReportWriter`（`fpdf2` + 中文字体）、Web 下载、CLI `--output-format pdf` |
 | **v0.0.35** | CVE 100+ + 自动更新 | ✅ | CVE 70→105（26 组件）+ `fetch_latest_cves()` NVD API 2.0 |
-| **v0.0.37** | Web UI 增强 | ⬜ | 脚本下载按钮、SSE 进度推送、主题切换、搜索筛选 |
+| **v0.0.37** | Web UI 增强 | ✅ | 脚本下载按钮、SSE 进度推送、主题切换、搜索筛选 |
+| **v0.0.40** | 🔴 交叉审查 CC 自写代码 | ⬜ | **当前任务** — M8 五维扫描 + R1-R6 + 八荣八耻，审查 4 commits / 22 files / 4200+ lines |
 
 ---
 
@@ -154,13 +155,16 @@ v0.0.16  审查 linux_harden.py   ✅  10 issues / 5 fixed
 v0.0.24  CVE 知识库扩充         ✅  28→70 条 / 11→22 组件
 v0.0.28  Web 仪表板              ✅  7 文件 / 7 测试 / CC 验收通过
 v0.0.29  加固页面 + CSRF 防护      ✅  9 文件 / 9 测试 / CC 验收通过
+v0.0.34  PDF 报告导出             ✅  fpdf2 + 中文嵌入, CLI/Web 双通道
+v0.0.35  CVE 100+ + NVD 自动更新  ✅  70→105 条 / 22→26 组件
+v0.0.37  Web UI 增强             ✅  脚本下载 + SSE + 主题切换 + 搜索
 ──────────────────────────────────────
-        12/13 完成，1 个待执行 🟢
+        14/15 完成，1 个待执行 🔴
 ```
 
-> 当前状态：**v0.0.37 Web UI 增强等待执行。**
-> 上一任务：v0.0.35 CVE 100+（已完成 ✅，CC 验收通过）
-> 基线就绪：580 tests / ruff + mypy 全零
+> 当前状态：**v0.0.40 🔴 交叉审查 CC 自写代码 — 集群规则 #4 强制门禁，不可跳过。**
+> 上一任务：v0.0.37 Web UI 增强（已完成 ✅，CC 验收通过）
+> 基线就绪：**771 tests** / ruff + mypy + bandit + Gate A 全绿
 
 ---
 
@@ -2176,3 +2180,276 @@ LightShield（轻盾）是开源轻量化安全自检 + 防御加固工具，Pyt
 
 ## 输出
 只修改 1 个文件：lightshield/scanners/component_checker.py
+
+---
+
+## 十八、v0.0.37 Web UI 增强 ✅ 已完成
+
+> 2026-06-22 交付。脚本下载按钮、SSE 进度推送、主题切换、搜索筛选。CC 验收通过。
+
+---
+
+## 十九、v0.0.40 🔴 交叉审查 CC 自写代码 — 当前任务
+
+### 背景
+
+v0.0.40 自动加固闭环已由 Claude Code（架构师）全部交付：
+- `2420020`：HostExecutor + 闭环编排（core.py, cli.py, sandbox/, harden/）
+- `ac3536f`：Loop Hook — Bark 通知推送 + 报告自动归档（utils/notifier.py, utils/report_archiver.py）
+- `18b915f`：Web 闭环路由 POST /api/harden/<scan_id>/verify（web/routes.py）
+- `036b21e`：Web 对比页面 + 页面路由 + 样式（web/pages.py, web/templates/, web/static/）
+
+**基线**：771 tests / 0 fail / 1 skip / ruff+mypy+bandit+Gate A 全绿。
+
+按集群规则 #4：**CC 自写代码由 Codex（GPT-5.5）交叉审查，强制不可跳过。** 你在 v0.0.16 已成功完成过一次同类审查（审查 4 个文件，发现 10 个问题）。
+
+### 审查范围（4 commits / 22 files / +4200 lines）
+
+| Commit | 内容 | 核心文件 |
+|--------|------|---------|
+| `2420020` | HostExecutor + 闭环编排 | `core.py`, `cli.py`, `sandbox/host_executor.py`, `sandbox/base.py`, `sandbox/__init__.py`, `harden/closed_loop.py`, `harden/verify.py` |
+| `ac3536f` | Loop Hook（Bark + 归档） | `cli.py`, `utils/notifier.py`, `utils/report_archiver.py`, `config.py` |
+| `18b915f` | Web 闭环路由 | `web/routes.py` |
+| `036b21e` | Web 对比页面 | `web/pages.py`, `web/static/style.css`, `web/templates/harden_verify.html` |
+
+### 审查清单（必须逐项完成）
+
+完整清单见 `.guardrails/REVIEW_CHECKLIST.md`，核心覆盖：
+
+**M8 五维扫描**：架构分层 / R1-R6 安全 / 性能 / 代码质量 / 测试覆盖
+
+**重点审查（CC 已标注高风险点）**：
+
+1. **`sandbox/base.py` + `sandbox/host_executor.py`**：基类原注释"脚本只在隔离容器运行、绝不在宿主机直接执行"，HostExecutor 打破此不变量。验证：①基类语义已更新为两态 ②额外护栏在编排层非 executor 层 ③`core.execute_hardening` docstring 已更新
+
+2. **`core.py:run_harden_closed_loop`**：APPLY 三重前置——双确认 + DRY_RUN-first + rollback 就绪。验证：缺一即拒，返回结构化失败不抛异常
+
+3. **`utils/notifier.py`**：Bark webhook URL 从 config 读取（非硬编码），默认 disabled
+
+4. **`web/routes.py:verify_hardening`**：POST 端点 CSRF 风险评估
+
+### 审查输出
+
+按 `.guardrails/REVIEW_CHECKLIST.md §五` 模板输出审查报告：
+
+```markdown
+# 审查报告 — v0.0.40 CC 自写代码交叉审查
+
+> **审查者**：Codex (GPT-5.5) | **日期**：YYYY-MM-DD | **范围**：v0.0.40 全部 CC 自写 commits（4 个）
+
+## 发现总览
+| 等级 | 数量 |
+|------|:--:|
+| 🔴 CRITICAL | N |
+| 🟠 HIGH | N |
+| 🟡 MEDIUM | N |
+| 🔵 LOW | N |
+| 💡 SUGGESTION | N |
+
+## 逐项发现
+...
+
+## 合规检查
+| 红线 | 结果 |
+|:--:|:--:|
+| R1 | ✅/❌ |
+| R2 | ✅/❌ |
+| R3 | ✅/❌ |
+| R4 | ✅/❌ |
+| R5 | ✅/❌ |
+| R6 | ✅/❌ |
+
+## 八荣八耻检查
+| 1 认真查询 | 2 寻求确认 | 3 人类确认 | 4 复用现有 | 5 主动测试 | 6 遵循规范 | 7 诚实无知 | 8 谨慎重构 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+
+## 结论
+- [ ] 通过，可合入 + tag v0.0.40
+- [ ] 有条件通过（N 项需修复后合入）
+- [ ] 驳回（需重新实现）
+```
+
+审查报告写入 `.guardrails/review-reports/v040-codex-cross-review.md`，审计日志条目追加到 `.guardrails/audit-log.md`。
+
+### 启动提示词（直接复制到 Codex）
+
+```
+你是 LightShield 项目的高级开发工程师，使用 GPT-5.5 模型。这不是代码实现任务，是安全审查任务。
+
+## 项目背景
+LightShield（轻盾）是面向初创企业 & 个人站长的开源轻量化安全自检 + 防御加固工具，Python 3.10+。
+路径：E:/Github Project/LightShield/
+
+## 任务：v0.0.40 CC 自写代码交叉审查（🔴 强制门禁）
+
+v0.0.40 自动加固闭环已由 Claude Code（架构师）全部交付。按集群规则 #4，CC 自写代码必须经你（Codex, GPT-5.5）交叉审查才能合入。
+
+**基线**：771 tests / 0 fail / 1 skip / ruff+mypy+bandit+Gate A 全绿。
+
+## 审查范围（4 commits / 22 files）
+
+| Commit | 内容 | 关键文件 |
+|--------|------|---------|
+| 2420020 | HostExecutor + 闭环编排 | core.py, cli.py, sandbox/host_executor.py, sandbox/base.py, sandbox/__init__.py, harden/closed_loop.py, harden/verify.py |
+| ac3536f | Loop Hook — Bark + 归档 | cli.py, utils/notifier.py, utils/report_archiver.py, config.py |
+| 18b915f | Web 闭环路由 | web/routes.py |
+| 036b21e | Web 对比页面 | web/pages.py, web/static/style.css, web/templates/harden_verify.html |
+
+## 审查步骤
+
+### 第一步：理解代码（Read 每个核心文件，不猜测）
+
+对每个 commit 的核心文件：
+1. 读取文件完整内容（Read 工具）
+2. 理解它做什么、怎么做的、为什么这样做
+3. 对照 commit message 中的契约确认实际实现是否吻合
+
+### 第二步：M8 五维扫描（逐项打勾）
+
+**1. 架构（Architecture）**
+- HostExecutor 是否正确继承 SandboxExecutor 模板方法模式？
+- run_harden_closed_loop 编排是否在 core.py（核心调度层）而非 adapter/scanner 层？
+- Web 路由/页面是否在 web/ 层，有无跨层调用？
+- 新增依赖是否必要？是否在 requirements.txt 声明？
+
+**2. 安全（Security）—— 重中之重**
+- R1：grep exploit|payload|attack|ddos|dos_attack|brute_force 确认无误命中
+- R2：validate_target() 调用链完整，CLI 入口拒绝 CIDR/网段/通配符
+- R3：grep bind_shell|reverse_shell|backdoor|trojan|remote_admin 确认无误命中
+- R4：APPLY 路径 confirm_ownership=True AND confirm_execute=True 双闸强制；DRY_RUN-first 前置检查生效
+- R5：本次无 MSF 调用变更（确认即可）
+- R6：SCAN_CONCURRENCY_LIMIT ≤20、SCAN_INTERVAL_SECONDS ≥5
+- HostExecutor._run_script：subprocess 是否硬禁毒化 shell=True？有无注入面？
+- Web 路由：POST /api/harden/<id>/verify 有无 CSRF 风险？
+
+**3. 性能（Performance）**
+- 网络请求有超时（notifier Bark HTTP、CLI 子进程 timeout）
+- 闭环编排中 before/after 扫描有无不必要的重复？
+
+**4. 代码质量（Code Quality）**
+- 异常捕获完善（网络超时、subprocess 超时/kill、权限不足）
+- 中文注释清晰，类型标注完整
+- 无占位符/TODO 桩（Nagi Principle 4）
+- 代码风格一致（ruff 零违规）
+
+**5. 测试（Testing）**
+- 新增 5 个测试文件覆盖是否完整？
+- 测试覆盖 dry_run + apply 双路径？
+- 测试覆盖双确认闸门拒绝路径？
+- 测试覆盖异常路径（超时、权限不足、脚本不存在）？
+- Mock 使用恰当（不 mock 被测函数本身）？
+
+### 第三步：重点审查（CC 已标注 4 个高风险点）
+
+1. **sandbox/base.py + sandbox/host_executor.py — 设计张力**
+   CC 标注：基类原注释"脚本只在隔离容器运行、绝不在宿主机直接执行"，HostExecutor 打破此不变量。
+   验证：
+   - 基类语义是否已更新为两态（隔离预检 vs 真机应用）？
+   - 额外护栏是否在编排层（非 executor 层）？
+   - core.execute_hardening docstring 是否已更新？
+
+2. **core.py:run_harden_closed_loop — APPLY 三重前置**
+   验证：
+   - confirm_ownership AND confirm_execute 双确认是否强制生效？
+   - DRY_RUN-first（APPLY 前必须先成功跑过一次 dry_run）是否强制？
+   - rollback 脚本就绪检查是否存在？
+   - 缺一即拒，是否返回结构化失败而非抛异常？
+
+3. **utils/notifier.py — Bark 通知安全**
+   验证：
+   - webhook URL 是否从 config 读取（非硬编码）？
+   - 默认是否 disabled（不配置不发送）？
+   - 有无敏感信息（密码/Token）泄露风险？
+
+4. **web/routes.py:verify_hardening — CSRF 风险**
+   验证：
+   - POST 端点是否有 CSRF 防护？
+   - 若无，是否为可接受风险（内部工具/单用户场景）？
+   - 输入校验是否完整（scan_id 合法性、findings 数据完整性）？
+
+### 第四步：R1-R6 合规红线逐条检查
+
+逐条使用 grep 扫描 + 代码阅读，每条标注 PASS/FAIL + 证据引用：
+
+| 红线 | 检查动作 | 结果 |
+|:--:|------|:--:|
+| R1 | grep `exploit\|payload\|attack\|ddos\|dos_attack\|brute_force` | |
+| R2 | 审查 validate_target() 调用链，确认拒 CIDR/网段/通配符 | |
+| R3 | grep `bind_shell\|reverse_shell\|backdoor\|trojan\|remote_admin` | |
+| R4 | 确认 APPLY 路径 confirm_ownership=True + confirm_execute=True 双闸 | |
+| R5 | 确认本次变更无 MSF 调用修改 | |
+| R6 | 确认并发 ≤20、间隔 ≥5s | |
+
+### 第五步：八荣八耻审查对照
+
+| # | 准则 | 审查要点 | 通过 |
+|:--:|------|------|:--:|
+| 1 | 认真查询 | CC 是否查询了实际接口签名而非猜测？ | ⬜ |
+| 2 | 寻求确认 | 不确定之处是否先问后写？ | ⬜ |
+| 3 | 人类确认 | CC 是否替用户做了业务决策？ | ⬜ |
+| 4 | 复用现有 | HostExecutor 是否合理复用 SandboxExecutor 基类？ | ⬜ |
+| 5 | 主动测试 | 每个改动是否配测试 + 全量 771 tests 通过？ | ⬜ |
+| 6 | 遵循规范 | 文件位置/接口契约/架构分层是否正确？ | ⬜ |
+| 7 | 诚实无知 | 产出中不确定性是否标注？ | ⬜ |
+| 8 | 谨慎重构 | 改动是否聚焦？（特别关注 sandbox/base.py 语义注释更新） | ⬜ |
+
+### 第六步：输出审查报告
+
+将报告写入 `.guardrails/review-reports/v040-codex-cross-review.md`，格式：
+
+```markdown
+# 审查报告 — v0.0.40 CC 自写代码交叉审查
+
+> **审查者**：Codex (GPT-5.5) | **日期**：2026-06-27 | **范围**：4 commits (2420020..adb2c11)
+
+## 发现总览
+| 等级 | 数量 |
+|------|:--:|
+| 🔴 CRITICAL | N |
+| 🟠 HIGH | N |
+| 🟡 MEDIUM | N |
+| 🔵 LOW | N |
+| 💡 SUGGESTION | N |
+
+## 逐项发现
+### [等级] [编号] — [标题]
+- **位置**：`文件:行号`
+- **描述**：[问题描述]
+- **建议**：[修复建议]
+- **状态**：⬜ 待修复 / ✅ 已修复 / ⏸️ 已知悉不修（需理由）
+
+## 合规检查
+| R1 | R2 | R3 | R4 | R5 | R6 |
+|:--:|:--:|:--:|:--:|:--:|:--:|
+| ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ | ✅/❌ |
+
+## 八荣八耻检查
+| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+## 重点关注项验证
+1. HostExecutor 设计张力：✅/❌
+2. APPLY 三重前置：✅/❌
+3. Bark 通知安全：✅/❌
+4. Web CSRF 风险：✅/❌
+
+## 结论
+- [ ] 通过，可合入 + tag v0.0.40 + push
+- [ ] 有条件通过（N 项需修复后合入）
+- [ ] 驳回（需重新实现）
+```
+
+同时在 `.guardrails/audit-log.md` 末尾追加一行：
+```
+2026-06-27 | Gate C (Codex cross-review) | v0.0.40 (commits 2420020..adb2c11) | [findings summary] | [PASS/CONDITIONAL/REJECT]
+```
+
+## 约束
+- 你是安全审查者，不做代码修改——发现问题标注清楚即可，修复由 CC 完成
+- 不要猜测代码行为——Read 每个文件，理解后再判断
+- R1-R6 逐条用 grep + 读码双重验证，不是走形式
+- 报告用中文，面向 CC 修复
+- 审查任务文件：`.cluster/tasks/pending/CODEX-v040-cross-review.md`（需要时可参考）
+```
