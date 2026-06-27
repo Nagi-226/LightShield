@@ -295,7 +295,7 @@ def run_harden_command(args: argparse.Namespace) -> int:
 
         # v0.0.40: --closed-loop 加固闭环（DRY_RUN 或 APPLY）
         if getattr(args, "closed_loop", False):
-            return _run_closed_loop(core, scan_result, all_findings, recommendations, args)
+            return _run_closed_loop(core, scan_result, all_findings, recommendations, harden_result, args)
 
         # v0.0.38: --execute 在 Docker 沙箱中执行加固脚本
         if getattr(args, "execute", False):
@@ -621,6 +621,7 @@ def _run_closed_loop(
     scan_result: Any,
     all_findings: list[Any],
     recommendations: list[dict],
+    harden_result: Any,
     args: argparse.Namespace,
 ) -> int:
     """v0.0.40 加固闭环——DRY_RUN 或 APPLY 全链路编排。
@@ -630,6 +631,7 @@ def _run_closed_loop(
         scan_result: 基线扫描结果
         all_findings: 全量漏洞发现（扫描 + 规则匹配）
         recommendations: 规则引擎加固建议
+        harden_result: 已生成的加固脚本结果（传入闭环避免重复生成，确保审阅=执行）
         args: CLI 参数
 
     Returns:
@@ -671,6 +673,13 @@ def _run_closed_loop(
         print("  ③ 脚本生成 ✅")
         print("  ④ 预检中（R1 扫描 + 容器烟测）...")
 
+    # 传入预生成数据（避免闭环内部重复扫描/推荐/生成，确保用户审阅的脚本 = 实际执行的脚本）
+    pre_generated = {
+        "scan_result": scan_result,
+        "recommendations": recommendations,
+        "harden_result": harden_result,
+    }
+
     try:
         result = core.run_harden_closed_loop(
             target=scan_result.target,
@@ -679,6 +688,7 @@ def _run_closed_loop(
             mode=mode,
             confirm_execute=confirm_exec,
             scan_types=None,  # 全量扫描
+            pre_generated=pre_generated,
         )
     except Exception as exc:
         print(f"[错误] 闭环执行异常：{exc}")

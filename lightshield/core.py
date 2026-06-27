@@ -608,6 +608,70 @@ class LightShieldCore:
             pass
         return hits
 
+    def _resolve_pre_generated(
+        self,
+        pre_generated: dict,
+        result: ClosedLoopResult,
+        audit_id: str,
+    ):
+        """校验并提取 CLI 预生成的闭环数据。
+
+        避免闭环内部重复扫描/推荐/生成，确保用户审阅的脚本 = 实际执行的脚本。
+
+        Returns:
+            (before_scan, before_findings, recommendations, harden_result, script_path)
+            校验失败时 result 已填充，调用方应 return result。
+        """
+        from lightshield.utils.logger import get_logger
+
+        logger = get_logger()
+
+        pg_scan = pre_generated.get("scan_result")
+        pg_recs = pre_generated.get("recommendations")
+        pg_harden = pre_generated.get("harden_result")
+
+        if not pg_scan or not pg_recs or not pg_harden:
+            logger.error("core", f"[闭环/{audit_id}] 预生成数据不完整")
+            result.overall = "failed"
+            result.harden = {
+                "status": "failed",
+                "error": "pre_generated 需包含 scan_result, recommendations, harden_result",
+            }
+            return None
+
+        before_scan = pg_scan
+        before_findings = before_scan.findings if hasattr(before_scan, "findings") else pg_scan.get("findings", [])
+        recommendations = pg_recs
+        harden_result = pg_harden
+
+        result.before_scan = before_scan.to_dict() if hasattr(before_scan, "to_dict") else before_scan
+        result.harden = harden_result.to_dict() if hasattr(harden_result, "to_dict") else harden_result
+
+        if not recommendations:
+            logger.info("core", f"[闭环/{audit_id}] 预生成数据无加固建议，闭环终止")
+            result.harden = {"status": "no_action", "action_count": 0}
+            result.overall = "failed" if before_findings else "verified"
+            if not before_findings:
+                result.verification = {
+                    "verdict": "verified",
+                    "resolved": [],
+                    "remaining": [],
+                    "regressed": [],
+                    "before_count": 0,
+                    "after_count": 0,
+                }
+            return None
+
+        script_path = getattr(harden_result, "script_path", None) or harden_result.get("script_path")
+        if not script_path or not os.path.exists(script_path):
+            logger.error("core", f"[闭环/{audit_id}] 预生成脚本路径不存在: {script_path}")
+            result.overall = "failed"
+            result.harden = {"status": "failed", "error": f"预生成脚本路径不存在: {script_path}"}
+            return None
+
+        logger.info("core", f"[闭环/{audit_id}] 预生成数据验证通过，进入执行阶段")
+        return (before_scan, before_findings, recommendations, harden_result, script_path)
+
     def _run_dry_run_precheck(
         self,
         script_path: str,
@@ -773,13 +837,14 @@ class LightShieldCore:
         confirm_execute: bool = False,
         backend: str | None = None,
         scan_types: list[str] | None = None,
+        pre_generated: dict | None = None,
     ) -> ClosedLoopResult:
         """加固闭环全链路编排——扫描→推荐→生成→执行→复扫→验证→汇总。
 
         v0.0.40 核心方法，贯穿 ①-⑦ 七个环节：
-          ① 基线扫描（run_vuln_scan）
-          ② 规则推荐（RuleEngine.recommend_hardening）
-          ③ 脚本生成（generate_hardening）
+          ① 基线扫描（run_vuln_scan）—— pre_generated 提供时跳过
+          ② 规则推荐（RuleEngine.recommend_hardening）—— pre_generated 提供时跳过
+          ③ 脚本生成（generate_hardening）—— pre_generated 提供时跳过
           ④ 执行（execute_hardening，按 mode 选 backend）
           ⑤ 复扫（run_vuln_scan，仅 APPLY）
           ⑥ 验证比对（verify_hardening，仅 APPLY）
@@ -793,7 +858,7 @@ class LightShieldCore:
         APPLY 模式（真机执行）：
           - 执行 ①-⑦ 完整闭环
           - backend="host"，宿主机本机执行
-          - 三重前置护栏：R4 双确认 + DRY_RUN-first + rollback 就绪
+          - 四重前置护栏：R4 双确认 + DRY_RUN-first + rollback 就绪 + R1 最终扫描
           - 任一前置条件不满足 → 返回 structured failure，不抛异常
 
         Args:
@@ -804,6 +869,9 @@ class LightShieldCore:
             confirm_execute: R4 执行确认（APPLY 必须 True）
             backend: None→按 mode 自动选（dry_run→docker, apply→host）
             scan_types: 扫描类型列表，默认 None=全量扫描
+            pre_generated: CLI 预生成数据（避免重复扫描/推荐/生成，确保用户审阅的脚本=实际执行的脚本）。
+                格式: {"scan_result": ScanResult, "recommendations": list[dict], "harden_result": HardenResult}
+                None → core 内部执行 ①②③（API/Web 路径）
 
         Returns:
             ClosedLoopResult 全链路结果（任何失败都返回结果对象，不抛异常）
@@ -845,76 +913,85 @@ class LightShieldCore:
             return self.run_vuln_scan(tgt)
 
         # ============================================================
-        # ① 基线扫描
+        # 0-check：CLI 预生成数据（避免重复扫描/推荐/生成，确保审阅=执行）
         # ============================================================
-        logger.info("core", f"[闭环/{audit_id}] ① 基线扫描: target={target}")
-        try:
-            before_scan = _do_scan(target)
-            result.before_scan = before_scan.to_dict()
-        except Exception as exc:
-            logger.error("core", f"[闭环/{audit_id}] 基线扫描失败: {exc}")
-            result.overall = "failed"
-            result.before_scan = {"status": "failed", "target": target, "error": str(exc)}
-            return result
-
-        before_findings = before_scan.findings
-
-        # ============================================================
-        # ② 规则匹配 + 加固建议
-        # ============================================================
-        logger.info("core", f"[闭环/{audit_id}] ② 规则推荐: findings={len(before_findings)}")
-        try:
-            engine = RuleEngine()
-            engine.load_rules()
-            recommendations = engine.recommend_hardening(before_findings)
-        except Exception as exc:
-            logger.error("core", f"[闭环/{audit_id}] 规则推荐失败: {exc}")
-            result.overall = "failed"
-            result.harden = {"status": "failed", "error": str(exc)}
-            return result
-
-        if not recommendations:
-            logger.info("core", f"[闭环/{audit_id}] 无加固建议，闭环终止")
-            result.harden = {"status": "no_action", "action_count": 0}
-            # 无需加固但基线扫描已完成 → 如有 finding 则 failed，否则 verified
-            if before_findings:
+        if pre_generated is not None:
+            resolved = self._resolve_pre_generated(pre_generated, result, audit_id)
+            if resolved is None:
+                return result  # 校验失败，result 已填充
+            before_scan, before_findings, recommendations, harden_result, script_path = resolved
+        else:
+            # ============================================================
+            # ① 基线扫描
+            # ============================================================
+            logger.info("core", f"[闭环/{audit_id}] ① 基线扫描: target={target}")
+            try:
+                before_scan = _do_scan(target)
+                result.before_scan = before_scan.to_dict()
+            except Exception as exc:
+                logger.error("core", f"[闭环/{audit_id}] 基线扫描失败: {exc}")
                 result.overall = "failed"
-            else:
-                result.overall = "verified"
-                result.verification = {
-                    "verdict": "verified",
-                    "resolved": [],
-                    "remaining": [],
-                    "regressed": [],
-                    "before_count": 0,
-                    "after_count": 0,
-                }
-            return result
+                result.before_scan = {"status": "failed", "target": target, "error": str(exc)}
+                return result
 
-        # ============================================================
-        # ③ 生成加固/回滚脚本
-        # ============================================================
-        logger.info("core", f"[闭环/{audit_id}] ③ 生成脚本: actions={len(recommendations)}")
-        try:
-            harden_result = self.generate_hardening(
-                target,
-                findings=before_findings,
-                recommendations=recommendations,
-                os_platform=os_plat.value,
-            )
-            result.harden = harden_result.to_dict()
-        except Exception as exc:
-            logger.error("core", f"[闭环/{audit_id}] 脚本生成失败: {exc}")
-            result.overall = "failed"
-            result.harden = {"status": "failed", "error": str(exc)}
-            return result
+            before_findings = before_scan.findings
 
-        if harden_result.status.value in ("failed", "no_action") or not harden_result.script_path:
-            logger.info("core", f"[闭环/{audit_id}] 脚本生成状态异常: {harden_result.status.value}")
-            result.overall = "failed"
-            return result
+            # ============================================================
+            # ② 规则匹配 + 加固建议
+            # ============================================================
+            logger.info("core", f"[闭环/{audit_id}] ② 规则推荐: findings={len(before_findings)}")
+            try:
+                engine = RuleEngine()
+                engine.load_rules()
+                recommendations = engine.recommend_hardening(before_findings)
+            except Exception as exc:
+                logger.error("core", f"[闭环/{audit_id}] 规则推荐失败: {exc}")
+                result.overall = "failed"
+                result.harden = {"status": "failed", "error": str(exc)}
+                return result
 
-        script_path = harden_result.script_path
+            if not recommendations:
+                logger.info("core", f"[闭环/{audit_id}] 无加固建议，闭环终止")
+                result.harden = {"status": "no_action", "action_count": 0}
+                # 无需加固但基线扫描已完成 → 如有 finding 则 failed，否则 verified
+                if before_findings:
+                    result.overall = "failed"
+                else:
+                    result.overall = "verified"
+                    result.verification = {
+                        "verdict": "verified",
+                        "resolved": [],
+                        "remaining": [],
+                        "regressed": [],
+                        "before_count": 0,
+                        "after_count": 0,
+                    }
+                return result
+
+            # ============================================================
+            # ③ 生成加固/回滚脚本
+            # ============================================================
+            logger.info("core", f"[闭环/{audit_id}] ③ 生成脚本: actions={len(recommendations)}")
+            try:
+                harden_result = self.generate_hardening(
+                    target,
+                    findings=before_findings,
+                    recommendations=recommendations,
+                    os_platform=os_plat.value,
+                )
+                result.harden = harden_result.to_dict()
+            except Exception as exc:
+                logger.error("core", f"[闭环/{audit_id}] 脚本生成失败: {exc}")
+                result.overall = "failed"
+                result.harden = {"status": "failed", "error": str(exc)}
+                return result
+
+            if harden_result.status.value in ("failed", "no_action") or not harden_result.script_path:
+                logger.info("core", f"[闭环/{audit_id}] 脚本生成状态异常: {harden_result.status.value}")
+                result.overall = "failed"
+                return result
+
+            script_path = harden_result.script_path
 
         # ============================================================
         # DRY_RUN 路径：预检（R1 扫描 + 容器烟测）
@@ -947,6 +1024,24 @@ class LightShieldCore:
                 "error": "APPLY 需要 confirm_ownership=True 且 confirm_execute=True（R4 双确认未满足）",
             }
             return result
+
+        # 护栏 0：DRY_RUN-first 前置预检（APPLY 前必须通过 R1 扫描 + 容器烟测）
+        logger.info("core", f"[闭环/{audit_id}] APPLY 前置 DRY_RUN 预检: script={script_path}")
+        precheck_result = self._run_dry_run_precheck(script_path, audit_id)
+        if precheck_result:
+            result.execution = precheck_result
+            if precheck_result.get("status") == "rejected":
+                result.overall = "failed"
+                logger.warning(
+                    "core",
+                    f"[闭环/{audit_id}] APPLY 拒绝: DRY_RUN-first 预检未通过 ({precheck_result.get('error')})",
+                )
+                return result
+            # skipped / error：R1 扫描已完成但容器烟测未执行/异常，记录后放行
+            logger.warning(
+                "core",
+                f"[闭环/{audit_id}] DRY_RUN 预检非阻塞状态: {precheck_result.get('status')}，继续 APPLY",
+            )
 
         # 护栏 2+3 + ④⑤⑥⑦ 委托给 helper
         self._run_apply_and_verify(
