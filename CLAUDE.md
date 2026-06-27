@@ -4,7 +4,10 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-27 — Codex 交叉审查完成（有条件通过，2H 已修复）。Kimi Phase 1-A BUG 排查完成（18 项：4C/6H/8M）。ZCode 下线 → CodeBuddy+GLM-5.2 替补体系建立。全项目三阶段审计 Phase 1 进行中（Kimi✅ + CB-GLM-5.2 进行中）。
+> **上次会话**：2026-06-27 — v0.0.40 正式封版 + tag + push 🎉。三阶段全项目审计全部闭环（Kimi 18项 → CB-GLM-5.2 30项 → Codex 43项去重裁决：0C/2H/18M/14L/9INFO）。Codex 交叉审查完成（2H 已修复）。Agent 替补体系建立（ZCode↓ → CodeBuddy+GLM-5.2）。CodeBuddy+GLM-5.2 每月 3-5 次特种任务上限。
+>   - 质量基线：**771 tests** / 0 fail / 1 skip / 12 门禁全绿
+>   - 剩余债务：2 HIGH（扫描范围一致化 + 进程树清理）/ 18 MEDIUM（Web-Core分层等）/ 14 LOW / 9 INFO
+>   - 下次启动：修 2 HIGH → v0.0.41 开局；或启动 ZCode 架构二审（CB-GLM-5.2 替补）
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
