@@ -316,9 +316,9 @@ def run_harden_command(args: argparse.Namespace) -> int:
         )
 
         print("")
-        print(" ⚠️  请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
+        print(" [!] 请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
         print("     如需在隔离沙箱中试运行，可加 --execute 参数（v0.0.38）。")
-        print("     🆕 v0.0.40：加 --closed-loop 启用自动加固闭环（扫描→推荐→生成→执行→复扫→验证）。")
+        print("     [NEW] v0.0.40：加 --closed-loop 启用自动加固闭环（扫描->推荐->生成->执行->复扫->验证）。")
         return 0
 
     except KeyboardInterrupt:
@@ -505,7 +505,7 @@ def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="⚠️ 危险：生成后在 Docker 沙箱（隔离）中执行加固脚本（v0.0.38），需额外确认",
+        help="[!] 危险：生成后在 Docker 沙箱（隔离）中执行加固脚本（v0.0.38），需额外确认",
     )
     parser.add_argument(
         "--yes-execute",
@@ -515,18 +515,18 @@ def _add_harden_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--closed-loop",
         action="store_true",
-        help="🆕 v0.0.40：启用加固闭环（扫描→推荐→生成→执行→复扫→验证），默认 DRY_RUN 模式（不改系统）",
+        help="[NEW] v0.0.40：启用加固闭环（扫描->推荐->生成->执行->复扫->验证），默认 DRY_RUN 模式（不改系统）",
     )
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="🆕 v0.0.40：配合 --closed-loop 启用 APPLY 模式（真机执行加固，改真实系统）。必须同时传 --confirm-ownership",
+        help="[NEW] v0.0.40：配合 --closed-loop 启用 APPLY 模式（真机执行加固，改真实系统）。必须同时传 --confirm-ownership",
     )
     parser.add_argument("--os-platform", choices=["linux", "windows"], default="linux", help="目标 OS 平台，默认 linux")
     parser.add_argument(
         "--bark-key",
         default="",
-        help="🆕 v0.0.40 Loop Hook：Bark 设备 Key（App 首页获取），扫描/闭环完成后推送通知到手机。也可通过 LS_BARK_KEY 环境变量设置",
+        help="[NEW] v0.0.40 Loop Hook：Bark 设备 Key（App 首页获取），扫描/闭环完成后推送通知到手机。也可通过 LS_BARK_KEY 环境变量设置",
     )
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
@@ -591,12 +591,12 @@ def _ensure_execute(script_path: str, pre_confirmed: bool) -> bool:
         return True
 
     print("")
-    print("⚠️  [危险操作] 即将执行加固脚本。")
+    print("[!] [危险操作] 即将执行加固脚本。")
     print(f"    脚本：{script_path}")
     try:
         answer = input("如确认执行，请输入 EXECUTE 继续：").strip()
     except EOFError:
-        print("\n[错误] 非交互环境无法确认执行，请使用 --confirm-execute 参数")
+        print("\n[错误] 非交互环境无法确认执行，请使用 --yes-execute 参数")
         return False
     return answer == "EXECUTE"
 
@@ -667,7 +667,7 @@ def _run_closed_loop(
     # APPLY 模式额外交互确认（用户需要输入 EXECUTE）
     if apply_mode:
         print("")
-        print("⚠️  [危险操作·真机执行] 即将在宿主机本机执行加固脚本，会真实修改系统配置。")
+        print("[!] [危险操作·真机执行] 即将在宿主机本机执行加固脚本，会真实修改系统配置。")
         print(f"    加固建议 {len(recommendations)} 条，已生成回滚脚本。")
         print("    请确认：① 你拥有此目标 ② 已审阅加固脚本 ③ 回滚脚本已就绪。")
         if not _ensure_execute("加固脚本（真机）", False):
@@ -747,10 +747,10 @@ def _run_closed_loop(
         print(f"  新增风险：{len(v.get('regressed', []))} 条")
     print("  ─────────────────────────────────────────")
     overall_label = {
-        "verified": "✅ 验证通过",
-        "partial": "⚠️ 部分修复",
-        "failed": "❌ 未修复",
-        "generated_only": "📋 仅生成（未复扫）",
+        "verified": "[OK] 验证通过",
+        "partial": "[!] 部分修复",
+        "failed": "[X] 未修复",
+        "generated_only": "[i] 仅生成（未复扫）",
     }.get(result.overall, result.overall)
     print(f"  总判定  ：{overall_label}")
     print("=" * 60)

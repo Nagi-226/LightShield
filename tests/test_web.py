@@ -157,6 +157,34 @@ class TestAuth:
         resp = client.post("/api/login", data="not json")
         assert resp.status_code == 400
 
+    # ---- C-003: 登录字段类型校验 ----
+
+    def test_login_username_null_rejected(self, client):
+        """C-003: username 为 JSON null → 400。"""
+        resp = client.post("/api/login", json={"username": None, "password": "lightshield"})
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "必须为字符串" in data["message"]
+
+    def test_login_username_number_rejected(self, client):
+        """C-003: username 为数字 → 400。"""
+        resp = client.post("/api/login", json={"username": 42, "password": "lightshield"})
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "必须为字符串" in data["message"]
+
+    def test_login_password_list_rejected(self, client):
+        """C-003: password 为数组 → 400。"""
+        resp = client.post("/api/login", json={"username": "admin", "password": ["a", "b"]})
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "必须为字符串" in data["message"]
+
+    def test_login_both_non_string_rejected(self, client):
+        """C-003: 两个字段都是非字符串 → 400。"""
+        resp = client.post("/api/login", json={"username": True, "password": 3.14})
+        assert resp.status_code == 400
+
     def test_logout(self, auth_client):
         """登出应返回 200 并清除 session。"""
         resp = auth_client.post("/api/logout")

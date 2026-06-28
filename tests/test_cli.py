@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from lightshield.adapters.base import ScanResult
-from lightshield.cli import create_parser, main
+from lightshield.cli import _ensure_execute, _ensure_ownership, create_parser, main
 from lightshield.utils.constants import ScanStatus
 
 # =============================================================================
@@ -244,3 +244,61 @@ class TestErrorHandling:
             mock_cls.return_value = reporter
             exit_code = main(["scan", "127.0.0.1", "--confirm-ownership"])
             assert exit_code in (0, 1)
+
+
+# =============================================================================
+# C-002: _ensure_ownership / _ensure_execute EOFError 处理
+# =============================================================================
+
+
+class TestEnsureOwnership:
+    """R4 所有权确认——交互 + EOFError 防护。"""
+
+    def test_confirmed_skips_input(self):
+        """已确认 → 不调用 input()。"""
+        assert _ensure_ownership("127.0.0.1", confirmed=True) is True
+
+    def test_yes_answer_returns_true(self):
+        """输入 YES → True。"""
+        with patch("builtins.input", return_value="YES"):
+            assert _ensure_ownership("127.0.0.1", confirmed=False) is True
+
+    def test_no_answer_returns_false(self):
+        """输入非 YES → False。"""
+        with patch("builtins.input", return_value="no"):
+            assert _ensure_ownership("127.0.0.1", confirmed=False) is False
+
+    def test_eof_error_returns_false(self):
+        """C-002: 非交互环境 EOFError → False（优雅降级）。"""
+        with patch("builtins.input", side_effect=EOFError):
+            assert _ensure_ownership("127.0.0.1", confirmed=False) is False
+
+
+class TestEnsureExecute:
+    """危险操作确认——交互 + EOFError 防护。"""
+
+    def test_pre_confirmed_skips_input(self):
+        """预确认 → 不调用 input()。"""
+        assert _ensure_execute("/tmp/test.sh", pre_confirmed=True) is True
+
+    def test_execute_answer_returns_true(self):
+        """输入 EXECUTE → True。"""
+        with patch("builtins.input", return_value="EXECUTE"):
+            assert _ensure_execute("/tmp/test.sh", pre_confirmed=False) is True
+
+    def test_wrong_answer_returns_false(self):
+        """输入非 EXECUTE → False。"""
+        with patch("builtins.input", return_value="no"):
+            assert _ensure_execute("/tmp/test.sh", pre_confirmed=False) is False
+
+    def test_eof_error_returns_false(self):
+        """C-002: 非交互环境 EOFError → False（优雅降级）。"""
+        with patch("builtins.input", side_effect=EOFError):
+            assert _ensure_execute("/tmp/test.sh", pre_confirmed=False) is False
+
+    def test_eof_error_prints_correct_flag_name(self, capsys):
+        """C-002 + L-042-2: EOFError 提示正确的参数名 --yes-execute。"""
+        with patch("builtins.input", side_effect=EOFError):
+            _ensure_execute("/tmp/test.sh", pre_confirmed=False)
+        captured = capsys.readouterr()
+        assert "--yes-execute" in captured.out
