@@ -2,12 +2,12 @@
 
 > **用途**：给 Claude Code 的项目全局指令，每次会话自动加载。
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
-> **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`。
+> **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-27 — v0.0.40 正式封版 + tag + push 🎉。三阶段全项目审计全部闭环（Kimi 18项 → CB-GLM-5.2 30项 → Codex 43项去重裁决：0C/2H/18M/14L/9INFO）。Codex 交叉审查完成（2H 已修复）。Agent 替补体系建立（ZCode↓ → CodeBuddy+GLM-5.2）。CodeBuddy+GLM-5.2 每月 3-5 次特种任务上限。
+> **上次会话**：2026-06-28 — 🆕 CodeBuddy A/B 双模式（Mode B = WorkBuddy）正式落地，三大文件（CODEBUDDY.md/CLUSTER.md/CLAUDE.md）全部更新。WorkBuddy 三大体系 + 三种工作模式 + MCP 多应用连接器 + SkillHub 22K+ Skills——解除了 CodeBuddy 不能 CLI 分发的核心瓶颈。🔭 观察名单已建立：Trae/Traework (Doubao-Seed 系列·第 6 独立模型家族) 列入 §十技术储备——核心优势在设计工程化流水线（非审美）、致命短板在稳定性（葬AI 8/10 轮失败）、等 Seed-3.0。
 >   - 质量基线：**771 tests** / 0 fail / 1 skip / 12 门禁全绿
->   - 剩余债务：2 HIGH（扫描范围一致化 + 进程树清理）/ 18 MEDIUM（Web-Core分层等）/ 14 LOW / 9 INFO
->   - 下次启动：修 2 HIGH → v0.0.41 开局；或启动 ZCode 架构二审（CB-GLM-5.2 替补）
+>   - 剩余债务：2 HIGH（扫描范围一致化 + 进程树清理）/ 18 MEDIUM / 14 LOW / 9 INFO
+>   - 下次启动：修 2 HIGH → v0.0.41 开局。优先走 CC 直接修复（简单→CC自己做），顺手捡 C-002(EOFError) + C-003(登录类型校验) 两个 MEDIUM。
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
@@ -73,7 +73,7 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 |-------|------|---------|-----------|
 | **Claude Code** | 🏛️ 架构师 + 编排器 + 安全终审 | **DeepSeek-V4-Pro**（2026-06-25 切回） | —（自身） |
 | **Codex** | 💎 安全关键模块 + 精密前端 + CC 胶水代码交叉审查 | GPT-5.5 | `codex exec "$(cat task.md)"` |
-| **CodeBuddy** | 💻 多模型 IDE：默认实现 + 测试生成 + 样板/基础设施 | DeepSeek-V4-Pro（可切 Flash/GLM-5.2/Kimi/MiniMax-M3/Hy3） | 需人工在 IDE 中操作，任务文件指定模型 |
+| **CodeBuddy** 🆕 | 💻 多模型 A/B 双模式：Mode A = CodeBuddy IDE（手动编码·默认实现+测试+样板+🔄ZCode替补）/ Mode B = WorkBuddy（自主Agent·CLI可调度·三大体系切换·SkillHub 22K+ Skills·100+ Agent并行·MCP多应用连接器） | DeepSeek-V4-Pro/Flash、GLM 5.2/5.1、MiniMax M3/2.7、Kimi K2.7/2.6、Qwen 3.7/3.6+（A/B 同模型池） | Mode A：需人工 IDE / Mode B：`workbuddy craft "$(cat task.md)"` |
 | **Kimi** | 🔬 Kimi 统一 Agent（双模式：CLI 代码审查+深度调试 / 桌面自动化+E2E 验证） | K2.7-code（模式A）+ K2.6（模式B） | `kimi exec`（A）/ Kimi Work 桌面端（B） |
 | **QoderWork** | 🏗️ 高级开发主力（Code Arena #2 超 GPT-5.5）+ 35h 长程自主 Agent + VM 隔离 | Qwen-3.7-Max（Code Arena 1541 #2） | 后台常驻 + IDE 手动（双模式） |
 | **ZCode 3.0** | 🎯 高级开发·特种部队（与 Codex 同级——关键时刻动用，一般任务不轻易使用） | GLM-5.2（744B MoE，Code Arena #2） | `zcode exec "$(cat task.md)"` |
@@ -81,13 +81,14 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 ### 编排规则
 
 1. **Claude Code 负责架构设计、接口定义、任务拆分、安全终审、集成合并** — 标准实现和样板代码由 CodeBuddy 承接
-2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文。**CodeBuddy 任务须在开头标注 `【模型切换：XXX】`**
+2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文。**CodeBuddy 任务须在开头标注 `【CodeBuddy 模式：A/B】` + `【模型切换：XXX】`**。Mode A = CodeBuddy IDE 手动操作；Mode B = WorkBuddy CLI 非交互调度（`workbuddy craft`）
 3. **并行执行 + 集中集成** — 各 Agent 并行产出，Claude Code 审查后合并
 4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）；CC 自写代码由 Codex（GPT-5.5）交叉审查（强制不可跳过）；**Kimi Code 每版本强制一次独立审查**（Kimi-K2.7-code 是集群唯一与所有 Agent 模型不同的审查者，真正消除同源盲区）。**🔑 CC 架构决策由 ZCode（GLM-5.2）做全局一致性二审**（1M 上下文一次装载全项目 + 全部 ADR，审跨模块抽象合理性、分层违规、ADR vs 实现对照——不是审代码，是审架构。每里程碑版本一次，CC 和 ZCode 模型不同 → 无同源盲区）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
 5. **模型优势对齐（按 Code Arena 排名）** —
    - 🎯 **高级开发层**：安全关键→Codex(GPT-5.5)；高级实现主力→QoderWork(Qwen-3.7-Max，Code Arena #2 1541 超 GPT-5.5)；特种部队→ZCode(GLM-5.2，1M 上下文，关键时刻动用)
-   - 🔧 **常规开发层**：默认实现+测试+样板→CodeBuddy(多模型按需切换)
+   - 🔧 **常规开发层**：默认实现+测试+样板→CodeBuddy Mode A(多模型按需切换)；批量模板化/可标准化任务→CodeBuddy Mode B(WorkBuddy CLI·三大体系·SkillHub)
    - 🔬 **专业角色层**：独立审查+深度调试(MCP)→Kimi 模式A(K2.7-code)；桌面自动化+E2E→Kimi 模式B(K2.6)
+   - 🔭 **观察名单**：Trae/Traework (Doubao-Seed·第6模型家族)——设计工程化流水线独特但稳定性未达标，等 Seed-3.0。详见 `.cluster/CLUSTER.md §十`
 
 ### 🆕 全项目三阶段组合排查审查体系（v0.0.40+ 生效）
 
@@ -158,6 +159,7 @@ Phase 3: 修复（集中 — CC + QoderWork）
 - 项目上下文（简短）
 - ⚠️ 合规约束片段（R1-R6）
 - 接口契约（明确的输入/输出/异常）
+- **🆕 CodeBuddy 任务必须标注**：`【CodeBuddy 模式：A/B】` + `【模型切换：XXX】`。Mode A = CodeBuddy IDE（手动），Mode B = WorkBuddy（CLI 调度）
 - **🆕 不确定性声明**：Agent 必须列出本次任务中置信度🟡中/🔴低的技术判断，标注替代方案或待确认点（详见 `.guardrails/AGENT_CODE_OF_CONDUCT.md §三`）
 - 代码要求（注释、异常处理、类型标注）
 - 验收清单

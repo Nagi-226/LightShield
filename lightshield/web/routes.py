@@ -73,6 +73,10 @@ def api_login():
     username = data.get("username", "")
     password = data.get("password", "")
 
+    # C-003: 类型校验——防止 null/数字等非字符串凭证传入 login() 导致 TypeError
+    if not isinstance(username, str) or not isinstance(password, str):
+        return jsonify({"error": True, "message": "用户名和密码必须为字符串", "code": 400}), 400
+
     if not username or not password:
         return jsonify({"error": True, "message": "请提供用户名和密码", "code": 400}), 400
 

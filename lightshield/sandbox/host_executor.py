@@ -30,9 +30,11 @@ DRY_RUN-first 前置 + rollback 就绪），编排层（core.run_harden_closed_l
 
 from __future__ import annotations
 
+import contextlib
 import os
 import platform
 import shutil
+import signal
 import subprocess  # nosec: B404 — 真机执行加固脚本是 LightShield 的核心功能
 import time
 
@@ -57,7 +59,7 @@ class HostExecutor(SandboxExecutor):
     本类执行的安全边界：
       - 以调用者当前权限执行（不做 privilege escalation）
       - subprocess 不带 shell=True（防止命令注入）
-      - 超时强制 kill 子进程树
+      - 超时跨平台进程树清理（H-009：Linux→killpg，Windows→taskkill /T）
       - 输出大小截断（防炸内存）
     """
 
@@ -161,8 +163,14 @@ class HostExecutor(SandboxExecutor):
         执行约束：
           - 不以 shell=True 执行（防命令注入）
           - 以调用者当前权限运行（不做 privilege escalation）
-          - 超时强制终止进程树
+          - 超时强制终止进程树（主进程 + 所有子进程，H-009 修复）
           - 输出大小截断保护
+
+        H-009: 使用 subprocess.Popen + 跨平台进程树清理替代 subprocess.run。
+        subprocess.run(timeout=...) 仅杀主进程，子进程继续运行。
+        本实现：
+          - Linux/macOS: start_new_session=True → 新进程组 → killpg 清理整棵树
+          - Windows: taskkill /F /T /PID 清理进程树
 
         Args:
             abs_script_path: 已通过基类安全校验的脚本绝对路径
@@ -174,22 +182,65 @@ class HostExecutor(SandboxExecutor):
         start = time.time()
 
         try:
-            # 跨平台：按脚本扩展名和当前平台确定解释器
-            # 所有参数均来自已校验的 abs_script_path 或本地查找，不可注入
             cmd = self._build_command(abs_script_path)
+            is_windows = platform.system() == "Windows"
 
             # shell=False → 命令注入防护（参数不经过 shell 解析）
-            proc = subprocess.run(  # nosec: B603 — cmd 元素全部来自内部构造，无外部输入
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                stdin=subprocess.DEVNULL,
-            )
+            if is_windows:
+                proc = subprocess.Popen(  # nosec: B603
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    stdin=subprocess.DEVNULL,
+                )
+            else:
+                # start_new_session=True → 新进程组，可直接 killpg 清理进程树
+                proc = subprocess.Popen(  # nosec: B603
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+
+            try:
+                stdout, stderr = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                # ---- H-009: 跨平台进程树清理 ----
+                self._kill_process_tree(proc, is_windows=is_windows)
+                # 等待清理完成（最多 5 秒）；极端情况下忽略，记录为超时
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    proc.wait(timeout=5)
+
+                duration = round(time.time() - start, 2)
+                # 收集已产生的部分输出
+                try:
+                    partial_out, partial_err = proc.communicate(timeout=1)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    partial_out, partial_err = proc.communicate()
+
+                stdout = (partial_out or "")[: self._MAX_OUTPUT_BYTES]
+                stderr = (partial_err or "")[: self._MAX_OUTPUT_BYTES]
+
+                return ExecutionResult(
+                    status=ExecutionStatus.TIMEOUT,
+                    script_path=abs_script_path,
+                    sandbox="host",
+                    exit_code=None,
+                    stdout=stdout,
+                    stderr=stderr,
+                    duration_seconds=duration,
+                    timed_out=True,
+                    error=f"脚本执行超时（{timeout}s），进程树已强制终止",
+                )
 
             duration = round(time.time() - start, 2)
-            stdout = proc.stdout or ""
-            stderr = proc.stderr or ""
+            # stdout/stderr 已由 communicate() 返回为字符串，直接使用
+            stdout = stdout or ""
+            stderr = stderr or ""
 
             # 输出截断保护
             if len(stdout) > self._MAX_OUTPUT_BYTES:
@@ -209,31 +260,6 @@ class HostExecutor(SandboxExecutor):
                 duration_seconds=duration,
                 timed_out=False,
                 error=None if proc.returncode == 0 else f"脚本退出码 {proc.returncode}（非零）",
-            )
-
-        except subprocess.TimeoutExpired as exc:
-            duration = round(time.time() - start, 2)
-
-            # 超时时捕获已产生的输出（如果有），处理 bytes 类型
-            def _safe_str(val: bytes | str | None) -> str:
-                if val is None:
-                    return ""
-                if isinstance(val, bytes):
-                    return val.decode("utf-8", errors="replace")
-                return val
-
-            stdout = _safe_str(exc.stdout) if hasattr(exc, "stdout") else ""
-            stderr = _safe_str(exc.stderr) if hasattr(exc, "stderr") else ""
-            return ExecutionResult(
-                status=ExecutionStatus.TIMEOUT,
-                script_path=abs_script_path,
-                sandbox="host",
-                exit_code=None,
-                stdout=stdout[: self._MAX_OUTPUT_BYTES] if stdout else "",
-                stderr=stderr[: self._MAX_OUTPUT_BYTES] if stderr else "",
-                duration_seconds=duration,
-                timed_out=True,
-                error=f"脚本执行超时（{timeout}s），进程已被终止",
             )
 
         except PermissionError as exc:
@@ -259,6 +285,44 @@ class HostExecutor(SandboxExecutor):
                 timed_out=False,
                 error=f"系统错误，无法执行脚本：{exc}",
             )
+
+    @staticmethod
+    def _kill_process_tree(proc: subprocess.Popen, *, is_windows: bool) -> None:
+        """跨平台进程树强制终止（H-009）。
+
+        确保主进程及所有子进程均被清理，不留孤儿进程。
+
+        Args:
+            proc: 已启动的 subprocess.Popen 实例
+            is_windows: 是否为 Windows 平台
+        """
+        # 防御性断言——Popen.pid 在 typeshed 中为 int，但运行时进程异常启动可能为 None
+        assert proc.pid is not None, "进程未启动，无法清理进程树"
+        pid: int = proc.pid
+
+        if is_windows:
+            # Windows: taskkill /T 递归终止进程树
+            try:
+                subprocess.run(  # nosec: B603,B607
+                    ["taskkill", "/F", "/T", "/PID", str(pid)],
+                    capture_output=True,
+                    timeout=10,
+                )
+            except Exception:
+                # taskkill 失败 → 回退到 proc.kill()（仅杀主进程）
+                with contextlib.suppress(Exception):
+                    proc.kill()
+        else:
+            # Linux/macOS: 杀整个进程组（start_new_session=True 时 pgid == pid）
+            # mypy 在 Windows 上无法解析 POSIX 专有符号
+            try:
+                os.killpg(os.getpgid(pid), signal.SIGKILL)  # type: ignore[attr-defined]
+            except ProcessLookupError:
+                pass  # 进程已退出
+            except Exception:
+                # killpg 失败 → 回退到 SIGKILL 主进程
+                with contextlib.suppress(Exception):
+                    os.kill(pid, signal.SIGKILL)  # type: ignore[attr-defined]
 
 
 # =============================================================================

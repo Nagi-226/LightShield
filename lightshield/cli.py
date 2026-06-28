@@ -230,9 +230,11 @@ def run_harden_command(args: argparse.Namespace) -> int:
         # 扫描
         core = LightShieldCore()
         _register_adapters(core)
+        # H-007: 提取为变量，供闭环 after-scan 复用同一能力集
+        harden_scan_types = ["port_scan", "service_detect"]
         scan_result = core.run_scan(
             target,
-            scan_types=["port_scan", "service_detect"],
+            scan_types=harden_scan_types,
             confirm_ownership=True,
             timeout=args.timeout,
         )
@@ -295,7 +297,9 @@ def run_harden_command(args: argparse.Namespace) -> int:
 
         # v0.0.40: --closed-loop 加固闭环（DRY_RUN 或 APPLY）
         if getattr(args, "closed_loop", False):
-            return _run_closed_loop(core, scan_result, all_findings, recommendations, harden_result, args)
+            return _run_closed_loop(
+                core, scan_result, all_findings, recommendations, harden_result, args, harden_scan_types
+            )
 
         # v0.0.38: --execute 在 Docker 沙箱中执行加固脚本
         if getattr(args, "execute", False):
@@ -558,13 +562,20 @@ def _add_scan_arguments(parser: argparse.ArgumentParser, default_scan_types: str
 
 
 def _ensure_ownership(target: str, confirmed: bool) -> bool:
-    """R4 所有权确认：未传参数时必须交互输入 YES。"""
+    """R4 所有权确认：未传参数时必须交互输入 YES。
+
+    C-002: 捕获 EOFError，非交互环境（CI/管道）优雅降级。
+    """
     if confirmed:
         return True
 
     print("[警告] 所有权确认")
     print(TargetValidator.confirm_ownership(target))
-    answer = input("如确认拥有该目标或已获授权，请输入 YES 继续：").strip()
+    try:
+        answer = input("如确认拥有该目标或已获授权，请输入 YES 继续：").strip()
+    except EOFError:
+        print("\n[错误] 非交互环境无法确认所有权，请使用 --confirm-ownership 参数")
+        return False
     return answer == "YES"
 
 
@@ -573,6 +584,8 @@ def _ensure_execute(script_path: str, pre_confirmed: bool) -> bool:
 
     v0.0.38：Docker 沙箱执行确认（隔离，不改宿主机）。
     v0.0.40：APPLY 真机执行确认（改真实系统，风险更高）。
+
+    C-002: 捕获 EOFError，非交互环境优雅降级。
     """
     if pre_confirmed:
         return True
@@ -580,7 +593,11 @@ def _ensure_execute(script_path: str, pre_confirmed: bool) -> bool:
     print("")
     print("⚠️  [危险操作] 即将执行加固脚本。")
     print(f"    脚本：{script_path}")
-    answer = input("如确认执行，请输入 EXECUTE 继续：").strip()
+    try:
+        answer = input("如确认执行，请输入 EXECUTE 继续：").strip()
+    except EOFError:
+        print("\n[错误] 非交互环境无法确认执行，请使用 --confirm-execute 参数")
+        return False
     return answer == "EXECUTE"
 
 
@@ -623,6 +640,7 @@ def _run_closed_loop(
     recommendations: list[dict],
     harden_result: Any,
     args: argparse.Namespace,
+    harden_scan_types: list[str] | None = None,
 ) -> int:
     """v0.0.40 加固闭环——DRY_RUN 或 APPLY 全链路编排。
 
@@ -633,6 +651,7 @@ def _run_closed_loop(
         recommendations: 规则引擎加固建议
         harden_result: 已生成的加固脚本结果（传入闭环避免重复生成，确保审阅=执行）
         args: CLI 参数
+        harden_scan_types: H-007 预扫描使用的 scan_types，确保 after-scan 复用同一能力集
 
     Returns:
         0 成功，1 失败
@@ -674,10 +693,12 @@ def _run_closed_loop(
         print("  ④ 预检中（R1 扫描 + 容器烟测）...")
 
     # 传入预生成数据（避免闭环内部重复扫描/推荐/生成，确保用户审阅的脚本 = 实际执行的脚本）
+    # H-007: 携带 scan_types 确保 after-scan 与 before-scan 使用同一能力集
     pre_generated = {
         "scan_result": scan_result,
         "recommendations": recommendations,
         "harden_result": harden_result,
+        "scan_types": harden_scan_types,
     }
 
     try:
@@ -687,7 +708,7 @@ def _run_closed_loop(
             confirm_ownership=args.confirm_ownership,
             mode=mode,
             confirm_execute=confirm_exec,
-            scan_types=None,  # 全量扫描
+            scan_types=harden_scan_types,  # H-007: 与预扫描一致，由 pre_generated.scan_types 接管
             pre_generated=pre_generated,
         )
     except Exception as exc:

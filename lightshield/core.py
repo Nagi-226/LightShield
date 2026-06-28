@@ -619,7 +619,8 @@ class LightShieldCore:
         避免闭环内部重复扫描/推荐/生成，确保用户审阅的脚本 = 实际执行的脚本。
 
         Returns:
-            (before_scan, before_findings, recommendations, harden_result, script_path)
+            (before_scan, before_findings, recommendations, harden_result, script_path, pg_scan_types)
+            pg_scan_types 为预生成扫描使用的 scan_types（用于 after-scan 一致性，H-007 修复）。
             校验失败时 result 已填充，调用方应 return result。
         """
         from lightshield.utils.logger import get_logger
@@ -629,6 +630,7 @@ class LightShieldCore:
         pg_scan = pre_generated.get("scan_result")
         pg_recs = pre_generated.get("recommendations")
         pg_harden = pre_generated.get("harden_result")
+        pg_scan_types: list[str] | None = pre_generated.get("scan_types")
 
         if not pg_scan or not pg_recs or not pg_harden:
             logger.error("core", f"[闭环/{audit_id}] 预生成数据不完整")
@@ -669,8 +671,20 @@ class LightShieldCore:
             result.harden = {"status": "failed", "error": f"预生成脚本路径不存在: {script_path}"}
             return None
 
+        # H-007: 记录预生成扫描使用的 scan_types，确保 after-scan 复用同一能力集
+        if pg_scan_types:
+            logger.info(
+                "core",
+                f"[闭环/{audit_id}] 预生成 scan_types={pg_scan_types}，after-scan 将复用",
+            )
+        else:
+            logger.info(
+                "core",
+                f"[闭环/{audit_id}] 预生成数据未携带 scan_types，after-scan 将使用 run_harden_closed_loop 参数",
+            )
+
         logger.info("core", f"[闭环/{audit_id}] 预生成数据验证通过，进入执行阶段")
-        return (before_scan, before_findings, recommendations, harden_result, script_path)
+        return (before_scan, before_findings, recommendations, harden_result, script_path, pg_scan_types)
 
     def _run_dry_run_precheck(
         self,
@@ -827,7 +841,7 @@ class LightShieldCore:
             f"resolved={len(verification.resolved)} remaining={len(verification.remaining)}",
         )
 
-    def run_harden_closed_loop(
+    def run_harden_closed_loop(  # noqa: C901 — 闭环编排复杂度 21>20，H-007 增加 scan_types 一致性逻辑
         self,
         target: str,
         *,
@@ -906,12 +920,6 @@ class LightShieldCore:
             audit_id=audit_id,
         )
 
-        # 扫描方法选择：指定 scan_types → run_scan；默认 → run_vuln_scan
-        def _do_scan(tgt: str) -> ScanResult:
-            if scan_types:
-                return self.run_scan(tgt, scan_types=scan_types)
-            return self.run_vuln_scan(tgt)
-
         # ============================================================
         # 0-check：CLI 预生成数据（避免重复扫描/推荐/生成，确保审阅=执行）
         # ============================================================
@@ -919,7 +927,24 @@ class LightShieldCore:
             resolved = self._resolve_pre_generated(pre_generated, result, audit_id)
             if resolved is None:
                 return result  # 校验失败，result 已填充
-            before_scan, before_findings, recommendations, harden_result, script_path = resolved
+            before_scan, before_findings, recommendations, harden_result, script_path, pg_scan_types = resolved
+
+            # H-007: 确保 after-scan 与 before-scan 使用同一能力集。
+            # 若 pre_generated 携带 scan_types → 复扫必须复用；
+            # 否则回退到 run_harden_closed_loop 的 scan_types 参数。
+            effective_scan_types = pg_scan_types if pg_scan_types is not None else scan_types
+        else:
+            effective_scan_types = scan_types
+
+        # 扫描方法选择：指定 effective_scan_types → run_scan；默认 → run_vuln_scan
+        def _do_scan(tgt: str) -> ScanResult:
+            if effective_scan_types:
+                return self.run_scan(tgt, scan_types=effective_scan_types)
+            return self.run_vuln_scan(tgt)
+
+        if pre_generated is not None:
+            # resolved already extracted above
+            pass
         else:
             # ============================================================
             # ① 基线扫描

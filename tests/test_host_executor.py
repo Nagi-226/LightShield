@@ -155,14 +155,14 @@ class TestHostExecutorWithMock:
     """Mock subprocess 测试——不受平台限制。"""
 
     def test_run_script_mocked_success(self):
-        """Mock subprocess.run → SUCCESS。"""
+        """Mock subprocess.Popen → SUCCESS。"""
         ex = HostExecutor()
-        with mock.patch("subprocess.run") as m_run:
-            m_run.return_value = mock.Mock(
-                returncode=0,
-                stdout="mocked output",
-                stderr="",
-            )
+        with mock.patch("subprocess.Popen") as m_popen:
+            mock_proc = mock.MagicMock()
+            mock_proc.communicate.return_value = ("mocked output", "")
+            mock_proc.returncode = 0
+            mock_proc.pid = 99999
+            m_popen.return_value = mock_proc
             r = ex._run_script("/fake/script.sh", timeout=30)
             assert r.status == ExecutionStatus.SUCCESS
             assert r.exit_code == 0
@@ -170,30 +170,38 @@ class TestHostExecutorWithMock:
             assert r.timed_out is False
 
     def test_run_script_mocked_failure(self):
-        """Mock subprocess.run → FAILED。"""
+        """Mock subprocess.Popen → FAILED。"""
         ex = HostExecutor()
-        with mock.patch("subprocess.run") as m_run:
-            m_run.return_value = mock.Mock(
-                returncode=42,
-                stdout="",
-                stderr="something broke",
-            )
+        with mock.patch("subprocess.Popen") as m_popen:
+            mock_proc = mock.MagicMock()
+            mock_proc.communicate.return_value = ("", "something broke")
+            mock_proc.returncode = 42
+            mock_proc.pid = 99999
+            m_popen.return_value = mock_proc
             r = ex._run_script("/fake/script.sh", timeout=30)
             assert r.status == ExecutionStatus.FAILED
             assert r.exit_code == 42
             assert r.error and "退出码" in r.error
 
     def test_run_script_mocked_timeout(self):
-        """Mock subprocess.TimeoutExpired → TIMEOUT。"""
+        """Mock subprocess.Popen + communicate → TimeoutExpired → TIMEOUT。"""
         import subprocess
 
         ex = HostExecutor()
-        with mock.patch("subprocess.run") as m_run:
-            m_run.side_effect = subprocess.TimeoutExpired(
-                cmd=["/fake/script.sh"],
-                timeout=5,
-                output="partial output",
-            )
+        with mock.patch("subprocess.Popen") as m_popen:
+            mock_proc = mock.MagicMock()
+            mock_proc.pid = 99999
+            # communicate 第一次抛 TimeoutExpired → 触发超时分支
+            mock_proc.communicate.side_effect = [
+                subprocess.TimeoutExpired(
+                    cmd=["/fake/script.sh"],
+                    timeout=5,
+                    output="partial output",
+                ),
+                # 第二次调用（收集已产出）→ 返回部分输出
+                ("partial output", ""),
+            ]
+            m_popen.return_value = mock_proc
             r = ex._run_script("/fake/script.sh", timeout=5)
             assert r.status == ExecutionStatus.TIMEOUT
             assert r.timed_out is True

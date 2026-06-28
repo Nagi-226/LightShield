@@ -45,7 +45,7 @@
 |------|------|---------|---------|-----------|---------|
 | **Claude Code** | CLI | DeepSeek-V4-Pro | 架构设计、任务编排、安全终审、集成合并 | —（自身即编排器） | 架构设计、合规审计、接口契约、全局集成 |
 | **Codex** | CLI | OpenAI GPT-5.5 | 安全关键代码、精密前端逻辑 | `codex exec "prompt"` | 🔑 安全关键模块、CC 自写代码交叉审查 |
-| **CodeBuddy** | IDE | DS V4-Pro（可切 Flash/GLM-5.2/MiniMax-M3/Hy3） | 多模型切换：默认实现+测试+样板；🔄 **ZCode 替补（切 GLM-5.2 时）——同模型零能力损失** | —（需人工在 IDE 中操作，任务文件指定模型） | 常规主力；ZCode 下线时切换 GLM-5.2 接管其全部职责 |
+| **CodeBuddy** 🆕 | IDE + Agent | DS V4-Pro/Flash、GLM 5.2/5.1、MiniMax M3/2.7、Kimi K2.7/2.6、Qwen 3.7/3.6+（A/B 同模型池） | 🆕 **A/B 双模式**：Mode A = CodeBuddy IDE（手动编码·多模型切换·ZCode替补）/ Mode B = WorkBuddy（自主Agent·CLI调度·三大体系切换·SkillHub 22K+ Skills·100+ Agent并行） | Mode A：需人工 IDE 操作 / Mode B：`workbuddy craft "$(cat task.md)"`（🆕 CLI 非交互） | 常规主力（A=复杂+人类判断 / B=批量+模板化）；ZCode 下线时切换 GLM-5.2 接管其全部职责（A/B 均可） |
 | **Kimi** 🆕 | CLI + 桌面端 | K2.7-code（模式A）+ K2.6（模式B）| 双模式：🔬 深度调试+独立审查(MCP) / 🖥️ 桌面自动化+E2E(300子Agent并行) | `kimi exec`（A）/ Kimi Work GUI（B） | 唯一不同模型审查者 + 唯一桌面自动化层——两模式模型不同，角色完全不重叠 |
 | **QoderWork** | CLI + IDE | Qwen-3.7-Max（Code Arena 1541 #2，超 GPT-5.5） | 🏗️ 高级开发主力（常规高级实现+全栈Web）+ 🤖 35h 长程自主 Agent + VM 隔离执行 | 后台常驻 + IDE 手动 | 高级模块实现、Gate E、长程无人值守任务——**集群编码 #2，常规高级开发第一选择** |
 | **ZCode 3.0** | CLI | GLM-5.2（744B MoE，1M 上下文） | 🎯 特种部队——跨模块长程实现、全量代码审查、大型重构、CC 架构二审 | `zcode exec "$(cat task.md)"` | ⚠️ **当前下线**。替补：CodeBuddy 切 GLM-5.2（同模型）→ Kimi（审查类任务）→ CC（实现类任务）。详见 §九 替补体系 |
@@ -61,6 +61,7 @@
   "task_id": "LIGHTSHIELD-040",
   "title": "实现 verify 数据结构",
   "assigned_to": "codebuddy",
+  "codebuddy_mode": "A",
   "model_switch": "DeepSeek-V4-Pro",
   "priority": "P0",
   "depends_on": [],
@@ -70,7 +71,7 @@
 }
 ```
 
-> **CodeBuddy 任务必有 `model_switch` 字段**，指定在 IDE 中切换的目标模型。
+> **CodeBuddy 任务必有 `codebuddy_mode` 字段**（`"A"` = CodeBuddy IDE / `"B"` = WorkBuddy），以及 `model_switch` 字段指定目标模型。
 
 ### 2.2 状态流转
 
@@ -127,9 +128,13 @@ pending → claimed → in_progress → completed → verified
 codex exec "$(cat .cluster/tasks/pending/CODEX-XXX.md)"
 ```
 
-### 3.3 CodeBuddy（多模型 IDE 开发主力）
+### 3.3 CodeBuddy 统一 Agent（A/B 双模式）🆕
 
-**职责**——集群的模型聚合器，承接以下全部角色：
+> **2026-06-28 更新**：CodeBuddy 继 Kimi 之后成为集群**第二个 A/B 双模式 Agent**。Mode B（WorkBuddy）正式加入——解决 CodeBuddy IDE "需人工操作、不能 CLI 自动分发"的核心瓶颈。
+
+**Mode A：CodeBuddy IDE（桌面 IDE · 手动编码）**
+
+职责——集群的模型聚合器，承接以下全部角色：
 
 | 原 Agent | 切什么模型 | 任务类型 |
 |----------|:--------:|------|
@@ -137,19 +142,45 @@ codex exec "$(cat .cluster/tasks/pending/CODEX-XXX.md)"
 | Hermes | **DeepSeek-V4-Flash** | 样板/基础设施（`__init__.py`、Dockerfile、deploy 脚本、locale JSON） |
 | Agent 10 (储备) | **Kimi-K2.7-code** | 深度 bug 修复、复杂调试 |
 
-**使用方式**：人工在 CodeBuddy IDE 中打开项目，复制任务文件 prompt。**任务文件开头必须有 `【模型切换：XXX】` 指令。**
+使用方式：人工在 CodeBuddy IDE 中打开项目，复制任务文件 prompt。**任务文件开头必须有 `【模型切换：XXX】` 指令。**
 
-**CodeBuddy 可用的模型清单**：
+**Mode B：WorkBuddy（自主 Agent · CLI/API 可调度）🆕**
+
+WorkBuddy 是腾讯云 CodeBuddy 团队推出的全场景 AI 智能体桌面工作台——CodeBuddy 的 **Agent 化版本**（同团队、同底层技术、同模型池）。核心能力：
+
+| 能力 | 说明 | LightShield 中的价值 |
+|------|------|------|
+| 🔀 **三大体系切换** | 日常办公 / 代码开发 / 设计创意（一键切换，系统自动配置 AI 行为） | 代码开发=主战场；日常办公=文档/CHANGELOG/i18n；设计创意=Web UI 参考 |
+| ⚙️ **三种工作模式** | Ask（问答·不碰文件）/ Plan（先出方案·确认后执行）/ Craft（实干·直接执行） | Ask=调研 → Plan=定方案 → Craft=执行产出（组合使用、按消耗递增） |
+| 🔌 **多应用连接器** | MCP 可视化一键接入：企微/腾讯会议/SSH/数据库/云存储/知识库/自定义 HTTP | 告警推送、远程部署验证、CVE 知识库检索 |
+| 🎯 **SkillHub** | 22,000+ Skills 一键安装 + 拖拽 SKILL.md 导入 + CLI 安装 | Python 测试生成、Markdown 文档、代码审查辅助 |
+| 👥 **100+ Agent 并行** | 多领域专家虚拟团队并行协作 | 批量测试生成、多文件同步修改 |
+| ⏰ **定时任务** | 周期自动化执行 | 每日门禁检查、周度 CHANGELOG 草稿 |
+| 📱 **远程控制** | 微信/企微远程操控电脑执行任务 | 离开电脑时下发轻量任务 |
+
+调用方式：
+```bash
+# CLI 非交互（与 codex exec / kimi exec 同模式）:
+workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
+```
+
+**A/B 任务路由规则**：Mode A → 需人类判断（安全关键/架构决策/复杂调试）；Mode B → 可标准化（批量测试/样板/i18n/文档/批量小修）。详见 `CODEBUDDY.md §四`。
+
+**CodeBuddy 统一 Agent 可用的模型清单（A/B 共享）**：
 
 | 模型 | 适用场景 | 成本 |
 |------|---------|:--:|
 | DeepSeek-V4-Pro | 默认实现、测试生成、标准模块 | 🟢 低 |
 | DeepSeek-V4-Flash | 样板代码、定义类、模板（零推理量） | 🟢 极低 |
-| GLM-5.2 | 大上下文文档、批量文件生成 | 🟢 极低 |
-| GLM-5.0-Turbo | 轻量文档、快速文件 | 🟢 极低 |
+| GLM-5.2 | 大上下文文档、批量文件生成、🔄 ZCode 替补 | 🟢 极低 |
+| GLM-5.1 | 轻量文档、快速文件 | 🟢 极低 |
 | Kimi-K2.7-code | 深度调试、复杂逻辑修复 | 🟡 中 |
+| Kimi-K2.6 | 探索性/创意实现 | 🟡 中 |
 | MiniMax-M3 | 探索性/创意实现 | 🟡 中 |
-| Hy3-Preview | 探索性任务 | 🟡 中 |
+| MiniMax-2.7 | 轻量探索任务 | 🟡 中 |
+| Qwen-3.7 | 高级实现、全栈 Web | 🟡 中 |
+| Qwen-3.6-Plus | 常规实现 | 🟡 中 |
+| 腾讯混元 | WorkBuddy 原生优化（Mode B 默认） | 🟢 低 |
 
 ### 3.4 Kimi（Kimi 统一 Agent · 双模式）🆕
 
@@ -257,7 +288,7 @@ Phase 3: 修复 → 集中
 |-------|------|:--:|:--:|:--:|
 | **Claude Code** | **DeepSeek-V4-Pro** | 🟡 良好 | 🟢 低 | —（2026-06-25 切回，原 Opus 4.8） |
 | **Codex** | **GPT-5.5** | 🟢 **最强** | 🔴 高 | `codex exec` |
-| **CodeBuddy** | **多模型**（DS Pro/Flash/GLM/MiniMax/Hy3） | 🟡~🟢 可调 | 🟢 低 | 需人工 |
+| **CodeBuddy** 🆕 | **多模型**（DS Pro/Flash、GLM 5.2/5.1、MiniMax M3/2.7、Kimi K2.7/2.6、Qwen 3.7/3.6+、混元） | 🟡~🟢 可调 | 🟢 低 | Mode A：需人工 / Mode B：`workbuddy craft` |
 | **Kimi** 🆕 | **K2.7-code**（A）/ **K2.6**（B） | 🟢 **很强** | 🟡 中 | `kimi exec`（A）/ GUI（B） |
 | **QoderWork** | **Qwen-3.7-Max** | 🟢 **集群 #2**（Code Arena 1541 #2，超 GPT-5.5） | 🟡 中（59元/月套餐） | 后台常驻 + IDE 手动 |
 | **ZCode 3.0** | **GLM-5.2** | 🟢 **集群最强**（Code Arena 1595 #2） | 🟡 配额消耗高（免费额度但单次消耗大——特种部队节制使用） | `zcode exec` |
@@ -274,12 +305,13 @@ ZCode 因 CLI 环境问题可能长期无法上线。其职责由以下替补链
 
 | 优先级 | 替补 Agent | 模型 | 接管职责 | 能力损失 |
 |:--:|------|------|------|------|
-| **L1（首选）** | CodeBuddy 切 GLM-5.2 | GLM-5.2（同模型） | **全部职责**——长程实现、全量审查、架构二审、屎山+耦合分析 | 上下文从 CLI 1M → IDE 内使用（取决于 IDE 实际窗口）；需人工在 IDE 中操作 |
+| **L1（首选）** | CodeBuddy 切 GLM-5.2（Mode A 或 B） | GLM-5.2（同模型） | **全部职责**——长程实现、全量审查、架构二审、屎山+耦合分析 | Mode A：上下文从 CLI 1M → IDE 窗口；需人工 IDE 操作 / Mode B (WorkBuddy)：可 CLI 非交互调度，但 WorkBuddy 长上下文能力待实测 |
 | **L2** | Kimi Code（模式A） | K2.7-code | 审查类任务——独立审查、BUG 排查、代码质量审计 | 上下文 256K（vs 1M）；不同模型（GLM→Kimi），编码能力下降 |
 | **L3（兜底）** | Claude Code | DS V4-Pro | 实现类任务——架构二审自己做不了（利益冲突），但长程实现可自己承接 | 上下文受限（需分片）；模型不同 |
 
 **CodeBuddy 切 GLM-5.2 时的角色升级**：
 - 不再是"常规开发主力"——切到 GLM-5.2 后**按特种部队规格使用**
+- 🆕 **A/B 均可**：Mode A（CodeBuddy IDE）用于需人类判断的特种任务（架构二审）；Mode B（WorkBuddy）用于可标准化批量特种任务（全量审查、屎山+耦合分析）
 - GLM-5.2 成本高——**每月订阅可支持较多使用但不能无节制**（约 3-5 次/月复杂任务为合理上限）
 - 只用于"原本必须 ZCode 才能做"的任务：全量审查、架构二审、跨模块长程实现、屎山+耦合分析
 - 常规任务切回 DS V4-Pro / Flash
@@ -330,11 +362,14 @@ kimi exec "$(cat .cluster/tasks/pending/KIMI-XXX.md)"
 # ZCode（文档任务）:
 zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 
-# CodeBuddy（需人工在 IDE 中操作）:
+# CodeBuddy Mode A（需人工在 IDE 中操作）:
 # 1. 打开项目
 # 2. 切模型到任务文件指定的模型
 # 3. 复制任务 prompt
 # 4. 产出代码
+
+# CodeBuddy Mode B — WorkBuddy（CLI 非交互调度）🆕:
+workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
 
 # QoderWork（后台常驻，等待实现阶段产出后触发）:
 # Gate E 回归验证
@@ -370,7 +405,7 @@ zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 
 ## 七、注意事项
 
-1. **CodeBuddy 是唯一的 IDE 类 Agent**：需人工参与，任务文件必须包含模型切换指令
+1. **CodeBuddy 是集群中唯一同时拥有 IDE + Agent 双模式的 Agent**：Mode A 需人工 IDE 操作；Mode B (WorkBuddy) 可 CLI 非交互调度。任务文件必须包含 `codebuddy_mode` + `model_switch` 字段
 2. **Codex 和 ZCode 支持非交互模式**：可直接通过命令行传参调用
 3. **QoderWork 是唯一的 VM 隔离执行环境**：长时任务、有副作用、需隔离的任务默认派此
 4. **任务文件是最小上下文单元**：每份任务文件是一个自包含的 prompt，Agent 无需了解项目全貌
@@ -394,3 +429,108 @@ zcode exec "$(cat .cluster/tasks/pending/ZCODE-XXX.md)"
 | **2026-06-25** | **集群精简 9→5 Agent**：Reasonix/CodeWhale/Hermes→CodeBuddy，Qoder IDE→QoderWork。CC 切回 DeepSeek-V4-Pro |
 | **2026-06-25** | **🆕 Kimi 加入为第 6 Agent**：K2.7-code 模式 A（代码审查+深度调试）+ K2.6 模式 B（桌面自动化+E2E 验证）。双模式合入同一 `KIMI.md` |
 | **2026-06-25** | **🆙 双层升级（基于 Code Arena 实测数据）**：①ZCode/GLM-5.2→🎯 高级开发·特种部队（与 Codex 同级，关键时刻动用，一般任务不轻易使用——配额消耗高+速度慢）；②QoderWork/Qwen-3.7-Max→🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5 + 35h 长程自主 Agent）——纠正此前"VM+前端"的严重低估 |
+| **2026-06-28** | **🆕 CodeBuddy A/B 双模式**：Mode B（WorkBuddy）正式加入集群——解决 CodeBuddy IDE "需人工操作、不能 CLI 自动分发"的核心瓶颈。WorkBuddy 三大体系（日常办公/代码开发/设计创意）+ 三种工作模式（Ask/Plan/Craft）+ MCP 多应用连接器 + SkillHub 22K+ Skills + 100+ Agent 并行。CodeBuddy 继 Kimi 之后成为集群第二个 A/B 双模式 Agent。详见 `CODEBUDDY.md` |
+| **2026-06-28** | **🔭 观察名单建立**：Trae/Traework (Doubao-Seed) 列入技术储备观察。详见 §十 |
+
+---
+
+## 十、🔭 观察名单 — Agent 候选技术储备
+
+> **原则**：未达标的候选平台不入集群流水线，但保留完整评估记录。当升级条件满足时，可快速启动加盟流程。
+
+### 10.1 Trae / Traework（字节跳动）— Agent #7 候选
+
+**平台组合**：
+- **Trae IDE**：VS Code fork，多模型 IDE。拟 Mode A（桌面 IDE · 手动编码）
+- **Trae Work / SOLO**：自主 Agent 平台。拟 Mode B（Agent 平台 · CLI/云端调度）
+
+**独有模型**：Doubao-Seed 系列（字节自研，集群第 6 个独立模型家族）
+
+#### 10.1.1 三个豆包模型的真实能力
+
+| 模型 | 定位 | 关键数据 | 实际表现 |
+|------|------|------|------|
+| **Doubao-Seed-2.1-Pro** | 旗舰通用 | SciCode **59.8**（超 GPT-5.5 的 58.4）、MCP-Atlas **83.8**（超 GPT-5.5 的 81.6）、Agent 能力强 | 第三方实测 ≈ MiniMax-M3 级别；**稳定性差**（葬AI 8/10 轮无效进程，全场最高）；速度慢（128.9min vs GLM-5.2 69.7min）；"考试型选手"——标准题好，复杂工程不稳定 |
+| **Doubao-Seed-2.1-Turbo** | 高频轻量 | Pro 半价，适合高频调用 | 编程能力低于 Pro，缺乏独立第三方评测 |
+| **Doubao-Seed-Code** | 编程专用 | SWE-Bench Verified **78.8%**（曾登顶国内编程模型）、国内首个图像→代码原生能力、256K 上下文 | 视觉理解+代码生成深度对齐；像素级还原设计稿（2.5min vs 人类 47min）；CSS 盒模型/z-index/间距系统原生理解 |
+
+#### 10.1.2 与集群第一梯队的横向对比
+
+| 排名 | 模型 | Code Arena | 核心优势 | 核心短板 |
+|:--:|------|:--:|------|------|
+| 🥇 | **GLM-5.2**（ZCode） | #2 (1595) | 编码天花板最高、Design Arena #1 全球、1M 上下文、稳定性最强、工程意识最好 | 推理速度慢 |
+| 🥈 | **Kimi-K2.7-code**（Kimi A） | — | 1T MoE、MCP 81.1 集群最强、调试/bug 发现强 | 第三方 SWE-Bench 数据缺失 |
+| 🥉 | **Qwen-3.7-Max**（QoderWork） | #2 (1541) | SWE-Multilingual 78.4 全球纪录、35h 长程自主 | 编码天花板低于 GLM-5.2 |
+| 4 | **DeepSeek-V4-Pro**（CC） | — | 速度最快、性价比最高 | 编码上限不如前三 |
+| 5 | **Doubao-Seed-2.1-Pro** | — | Agent 强(MCP-Atlas 83.8)、SciCode 超 GPT-5.5 | **稳定性差、速度慢** |
+
+#### 10.1.3 独特价值：设计工程化流水线（非"审美更好"）
+
+> ⚠️ **重要澄清**：Trae 的核心优势不在"审美更好"——GLM-5.2 已是 Design Arena #1 全球，审美上限最高。Trae 的优势在**设计工程化**。
+
+**TRAE Work 三模式贯通**（集群中无替代）：
+
+```
+Work 模式 → Design 模式 → Code 模式
+（聊需求）   （出设计稿）   （生成代码）
+     │            │            │
+     └────────────┴────────────┘
+              上下文全链路贯通
+         Figma 原生解析 + 自动提取设计 token
+         设计系统约束 → 多页面一致性
+         框选编辑 + 对话调整 + 面板微调
+```
+
+| 能力 | Trae Work | QoderWork | GLM-5.2 | WorkBuddy |
+|------|:--:|:--:|:--:|:--:|
+| 需求→设计→代码贯通 | ✅ 三模式同平台 | ❌ | ❌ | ❌ |
+| Figma 原生解析 + 提取设计系统 | ✅ | ❌ | ❌ | ❌ |
+| 图像→代码（截图→HTML/CSS） | ✅ Doubao-Seed-Code 原生 | ❌ | ❌ | ❌ |
+| 设计稿可编辑（框选/面板） | ✅ 三种编辑方式 | ❌ | ❌ | ❌ |
+| 像素级视觉还原 | ✅ 2.5min vs 人 47min | ❌ | ❌ | ❌ |
+
+**与 Gemini 的对比**：
+
+| 维度 | Gemini 3.1 Pro | Doubao-Seed-Code + Trae |
+|------|------|------|
+| **审美类型** | 创意天花板型（Canvas 粒子/物理模拟/强交互） | 像素级还原型（设计系统/CSS 深度理解/品牌一致性） |
+| **比喻** | 黏土雕塑——可随意塑形，上限极高但需要手艺 | 积木搭建——每块精确，稳定可靠，适合生产 |
+| **适合场景** | 营销活动页、强交互体验 | 企业级产品界面、设计系统驱动的应用 |
+
+**Doubao-Seed 在审美上不优于 GLM-5.2，但在"设计→代码"的工程化还原上独一无二。**
+
+#### 10.1.4 对 LightShield 的潜在用途
+
+| 场景 | 当前做法 | 引入 Trae 后 |
+|------|------|------|
+| Web 仪表板重设计 | CC/QoderWork 手写 HTML/CSS → 来回改 | Figma 设计 → Design 模式提取设计系统 → Code 模式还原为 Jinja2 模板 |
+| 报告页面美化 | Markdown 渲染，零设计感 | 上传参考截图 → Seed-Code 理解视觉风格 → 生成匹配的 HTML 报告模板 |
+| 多页面一致性 | 每个页面独立手写，风格漂移 | Design Library 统一约束 → 所有页面自动遵循 |
+| 深色模式 | 手动写两套 CSS | 设计系统自动推导浅色/深色变量 → 一键生成 |
+
+#### 10.1.5 暂不加盟的核心原因
+
+| 维度 | 状态 | 详情 |
+|------|:--:|------|
+| **模型多样性** | ✅ | 第 6 个独立模型家族，真正的全新视角 |
+| **编码天花板** | ⚠️ | 第三方实测 ≈ MiniMax-M3 级别，距 GLM-5.2 有明显差距 |
+| **稳定性** | ❌ | **致命短板**——葬AI 测试失败率全场最高、高分低分波动极大 |
+| **SOLO 独有能力** | ✅ | 多智能体编排 + Plan/Spec 工作流 + 设计工程化流水线，集群无替代 |
+| **性价比** | ⚠️ | 成本与 GLM-5.2 持平但产出不如 |
+
+#### 10.1.6 升级条件（满足以下任一，重新评估 Agent #7 加盟）
+
+| 条件 | 说明 |
+|------|------|
+| 🎯 **Doubao-Seed-3.0 发布且稳定性达到 GLM-5.2 级别** | 核心条件。需第三方独立评测证实（非官方自报），葬AI 基准失败率 ≤ 3/10 轮 |
+| 🎯 **Doubao-Seed-Code 在 Code Arena 进入前 3** | 编程专用模型达到 Qwen-3.7-Max 以上水平 |
+| 🎯 **LightShield 启动 Web UI 全面重设计（如 v0.0.45+）** | 即使模型稳定性未达标，可作为"设计工程化顾问"角色临时启用——不进入代码流水线，只出设计系统和 HTML/CSS 原型，由 QoderWork 做工程化落地 |
+
+#### 10.1.7 当前可用方式（不入流水线）
+
+| 用途 | 说明 |
+|------|------|
+| **Web UI 设计原型** | 用 Trae Design 模式生成仪表板/报告页面的设计系统和原型 |
+| **Spec 文档生成** | 用 SOLO Spec 模式生成需求/任务/验收文档作为 CC 派工的输入参考 |
+| **安全审查辅助** | SOLO 内置安全审查子智能体——作为 Codex 正式审查前的初筛 |
+| **截图→代码** | 用 Doubao-Seed-Code 将参考设计截图转换为 HTML/CSS 起点 |
