@@ -4,10 +4,10 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-28 — 🆕 CodeBuddy A/B 双模式（Mode B = WorkBuddy）正式落地，三大文件（CODEBUDDY.md/CLUSTER.md/CLAUDE.md）全部更新。WorkBuddy 三大体系 + 三种工作模式 + MCP 多应用连接器 + SkillHub 22K+ Skills——解除了 CodeBuddy 不能 CLI 分发的核心瓶颈。🔭 观察名单已建立：Trae/Traework (Doubao-Seed 系列·第 6 独立模型家族) 列入 §十技术储备——核心优势在设计工程化流水线（非审美）、致命短板在稳定性（葬AI 8/10 轮失败）、等 Seed-3.0。
->   - 质量基线：**771 tests** / 0 fail / 1 skip / 12 门禁全绿
->   - 剩余债务：2 HIGH（扫描范围一致化 + 进程树清理）/ 18 MEDIUM / 14 LOW / 9 INFO
->   - 下次启动：修 2 HIGH → v0.0.41 开局。优先走 CC 直接修复（简单→CC自己做），顺手捡 C-002(EOFError) + C-003(登录类型校验) 两个 MEDIUM。
+> **上次会话**：2026-06-28 — v0.0.41 + v0.0.42 连续交付：2 HIGH 清零 + 4 MEDIUM 修复 + Codex 交叉审查闭环。CLI emoji 全量 ASCII 化（Windows GBK 兼容）。CodeBuddy A/B 双模式 + WorkBuddy 三大体系正式落地。🔭 观察名单：Trae/Traework (Doubao-Seed·第 6 独立模型家族) 列入 §十技术储备——等 Seed-3.0。
+>   - 质量基线：**784 tests** / 0 fail / 1 skip / 12 门禁全绿
+>   - 剩余债务：0 HIGH / 14 MEDIUM / 14 LOW / 9 INFO
+>   - 下次启动：CC 捡 C-004(scan_types 类型) + H-005(os_platform 归一化) + H-006(APPLY backend=host) 三个 MEDIUM。
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
