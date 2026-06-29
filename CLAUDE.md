@@ -4,10 +4,10 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.2 的六层防御架构，详见 `.guardrails/`。🆕 新增 MCP 安全层（v1.1 2026-06-29）。
-> **上次会话**：2026-06-29 — 护栏体系 v1.1 升级：MCP 安全层（白名单+5步审查）、沙箱逃逸防御清单、提示词注入防护（九荣九耻第9条）、跨模型审查量化数据（40-60%缺陷漏检率）、Debate 对抗审查模式、Agent CLI 安全版本基线、Git Worktree 隔离规范、门禁自动化调度。
+> **上次会话**：2026-06-29 — 护栏 v1.1 升级（六层防线+九荣九耻+MCP安全层+Debate模式）+ C-004/H-005/H-006 三个 MEDIUM 清零。commit `58e5ec7` pushed to GitHub。
 >   - 质量基线：**784 tests** / 0 fail / 1 skip / 12 门禁全绿
->   - 剩余债务：0 HIGH / 14 MEDIUM / 14 LOW / 9 INFO
->   - 下次启动：CC 捡 C-004(scan_types 类型) + H-005(os_platform 归一化) + H-006(APPLY backend=host) 三个 MEDIUM。
+>   - 剩余债务：0 CRITICAL / 0 HIGH / 11 MEDIUM / 14 LOW / 9 INFO
+>   - 下次启动：CC 捡 M-013(归档路径打印) + M-015(脚本半写残留) + H-008(Repository 单例缓存) + CB-C3(裸字符串枚举) 四个快速修复；然后 CB-D1/D2(规则引擎死语句) + CB-R4(严重度字典)。C 组 Web-Core 边界重构需先出 ADR。
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
