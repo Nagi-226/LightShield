@@ -3,8 +3,8 @@
 > **用途**：给 Claude Code 的项目全局指令，每次会话自动加载。
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
-> **护栏体系**：基于 Nagi Dev Guardrails v3.0 的五层防御架构，详见 `.guardrails/`。
-> **上次会话**：2026-06-28 — v0.0.41 + v0.0.42 连续交付：2 HIGH 清零 + 4 MEDIUM 修复 + Codex 交叉审查闭环。CLI emoji 全量 ASCII 化（Windows GBK 兼容）。CodeBuddy A/B 双模式 + WorkBuddy 三大体系正式落地。🔭 观察名单：Trae/Traework (Doubao-Seed·第 6 独立模型家族) 列入 §十技术储备——等 Seed-3.0。
+> **护栏体系**：基于 Nagi Dev Guardrails v3.2 的六层防御架构，详见 `.guardrails/`。🆕 新增 MCP 安全层（v1.1 2026-06-29）。
+> **上次会话**：2026-06-29 — 护栏体系 v1.1 升级：MCP 安全层（白名单+5步审查）、沙箱逃逸防御清单、提示词注入防护（九荣九耻第9条）、跨模型审查量化数据（40-60%缺陷漏检率）、Debate 对抗审查模式、Agent CLI 安全版本基线、Git Worktree 隔离规范、门禁自动化调度。
 >   - 质量基线：**784 tests** / 0 fail / 1 skip / 12 门禁全绿
 >   - 剩余债务：0 HIGH / 14 MEDIUM / 14 LOW / 9 INFO
 >   - 下次启动：CC 捡 C-004(scan_types 类型) + H-005(os_platform 归一化) + H-006(APPLY backend=host) 三个 MEDIUM。
@@ -14,7 +14,7 @@
 
 ## 零-A、开发护栏体系（强制）
 
-本项目集成了 Nagi ai-dev-guardrails 的五层防御架构。**所有 Agent 产出必须通过质量门禁才能合入**。
+本项目集成了 Nagi ai-dev-guardrails 的六层防御架构。**所有 Agent 产出必须通过质量门禁才能合入**。
 
 ### 护栏文件索引
 
@@ -22,7 +22,7 @@
 |------|------|------|
 | `.guardrails/PROJECT_CONTRACT.md` | 项目契约：范围/架构/红线/里程碑 | Nagi M1+M2 |
 | `.guardrails/QUALITY_GATES.md` | CI/CD 五道门禁 + 审计模板 | Nagi M6+M8+M9 |
-| `.guardrails/AGENT_CODE_OF_CONDUCT.md` | 🆕 Agent 八荣八耻行为准则 + 置信度标注规范 | 开发者社区 + 实战验证 |
+| `.guardrails/AGENT_CODE_OF_CONDUCT.md` | 🆕 Agent 九荣九耻行为准则（v1.1）+ 置信度标注规范 | 开发者社区 + 实战验证 + MCP 安全态势 |
 | `.guardrails/REVIEW_CHECKLIST.md` | M8 五维扫描审查清单 | CodeWhale 方法论 |
 | `.guardrails/audit-log.md` | 门禁触发审计日志 | 跨层审计 |
 | `.cluster/COORDINATION.md` | 多 Agent 冲突预防 + 知识缺口防护 | Nagi M5+M7 |
@@ -83,7 +83,7 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 1. **Claude Code 负责架构设计、接口定义、任务拆分、安全终审、集成合并** — 标准实现和样板代码由 CodeBuddy 承接
 2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文。**CodeBuddy 任务须在开头标注 `【CodeBuddy 模式：A/B】` + `【模型切换：XXX】`**。Mode A = CodeBuddy IDE 手动操作；Mode B = WorkBuddy CLI 非交互调度（`workbuddy craft`）
 3. **并行执行 + 集中集成** — 各 Agent 并行产出，Claude Code 审查后合并
-4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）；CC 自写代码由 Codex（GPT-5.5）交叉审查（强制不可跳过）；**Kimi Code 每版本强制一次独立审查**（Kimi-K2.7-code 是集群唯一与所有 Agent 模型不同的审查者，真正消除同源盲区）。**🔑 CC 架构决策由 ZCode（GLM-5.2）做全局一致性二审**（1M 上下文一次装载全项目 + 全部 ADR，审跨模块抽象合理性、分层违规、ADR vs 实现对照——不是审代码，是审架构。每里程碑版本一次，CC 和 ZCode 模型不同 → 无同源盲区）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
+4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）；CC 自写代码由 Codex（GPT-5.5）交叉审查（强制不可跳过）；**Kimi Code 每版本强制一次独立审查**（Kimi-K2.7-code 是集群唯一与所有 Agent 模型不同的审查者，真正消除同源盲区）。**🔑 CC 架构决策由 ZCode（GLM-5.2）做全局一致性二审**（1M 上下文一次装载全项目 + 全部 ADR，审跨模块抽象合理性、分层违规、ADR vs 实现对照——不是审代码，是审架构。每里程碑版本一次，CC 和 ZCode 模型不同 → 无同源盲区）。**🆕 Debate 对抗审查**（Codex↔Kimi 对抗循环）用于安全关键模块变更（MSF 白名单/沙箱边界/合规红线）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
 5. **模型优势对齐（按 Code Arena 排名）** —
    - 🎯 **高级开发层**：安全关键→Codex(GPT-5.5)；高级实现主力→QoderWork(Qwen-3.7-Max，Code Arena #2 1541 超 GPT-5.5)；特种部队→ZCode(GLM-5.2，1M 上下文，关键时刻动用)
    - 🔧 **常规开发层**：默认实现+测试+样板→CodeBuddy Mode A(多模型按需切换)；批量模板化/可标准化任务→CodeBuddy Mode B(WorkBuddy CLI·三大体系·SkillHub)

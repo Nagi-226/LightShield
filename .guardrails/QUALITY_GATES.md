@@ -81,6 +81,32 @@ grep -rnE "from hackingtool|import hackingtool" lightshield/ --include="*.py"
 # 任何 import → 拦截（hackingtool 不作为依赖）
 ```
 
+### A-5：MCP 服务器白名单验证（🆕 v1.1 2026-06-29）
+
+> **背景**：2026 年 MCP 工具投毒攻击大规模活跃——恶意 MCP 服务器通过包管理器以合法名称发布，工具描述中嵌入 Unicode 控制字符隐藏 prompt 注入指令，Agent 连接后即被劫持并自动外泄 `.aws/credentials` 等敏感文件。已感染 340+ 开发者。
+> 来源：https://kensai.app/zh/blog/2026-04-06-ai-agent-security-framework-tool-poisoning-prompt-leaking-mcp-sandbox-escapes
+
+**集群 MCP 服务器白名单**（仅以下经审查的 MCP 服务器允许接入）：
+
+| MCP 服务器 | 用途 | 审查状态 |
+|-----------|------|:--:|
+| `context7` | 文档查询（Context7） | ✅ 已审查 |
+| 其他任何 MCP 服务器 | — | ❌ 需 CC 安全审查后方可加入白名单 |
+
+**新增 MCP 服务器的审查流程**：
+1. 验证发布来源（官方 GitHub org / 已知维护者）
+2. 检查包名是否与知名项目混淆（如 `mcp-github-enhanced` 伪装 `github`）
+3. 审查工具描述中是否包含 Unicode 控制字符（`​`、`‌`、`‍`、`﻿` 等零宽字符）
+4. 检查是否请求不必要的文件系统/网络/环境变量权限
+5. CC 审查通过后更新本白名单
+
+```bash
+# 每次 commit 前检查 MCP 配置中是否引用了非白名单服务器
+# 检查 .claude/mcp.json、.codex/mcp.json、.kimi/mcp.json 等
+grep -rh '"command"' .claude/ .codex/ .kimi/ 2>/dev/null | grep -v "context7"
+# 任何非白名单引用 → 🟡 警告 + 需人工确认
+```
+
 ---
 
 ## 三、Gate B：范围忠实度（SF-L1~L4）
@@ -139,6 +165,9 @@ grep -rnE "from hackingtool|import hackingtool" lightshield/ --include="*.py"
 │  [ ] 所有入口有输入校验？                                   │
 │  [ ] SQL/命令注入向量？                                    │
 │  [ ] 敏感数据泄露（日志/URL 中的 PII）？                    │
+│  [ ] 🆕 沙箱逃逸风险（/proc 暴露、卷挂载遍历、元数据服务）？ │
+│  [ ] 🆕 MCP 工具来源是否在白名单内？                        │
+│  [ ] 🆕 Agent 提示词注入防护（错误消息/图片注入）？         │
 │                                                           │
 │  ③ 性能 (Performance)                                     │
 │  [ ] N+1 查询或冗余 API 调用？                             │
@@ -344,6 +373,7 @@ jobs:
 | Gate | 触发时机 | 执行者 | 自动化 | 可跳过 |
 |------|------|------|:--:|:--:|
 | **A** 合规扫描 | 每次 commit | Pre-commit hook | ✅ | ❌ |
+| **A-5** MCP 白名单 | 每次 commit + 新 MCP 引入时 | Pre-commit hook + CC | ✅ | ❌ |
 | **B** 范围忠实度 | 每个任务完成 | Claude Code + CodeWhale | 🟡 | ❌ |
 | **C** 质量审计 | 每个里程碑 | Claude Code（M8） | 🟡 | ❌ |
 | **D** 冲突检测 | 多 Agent 产出合入前 | Claude Code + Graphify | 🟡 | ❌ |
@@ -353,7 +383,60 @@ jobs:
 
 ---
 
-## 九、审计日志
+## 九、🆕 沙箱逃逸防御（v1.1 2026-06-29）
+
+> **背景**：2026 年 5 月披露 VM2 沙箱逃逸 CVE（CVSS 9.0-10.0），影响多个 AI Agent 平台的容器级沙箱。攻击途径包括 `/proc/pid/mem` 注入、卷挂载遍历、云元数据服务（169.254.169.254）凭证窃取。Docker 于 2026 年初发布 Sandboxes 产品，推荐使用 gVisor 或 Firecracker microVM 替代标准容器沙箱。
+> 来源：https://cheesecat.net/blog/prompt-injection-sandbox-escape-cve-2026-25592-2026-zh-tw/、https://chen-blog-sigma.vercel.app/ai-agent-sandbox-security/
+
+### 沙箱安全清单
+
+| 检查项 | 说明 | 当前状态 |
+|--------|------|:--:|
+| 禁用云元数据服务 | 阻止容器访问 `169.254.169.254`（AWS/阿里云/腾讯云 IMDS） | ⬜ 待确认 |
+| `/proc` 文件系统限制 | 限制 `/proc/pid/mem`、`/proc/self/mounts` 等敏感伪文件暴露 | ⬜ 待确认 |
+| 卷挂载最小化 | 仅挂载必要目录，禁止 `-v /:/host` 全根挂载 | ✅ `docker_executor.py` 仅挂载脚本目录 |
+| 网络隔离 | `--network none` 锁死容器网络 | ✅ 已实现 |
+| 特权模式禁止 | 禁止 `--privileged`、`--cap-add=SYS_ADMIN` | ✅ 已实现 |
+| 非 root 用户运行 | 容器内使用非 root 用户执行脚本 | ⬜ 待确认 |
+| 只读根文件系统 | `--read-only` + 必要时 `tmpfs` 挂载临时目录 | ⬜ 待确认 |
+| 资源限制 | CPU/Memory 限制防 DoS | ✅ `SANDBOX_DEFAULT_TIMEOUT` |
+
+### 中长期升级路径
+
+```
+当前（Docker + --network none）→ 评估 gVisor（用户态内核，无 /proc 逃逸面）→ 评估 Firecracker（microVM，硬件级隔离）
+```
+
+---
+
+## 十、🆕 自动化调度（v1.1 2026-06-29）
+
+> **背景**：Claude Code 拥有业内最完整的自主工作栈——`/goal`（条件驱动自主循环）+ `/loop`（定时重复）+ `/schedule`（后台定时独立运行）+ Stop Hooks（脚本判定退出）。可用于门禁自动化。
+> 来源：https://sotasync.com/reader/2026-05-15-claude-code-goal-loop-schedule-stop-hooks/
+
+### 可自动化的门禁任务
+
+| 任务 | 工具 | 频率 | 说明 |
+|------|------|------|------|
+| 每夜全量回归 | `/schedule` | 每日 02:00 | `pytest tests/ -v`，失败则 CC 自动分析 |
+| 合规扫描巡检 | `/schedule` | 每日 06:00 | Gate A 全量重扫 + 新依赖审计 |
+| 门禁绿灯自检 | `/goal` + Stop Hook | 按需 | 条件："784 tests pass + ruff/mypy/bandit 零违规" → 满足则自动停 |
+| 依赖安全审计 | `/schedule` | 每周一 08:00 | `pip-audit` + CVE 数据库对照 |
+
+### Goal Mode 安全约束（防止 Token 黑洞）
+
+> 社区实测：Goal 条件设置不当（如"改进代码质量"），单任务消耗 500 万 Token 仍未达成。
+
+| 约束 | 说明 |
+|------|------|
+| **必须包含硬限制** | 所有 Goal 必须带 `or stop after N turns` 或 `or stop after 30 minutes` |
+| **条件必须可机器验证** | 评估器只能读 transcript——条件必须是 Claude 能从输出中自行证明的。✅ "All tests pass and npm test exits 0" / ❌ "looks clean" |
+| **Stop Hook 优先** | script-based Stop Hook 是最可靠的停止机制——让测试脚本而非模型判断何时完成 |
+| **Token 预算上限** | 单 Goal 任务消耗不超过 500k token（正常任务的 ~5×） |
+
+---
+
+## 十一、审计日志
 
 每次门禁触发都记录到 `.guardrails/audit-log.md`：
 

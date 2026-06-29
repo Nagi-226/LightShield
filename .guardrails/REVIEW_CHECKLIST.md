@@ -126,25 +126,30 @@
 
 > 🔴 **不可跳过**。任何 CC 为作者（git author）的 commit，在合入前必须由 Codex (GPT-5.5) 完成独立审查。
 
-**触发条件**：
-- CC 自写的胶水代码/集成代码
-- CC 自写的架构补丁（接口契约调整等）
-- CC 自写的样板代码（原 Hermes 职责）
+**为什么必须跨模型审查**：
+- **同模型自审的缺陷检出率比独立模型审查低 40-60%**（Addy Osmani 团队 2026 年实测数据）。Agent 倾向于对自己刚生成的代码"放水"，大量 bug 和安全隐患被漏过。
+- Codex (GPT-5.5) 与 CC (DeepSeek-V4-Pro) 模型不同 → 审查视角天然不同 → 无同源盲区。
+- Kimi Code (K2.7-code) 作为集群唯一与所有其他 Agent 模型不同的审查者（Kimi ≠ DS ≠ GPT ≠ Qwen ≠ GLM），每版本强制一次独立审查。
 
-**不触发条件**（CC 可以直接合入）：
-- CC 审查后 merge 的其他 Agent 产出（CC 只是集成者，不是作者）
-- 纯文档/配置更新（非代码逻辑）
+**跨模型审查覆盖率要求**：
 
-**审查记录**：每次 Codex 交叉审查结果记录在 `.guardrails/audit-log.md` 中，格式：
-```
-YYYY-MM-DD | Gate C (Codex cross-review) | [commit] | [findings] | [result]
-```
+| 代码来源 | 审查者 | 模型是否不同 | 频率 |
+|---------|--------|:--:|------|
+| CC 自写 | Codex (GPT-5.5) | ✅ 不同 | 每次 commit 强制 |
+| Codex | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
+| CodeBuddy (DS V4-Pro) | CC (DS V4-Pro) | ❌ 同模型 ⚠️ | 每次产出合入前 + Kimi 独立审查补盲 |
+| CodeBuddy (其他模型) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
+| Kimi (K2.7-code) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
+| QoderWork (Qwen-3.7-Max) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
+| ZCode (GLM-5.2) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
+
+> ⚠️ **同模型盲区警告**：当 CodeBuddy 使用 DS V4-Pro 时，CC 审查 CB 产出存在同模型盲区风险。此时必须额外触发 Kimi Code (K2.7-code) 独立审查补盲。
 
 ---
 
-## 七、八荣八耻审查对照（🆕 v1.0 2026-06-26）
+## 七、八荣八耻审查对照（🆕 v1.0 2026-06-26 → v1.1 2026-06-29 新增第 9 条）
 
-> 每次审查必须对照 `.guardrails/AGENT_CODE_OF_CONDUCT.md §四` 的 8 项审查问题，逐项打勾。
+> 每次审查必须对照 `.guardrails/AGENT_CODE_OF_CONDUCT.md §四` 的 9 项审查问题，逐项打勾。
 > 任何一项不通过 → 🟡 标注 + 要求修正。
 
 | # | 准则 | 审查要点 | 通过 |
@@ -157,3 +162,4 @@ YYYY-MM-DD | Gate C (Codex cross-review) | [commit] | [findings] | [result]
 | 6 | 遵循规范 | 文件位置/接口契约/架构分层是否正确？ | ⬜ |
 | 7 | 诚实无知 | 产出是否标注了不确定性（🟡/🔴）？ | ⬜ |
 | 8 | 谨慎重构 | 改动是否聚焦？是否混杂重构+行为变更？ | ⬜ |
+| 9 | 🆕 防范注入 | Agent 输出是否暴露了系统提示词/内部堆栈？MCP 工具是否在白名单？ | ⬜ |

@@ -500,8 +500,9 @@ class LightShieldCore:
             recommendations = engine.recommend_hardening(findings or [])
 
         # Step 3: 选择加固适配器
-        platform = (os_platform or "").lower()
-        # 默认 Linux，向后兼容 v0.0.16
+        # H-005: 规范化 os_platform——统一处理 str/OSPlatform/None
+        # getattr 取 .value → 兼容 OSPlatform 枚举；fallback 到 str → 默认 linux
+        platform = (getattr(os_platform, "value", None) or os_platform or "").lower()
         hardener = WinHardener() if platform == "windows" else LinuxHardener()
 
         result = hardener.generate(
@@ -907,9 +908,17 @@ class LightShieldCore:
         else:
             os_plat = os_platform
 
-        # 确定 backend（None → 按 mode 自动选）
-        if backend is None:
-            backend = "host" if mode == "apply" else "docker"  # DRY_RUN 锁死容器
+        # 确定 backend（APPLY 强制 host，DRY_RUN 锁死容器）
+        # H-006: APPLY 模式必须真机执行，即使调用方显式传了 backend="docker" 也覆盖
+        if mode == "apply":
+            if backend is not None and backend != "host":
+                logger.warning(
+                    "core",
+                    f"[闭环/{audit_id}] APPLY 模式忽略显式 backend={backend}，强制使用 host",
+                )
+            backend = "host"
+        elif backend is None:
+            backend = "docker"  # DRY_RUN 锁死容器
 
         # ---- 结果容器（默认值，逐步填充） ----
         result = ClosedLoopResult(

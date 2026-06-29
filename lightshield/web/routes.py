@@ -133,7 +133,29 @@ def api_submit_scan():
     if not is_valid:
         return jsonify({"error": True, "message": f"[R2 违规] {reason}", "code": 400}), 400
 
-    scan_types: list[str] | None = data.get("scan_types")
+    # C-004: scan_types 类型校验——防止传入字符串/整数等非列表类型
+    raw_scan_types = data.get("scan_types")
+    if raw_scan_types is not None and not isinstance(raw_scan_types, list):
+        return jsonify(
+            {
+                "error": True,
+                "message": f"scan_types 必须是字符串数组，收到类型: {type(raw_scan_types).__name__}",
+                "code": 400,
+            }
+        ), 400
+    # C-004: 列表内每个元素也须为字符串
+    if isinstance(raw_scan_types, list):
+        for i, item in enumerate(raw_scan_types):
+            if not isinstance(item, str):
+                return jsonify(
+                    {
+                        "error": True,
+                        "message": f"scan_types[{i}] 必须是字符串，收到类型: {type(item).__name__}",
+                        "code": 400,
+                    }
+                ), 400
+
+    scan_types: list[str] | None = raw_scan_types
     confirm_ownership: bool = data.get("confirm_ownership", False)
 
     core = current_app.config["LIGHTSHIELD_CORE"]

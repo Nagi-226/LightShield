@@ -1,8 +1,33 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-26 | **当前版本**：v0.0.40 🟢（全部实现交付，6 commits，待 Codex 交叉审查后 tag）| **已定稿**：v0.0.41-50 路线图（通往 v1.0.0·生产硬化）
-> **会话状态**：**集群 6 Agent 全部参与交付**。CC=DeepSeek-V4-Pro。六大铁律 + 八荣八耻正式生效。771 passed / 1 skip / 12 门禁全绿。
-> **下次启动**：Codex 交叉审查 CC 胶水代码（强制不可跳过）→ git tag v0.0.40 → push GitHub
+> **最后更新**：2026-06-29 | **当前版本**：v0.0.42 🟢 | **护栏版本**：v1.1（六层防线 + 九荣九耻 + MCP 安全层）
+> **会话状态**：护栏体系 v1.1 升级完成 + C-004/H-005/H-006 三个 MEDIUM 清零。六大铁律 + 九荣九耻（🆕第9条：防范注入）正式生效。784 passed / 1 skip / 12 门禁全绿。
+> **下次启动**：剩余债务 0 HIGH / 11 MEDIUM / 14 LOW / 9 INFO。下一批 MEDIUM 候选：M-013（持久化输出一致性）、CB-D1/D2（规则引擎语义）。
+
+---
+
+### 2026-06-29：C-004 / H-005 / H-006 三个 MEDIUM 清零
+
+**交付**：
+- `lightshield/web/routes.py`：C-004 — `/api/scan` 新增 scan_types 类型校验（拒绝非 list + 列表元素非 str）
+- `lightshield/core.py` `generate_hardening()`：H-005 — 新增 OSPlatform 枚举规范化（`isinstance(os_platform, OSPlatformEnum)` → 取 `.value`）
+- `lightshield/core.py` `run_harden_closed_loop()`：H-006 — APPLY 模式强制 `backend="host"`（即使调用方显式传 `docker` 也覆盖 + logger.warning）
+- 784 passed / 1 skip / 0 fail — 零回归
+
+---
+
+### 2026-06-29：护栏体系 v1.1 升级（基于多Agent集群日报安全情报）
+
+**交付**：
+- `QUALITY_GATES.md`：新增 Gate A-5（MCP 服务器白名单验证 + 5 步审查流程）、Gate C 安全维度新增沙箱逃逸/MCP/提示词注入 3 项检查、新增 §九（沙箱逃逸防御清单 + gVisor/Firecracker 升级路径）、新增 §十（自动化调度：/goal+/schedule+Stop Hooks + Goal Mode 安全约束）
+- `AGENT_CODE_OF_CONDUCT.md`：v1.0→v1.1，八荣八耻→九荣九耻，新增第 9 条「以泄露提示为耻，以防范注入为荣」+ 落地机制（MCP 白名单/版本基线/错误消息过滤/图片注入防护）+ 审查对照表更新 + 防线体系图更新（v3.1→v3.2，新增 MCP 安全层）
+- `COORDINATION.md`：新增 §八（MCP 安全规则：白名单/注入防护/配置审计）、新增 §九（Agent CLI 最低安全版本基线表，Kimi Code ≥ v0.16.0）、新增 §十（Git Worktree 隔离规范：使用场景/规则/并发控制 3-5 甜点）
+- `REVIEW_CHECKLIST.md`：§六新增跨模型审查量化数据（同模型自审缺陷检出率低 40-60%）+ 跨模型审查覆盖率要求表 + 同模型盲区警告 + §七审查对照表新增第 9 条
+- `CLUSTER.md`：新增 §3.8 Debate 对抗审查模式（Proposer→Opponent→Revision→Arbitration 五步）+ 适用场景 + 对抗性提示词模板 + 与其他审查模式关系表
+- `CLAUDE.md`：护栏版本 v3.0→v3.2，六层防线 + 九荣九耻 + MCP 安全层。编排规则 #4 新增 Debate 模式引用。
+- `PROGRESS.md`：本记录。
+
+**安全情报来源**：2026-06-29 多Agent集群日报（MCP 投毒 340+感染 / VM2 沙箱逃逸 CVSS 9.0-10.0 / 提示词侧信道 4 攻击向量 / Kimi Code v0.16.0 凭证修复 / 同模型自审 40-60% 缺陷漏检率 / 五大编排模式 / Goal Mode Token 黑洞案例）
 
 ---
 
