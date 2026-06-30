@@ -4,10 +4,13 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.2 的六层防御架构，详见 `.guardrails/`。v1.2 十荣十耻 + 翻车模式 + 四问自检 + 6 Agent 全分发。
-> **上次会话**：2026-06-30 — v0.0.44 发版。护栏 v1.2 + 全部 MEDIUM 清零 + Web-Core 门面重构 + 3 LOW 顺手修复 + CHANGELOG 回填。git tag v0.0.44。
->   - 质量基线：**798 tests** / 0 fail / 1 skip / 12 门禁全绿
+> **上次会话**：2026-06-30 — v0.0.45 覆盖率提升（74.5%→79.6%，+133 tests，4 文件 0%→92~100%）。全部 MEDIUM 清零保持。
+>   - 质量基线：**931 tests** / 0 fail / 1 skip / 12 门禁全绿 / 覆盖率 79.6%
 >   - 🎉 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM** / 8 LOW / 9 INFO
->   - 下次启动：v0.0.45 规划（功能方向：OpenAPI 自动生成 / Web 实时刷新 / 规则订阅 / 覆盖率 78→85%）
+>   - T1 完成：port_scanner(0→100%) / repository/base(32→96%) / linux_harden(16→92%)
+>   - T2 完成：web_vuln/msf/host_exec/report_archiver/cli_helpers 边界测试 +23
+>   - 剩余 ~5.4% 在 cli.py(286)/core closed_loop(124)/routes(75) —— 需 mock 基础设施
+>   - 下次启动：v0.0.46 — 继续推覆盖率到 82% 或转向功能方向
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
