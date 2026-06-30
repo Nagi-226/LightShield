@@ -29,6 +29,16 @@ class RiskLevel(Enum):
     INFO = "info"
 
 
+# 严重度排序权重（数字越小越严重）—— 跨模块共享，避免多处重复定义
+SEVERITY_ORDER: dict[str, int] = {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 3,
+    "info": 4,
+}
+
+
 class ScanStatus(Enum):
     """扫描状态"""
 

@@ -3,11 +3,11 @@
 > **用途**：给 Claude Code 的项目全局指令，每次会话自动加载。
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
-> **护栏体系**：基于 Nagi Dev Guardrails v3.2 的六层防御架构，详见 `.guardrails/`。🆕 新增 MCP 安全层（v1.1 2026-06-29）。
-> **上次会话**：2026-06-29 — 护栏 v1.1 升级（六层防线+九荣九耻+MCP安全层+Debate模式）+ C-004/H-005/H-006 三个 MEDIUM 清零。commit `58e5ec7` pushed to GitHub。
->   - 质量基线：**784 tests** / 0 fail / 1 skip / 12 门禁全绿
->   - 剩余债务：0 CRITICAL / 0 HIGH / 11 MEDIUM / 14 LOW / 9 INFO
->   - 下次启动：CC 捡 M-013(归档路径打印) + M-015(脚本半写残留) + H-008(Repository 单例缓存) + CB-C3(裸字符串枚举) 四个快速修复；然后 CB-D1/D2(规则引擎死语句) + CB-R4(严重度字典)。C 组 Web-Core 边界重构需先出 ADR。
+> **护栏体系**：基于 Nagi Dev Guardrails v3.2 的六层防御架构，详见 `.guardrails/`。v1.2 十荣十耻 + 翻车模式 + 四问自检 + 6 Agent 全分发。
+> **上次会话**：2026-06-30 — v0.0.44 发版。护栏 v1.2 + 全部 MEDIUM 清零 + Web-Core 门面重构 + 3 LOW 顺手修复 + CHANGELOG 回填。git tag v0.0.44。
+>   - 质量基线：**798 tests** / 0 fail / 1 skip / 12 门禁全绿
+>   - 🎉 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM** / 8 LOW / 9 INFO
+>   - 下次启动：v0.0.45 规划（功能方向：OpenAPI 自动生成 / Web 实时刷新 / 规则订阅 / 覆盖率 78→85%）
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---
@@ -22,7 +22,7 @@
 |------|------|------|
 | `.guardrails/PROJECT_CONTRACT.md` | 项目契约：范围/架构/红线/里程碑 | Nagi M1+M2 |
 | `.guardrails/QUALITY_GATES.md` | CI/CD 五道门禁 + 审计模板 | Nagi M6+M8+M9 |
-| `.guardrails/AGENT_CODE_OF_CONDUCT.md` | 🆕 Agent 九荣九耻行为准则（v1.1）+ 置信度标注规范 | 开发者社区 + 实战验证 + MCP 安全态势 |
+| `.guardrails/AGENT_CODE_OF_CONDUCT.md` | 🆕 Agent 十荣十耻行为准则（v1.2）+ 翻车模式详解 + Commit 前四问自检 + 置信度标注规范 | ZEEKR ARK OS 2 十荣十耻 v3.7.2 + Karpathy 十条军规 + MCP 安全态势 |
 | `.guardrails/REVIEW_CHECKLIST.md` | M8 五维扫描审查清单 | CodeWhale 方法论 |
 | `.guardrails/audit-log.md` | 门禁触发审计日志 | 跨层审计 |
 | `.cluster/COORDINATION.md` | 多 Agent 冲突预防 + 知识缺口防护 | Nagi M5+M7 |

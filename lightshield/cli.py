@@ -145,8 +145,6 @@ def run_scan_command(args: argparse.Namespace) -> int:
             fmt=args.output_format,
         )
 
-        print(f"[完成] 报告已保存: {report_path}")
-
         # 保存扫描结果到 SQLite 历史
         try:
             from lightshield.repository.base import get_repository
@@ -178,14 +176,14 @@ def run_scan_command(args: argparse.Namespace) -> int:
             }
             scan_id = repo.save(scan_dict)
             print(f"[历史] 扫描已保存：{scan_id}")
-        except Exception:
-            pass  # 历史保存失败不阻断主流程
+        except Exception as exc:
+            logger.warning("cli", f"历史保存失败（不影响扫描主流程）：{exc}")
 
         if scan_result.error:
             print(f"[警告] 部分扫描提示：{scan_result.error}")
 
         # v0.0.40 Loop Hook：通知推送 + 报告归档
-        _run_hooks(
+        final_path = _run_hooks(
             target=target,
             report_path=report_path,
             finding_count=len(all_findings),
@@ -196,6 +194,7 @@ def run_scan_command(args: argparse.Namespace) -> int:
             duration_seconds=scan_result.duration_seconds,
             args=args,
         )
+        print(f"[完成] 报告已保存: {final_path}")
         return 0
     except KeyboardInterrupt:
         print("\n已取消扫描。")
@@ -293,7 +292,6 @@ def run_harden_command(args: argparse.Namespace) -> int:
         print("")
         print(f" 加固脚本：{harden_result.script_path}")
         print(f" 回滚脚本：{harden_result.rollback_path}")
-        print(f" 安全报告：{report_path}")
 
         # v0.0.40: --closed-loop 加固闭环（DRY_RUN 或 APPLY）
         if getattr(args, "closed_loop", False):
@@ -306,7 +304,7 @@ def run_harden_command(args: argparse.Namespace) -> int:
             return _run_sandbox_execution(core, harden_result, args)
 
         # v0.0.40 Loop Hook：通知推送 + 报告归档
-        _run_hooks(
+        final_path = _run_hooks(
             target=target,
             report_path=report_path,
             finding_count=len(all_findings),
@@ -314,6 +312,7 @@ def run_harden_command(args: argparse.Namespace) -> int:
             duration_seconds=scan_result.duration_seconds,
             args=args,
         )
+        print(f" 安全报告：{final_path}")
 
         print("")
         print(" [!] 请审阅加固脚本后再手动执行。脚本运行时会再次确认所有权。")
@@ -789,19 +788,23 @@ def _run_hooks(
     harden_action_count: int = 0,
     duration_seconds: float = 0.0,
     args: argparse.Namespace | None = None,
-) -> None:
+) -> str:
     """v0.0.40 Loop Hook：扫描/加固完成后 → 报告归档 + 通知推送。
 
     失败静默——不影响安全扫描主流程。
+
+    Returns:
+        报告最终路径（归档后路径或原始路径），用于 CLI 打印。
     """
+    final_path = report_path
+
     # ---- 报告归档 ----
     if report_path and os.path.isfile(report_path):
         from lightshield.utils.report_archiver import archive_report
 
         archived = archive_report(report_path, target=target or "unknown")
         if archived:
-            # 归档成功后静默
-            pass
+            final_path = archived
 
     # ---- Bark 通知推送 ----
     if args:
@@ -817,6 +820,8 @@ def _run_hooks(
                 duration_seconds=duration_seconds,
                 bark_key=bark_key,
             )
+
+    return final_path
 
 
 def _run_closed_loop_hooks(result, args: argparse.Namespace) -> None:

@@ -8,6 +8,125 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 
 ---
 
+## [0.0.44] - 2026-06-30
+
+### Added
+
+- **Web-Core 门面重构**（ADR-v043）：
+  - `LightShieldCore` 新增 4 个门面方法：`load_scan()` / `get_recommendations()` / `get_scan_history()` / `os_platform_normalize()`
+  - Web 层跨层 import 从 5 个模块（repository/rules/adapters/harden/core）收敛到 2 个（core + config）
+  - `_reconstruct_scan_result` / `_reconstruct_findings` 从 web 层迁入 core 内部（消除 CB-R1 重复债务）
+  - 三 Agent 流水线：CC(ADR) → CodeBuddy(GLM-5.2, 架构二审) → QoderWork(实现)
+- **护栏 v1.2 升级**：九荣九耻 → 十荣十耻 + 翻车模式详解（7 种 + 止损 + 恢复）+ Commit 前四问自检
+- **5 Agent 通用认知分发**：CODEX / CODEBUDDY / KIMI / QODERWORK / ZCODE 各获十荣十耻速查块
+- 新增 14 条门面方法单元测试 + 3 条 _safe_dirname 边界测试
+
+### Fixed
+
+- **9 MEDIUM 清零**：
+  - M-013：报告归档后 CLI 打印归档后路径（`_run_hooks` 返回最终路径）
+  - M-015：加固脚本半写残留清理（异常时 `os.remove` 已写入的半套文件）
+  - H-008：Repository 单例按 `backend:key` 缓存（替代全局单例）
+  - CB-C3：`config.to_dict()` 改为 `dataclasses.fields()` 自动遍历
+  - CB-D1：`_match_service_fingerprint` 死语句 → 实现 service 精确过滤
+  - CB-D2：`_match_header` 死语句 → 文档化占位 + TODO(v1.0.0)
+  - CB-R4：严重度排序字典 3 处重复 → `constants.py` 共享 `SEVERITY_ORDER`（修复 engine.py 缺 info 的 bug）
+  - C-001：`_task_results` 多线程加锁（`threading.RLock`）
+  - C-002/C-003：已在 v0.0.43 修复，本轮确认
+- **3 LOW 顺手修复**：
+  - M-011：CLI 历史保存异常不再静默吞掉（+ `logger.warning`）
+  - M-014：Web 登录失败计数器加锁（`threading.Lock`）
+  - M-016：`_safe_dirname` 过滤 `.` / `..` 目录穿越
+
+### Security
+
+- 门面方法异常语义契约：永不抛异常，失败返回安全默认值（None/空列表）+ 日志
+- `generate_hardening` 内部类型规范统一（`os_platform_normalize` 替换重复逻辑）
+
+### Changed
+
+- 版本号 0.0.43 → 0.0.44；测试总数 784 → 798（+14）
+- 债务：11 MEDIUM → **0 MEDIUM**（🎉 全部清零）
+- Web 层零跨层 import（5 项 grep 验收全部返回空）
+
+---
+
+## [0.0.43] - 2026-06-29
+
+### Added
+
+- **护栏 v1.1 升级**：MCP 安全层（白名单 + 5 步审查 + Unicode 控制字符扫描）
+- **九荣九耻** → 新增第 9 条「以泄露提示为耻，以防范注入为荣」
+- **Debate 对抗审查模式**（Codex ↔ Kimi 对抗循环）：Proposer → Opponent → Revision → Arbitration 五步
+
+### Fixed
+
+- C-004：`/api/scan` 新增 `scan_types` 类型校验（拒绝非 list + 列表元素非 str）
+- H-005：`generate_hardening` 新增 `OSPlatform` 枚举规范化（`isinstance` → `.value`）
+- H-006：APPLY 模式强制 `backend="host"`（即使调用方显式传 `docker` 也覆盖 + `logger.warning`）
+
+### Security
+
+- MCP 服务器白名单机制：仅允许经 CC 安全审查的服务器接入
+- Agent CLI 最低安全版本基线：Kimi Code ≥ v0.16.0
+- 禁止输出暴露系统提示词片段/内部错误堆栈/MCP 工具描述
+- 工具输出 URL/图片引用安全过滤（防 Markdown 图片注入）
+
+### Changed
+
+- 版本号 0.0.42 → 0.0.43
+- 护栏体系 v3.1 → v3.2（六层防线 + MCP 安全层）
+
+---
+
+## [0.0.42] - 2026-06-28
+
+### Fixed
+
+- Codex 交叉审查反馈：emoji → ASCII（CLI 输出兼容性）+ 低风险代码清理
+- 新增 13 条测试覆盖修复点
+
+### Changed
+
+- 版本号 0.0.41 → 0.0.42；测试总数 771 → 784
+
+---
+
+## [0.0.41] - 2026-06-28
+
+### Fixed
+
+- H-007：`HardenResult(action_count=0)` 不再被误判为"全部加固失败"
+- H-009：`HostExecutor` 超时仅杀主进程 → 新增进程树清理（Windows job object）
+- C-002：CLI `_ensure_ownership` / `_ensure_execute` 捕获 `EOFError`（CI/管道优雅降级）
+- C-003：Web `/api/login` 凭证类型校验（拒绝 null/数字等非字符串输入）
+
+### Changed
+
+- 版本号 0.0.40 → 0.0.41
+
+---
+
+## [0.0.40] - 2026-06-26
+
+### Added
+
+- **自动加固闭环**（`run_harden_closed_loop`）：①扫描 → ②推荐 → ③生成脚本 → ④执行（DRY_RUN 或 APPLY）→ ⑤复扫 → ⑥验证 → ⑦汇总
+- **HostExecutor**（真机执行后端）：跨平台（Win .bat/.ps1 + Linux .sh）加固脚本执行
+- **ADR-v040**（执行基座决策）：APPLY = 真机本地执行，非 VM/特权容器
+- **Loop Hooks**：扫描/加固完成 → 报告自动归档 + Bark 通知推送
+- **CLI `--closed-loop`** + `--apply` + `--confirm-ownership` 三开关
+- **Web 加固验证页**（QoderWork）：加固前后风险对比 UI
+- **i18n 20 键补充**（CodeBuddy）：闭环相关 locale
+- **三阶段全项目审计**（Kimi Phase 1 + Codex Phase 2 + QoderWork Phase 3）
+
+### Changed
+
+- 版本号 0.0.39 → 0.0.40；测试总数 687 → 771
+- 集群精简 9 → 6 Agent（+ Kimi 统一 Agent 双模式加入）
+
+---
+
 ## [0.0.39] - 2026-06-20
 
 ### Added

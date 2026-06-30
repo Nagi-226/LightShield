@@ -57,7 +57,7 @@ def csrf_header(auth_client, token: str = "test-csrf-token") -> dict[str, str]:
 @pytest.fixture
 def mock_repo(app):
     """Mock get_repository 返回有效扫描记录。"""
-    with mock.patch("lightshield.web.routes.get_repository") as m:
+    with mock.patch("lightshield.core.get_repository") as m:
         repo = mock.Mock()
         repo.get.return_value = {
             "scan_id": "LS-test",
@@ -238,7 +238,7 @@ class TestEdgeCases:
 
     def test_nonexistent_scan_returns_404(self, auth_client, csrf_header):
         """不存在的 scan_id → 404。"""
-        with mock.patch("lightshield.web.routes.get_repository") as m:
+        with mock.patch("lightshield.core.get_repository") as m:
             repo = mock.Mock()
             repo.get.return_value = None
             m.return_value = repo
@@ -275,7 +275,7 @@ class TestPageRender:
             "raw_result": {"target": "127.0.0.1", "findings": []},
         }
 
-        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+        with mock.patch("lightshield.core.get_repository", return_value=repo):
             resp = auth_client.get("/harden/LS-test/verify")
 
         assert resp.status_code == 200
@@ -303,7 +303,7 @@ class TestPageRender:
         repo = mock.Mock()
         repo.get.return_value = None
 
-        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+        with mock.patch("lightshield.core.get_repository", return_value=repo):
             resp = auth_client.get("/harden/LS-missing/verify")
 
         assert resp.status_code == 200
@@ -321,7 +321,7 @@ class TestPageRender:
             "raw_result": {"target": "10.0.0.1", "findings": []},
         }
 
-        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+        with mock.patch("lightshield.core.get_repository", return_value=repo):
             resp = auth_client.get("/harden/LS-test/verify")
 
         html = resp.get_data(as_text=True)
@@ -338,7 +338,7 @@ class TestPageRender:
             "raw_result": {"target": "127.0.0.1", "findings": []},
         }
 
-        with mock.patch("lightshield.web.pages.get_repository", return_value=repo):
+        with mock.patch("lightshield.core.get_repository", return_value=repo):
             resp = auth_client.get("/harden/LS-test/verify")
 
         html = resp.get_data(as_text=True)

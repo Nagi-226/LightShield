@@ -227,3 +227,203 @@ class TestR2RejectionBehavior:
         result = core.run_scan("192.168.1.0/24", confirm_ownership=True)
         assert result.status == ScanStatus.FAILED
         assert "CIDR" in result.error or "拒绝" in result.error
+
+
+# =============================================================================
+# v0.0.44 Web-Core 门面方法
+# =============================================================================
+
+
+class TestFacadeLoadScan:
+    """load_scan 门面：从仓库加载扫描并返回 ScanResult。"""
+
+    def test_load_scan_success(self, core):
+        """正常加载应返回 ScanResult（含 findings）。"""
+        from unittest.mock import patch
+
+        repo = MagicMock()
+        repo.get.return_value = {
+            "scan_id": "LS-test",
+            "target": "127.0.0.1",
+            "status": "completed",
+            "raw_result": {
+                "target": "127.0.0.1",
+                "status": "completed",
+                "ports": [{"port": 22, "service": "ssh"}],
+                "findings": [
+                    {
+                        "vuln_type": "high_risk_port",
+                        "severity": "high",
+                        "title": "SSH 暴露",
+                        "description": "SSH 端口对外开放",
+                        "remediation": "限制访问",
+                        "port": 22,
+                    }
+                ],
+                "duration_seconds": 5.0,
+            },
+        }
+
+        with patch("lightshield.core.get_repository", return_value=repo):
+            result = core.load_scan("LS-test")
+
+        assert result is not None
+        assert result.target == "127.0.0.1"
+        assert result.status == ScanStatus.COMPLETED
+        assert len(result.findings) == 1
+        assert result.findings[0].vuln_type == "high_risk_port"
+        assert len(result.ports) == 1
+
+    def test_load_scan_not_found(self, core):
+        """scan_id 不存在 → 返回 None。"""
+        from unittest.mock import patch
+
+        repo = MagicMock()
+        repo.get.return_value = None
+
+        with patch("lightshield.core.get_repository", return_value=repo):
+            result = core.load_scan("LS-nonexistent")
+
+        assert result is None
+
+    def test_load_scan_repo_exception(self, core):
+        """仓库异常 → 返回 None（不抛异常）。"""
+        from unittest.mock import patch
+
+        with patch("lightshield.core.get_repository", side_effect=RuntimeError("db error")):
+            result = core.load_scan("LS-test")
+
+        assert result is None
+
+
+class TestFacadeGetRecommendations:
+    """get_recommendations 门面：加载扫描 → 规则引擎 → 加固建议。"""
+
+    def test_get_recommendations_success(self, core):
+        """正常流程返回加固建议列表。"""
+        from unittest.mock import patch
+
+        repo = MagicMock()
+        repo.get.return_value = {
+            "scan_id": "LS-test",
+            "target": "127.0.0.1",
+            "status": "completed",
+            "raw_result": {
+                "target": "127.0.0.1",
+                "status": "completed",
+                "findings": [
+                    {
+                        "vuln_type": "high_risk_port",
+                        "severity": "high",
+                        "title": "Telnet",
+                        "description": "Telnet 暴露",
+                        "remediation": "关闭",
+                        "port": 23,
+                    }
+                ],
+            },
+        }
+
+        mock_engine = MagicMock()
+        mock_engine.recommend_hardening.return_value = [{"action": "关闭端口", "target": "23", "severity": "high"}]
+
+        with (
+            patch("lightshield.core.get_repository", return_value=repo),
+            patch("lightshield.core.RuleEngine", return_value=mock_engine),
+        ):
+            recs = core.get_recommendations("LS-test")
+
+        assert len(recs) == 1
+        assert recs[0]["action"] == "关闭端口"
+
+    def test_get_recommendations_scan_not_found(self, core):
+        """扫描不存在 → 返回空列表。"""
+        from unittest.mock import patch
+
+        repo = MagicMock()
+        repo.get.return_value = None
+
+        with patch("lightshield.core.get_repository", return_value=repo):
+            recs = core.get_recommendations("LS-missing")
+
+        assert recs == []
+
+    def test_get_recommendations_engine_exception(self, core):
+        """RuleEngine 异常 → 返回空列表（不抛异常）。"""
+        from unittest.mock import patch
+
+        repo = MagicMock()
+        repo.get.return_value = {
+            "scan_id": "LS-test",
+            "target": "127.0.0.1",
+            "status": "completed",
+            "raw_result": {
+                "target": "127.0.0.1",
+                "status": "completed",
+                "findings": [],
+            },
+        }
+
+        mock_engine = MagicMock()
+        mock_engine.recommend_hardening.side_effect = RuntimeError("engine error")
+
+        with (
+            patch("lightshield.core.get_repository", return_value=repo),
+            patch("lightshield.core.RuleEngine", return_value=mock_engine),
+        ):
+            recs = core.get_recommendations("LS-test")
+
+        assert recs == []
+
+
+class TestFacadeGetScanHistory:
+    """get_scan_history 门面：获取最近扫描历史。"""
+
+    def test_get_scan_history_success(self, core):
+        """正常返回历史列表。"""
+        from unittest.mock import patch
+
+        history = [{"scan_id": "LS-1", "target": "10.0.0.1"}]
+        repo = MagicMock()
+        repo.list_recent.return_value = history
+
+        with patch("lightshield.core.get_repository", return_value=repo):
+            result = core.get_scan_history(limit=10)
+
+        assert result == history
+        repo.list_recent.assert_called_once_with(limit=10)
+
+    def test_get_scan_history_repo_exception(self, core):
+        """仓库异常 → 返回空列表（不抛异常）。"""
+        from unittest.mock import patch
+
+        with patch("lightshield.core.get_repository", side_effect=RuntimeError("db error")):
+            result = core.get_scan_history()
+
+        assert result == []
+
+
+class TestOsPlatformNormalize:
+    """os_platform_normalize 静态方法：规范化 OS 平台输入。"""
+
+    def test_none_defaults_to_linux(self):
+        assert LightShieldCore.os_platform_normalize(None) == "linux"
+
+    def test_string_linux(self):
+        assert LightShieldCore.os_platform_normalize("linux") == "linux"
+
+    def test_string_windows(self):
+        assert LightShieldCore.os_platform_normalize("windows") == "windows"
+
+    def test_string_case_insensitive(self):
+        assert LightShieldCore.os_platform_normalize("Windows") == "windows"
+        assert LightShieldCore.os_platform_normalize("LINUX") == "linux"
+
+    def test_empty_string_defaults_to_linux(self):
+        assert LightShieldCore.os_platform_normalize("") == "linux"
+
+    def test_enum_input(self):
+        from lightshield.utils.constants import OSPlatform
+
+        assert LightShieldCore.os_platform_normalize(OSPlatform.LINUX) == "linux"
+        assert LightShieldCore.os_platform_normalize(OSPlatform.WINDOWS) == "windows"

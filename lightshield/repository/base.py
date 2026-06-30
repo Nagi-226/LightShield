@@ -207,11 +207,14 @@ class JsonFileRepository(ScanRepository):
 # 工厂函数（未来切换点）
 # =============================================================================
 
-_repository: ScanRepository | None = None
+_repositories: dict[str, ScanRepository] = {}
 
 
 def get_repository(backend: str = "json", **kwargs) -> ScanRepository:
-    """获取 Repository 实例（惰性单例）。
+    """获取 Repository 实例（按 backend + 关键参数缓存）。
+
+    同进程内同一 (backend, db_url/data_dir) 组合复用同一实例；
+    不同组合各自独立。
 
     Args:
         backend: "json" (v0.0.20) | "sqlite" (v1.0.0) | "postgres" (v2.0.0)
@@ -220,20 +223,22 @@ def get_repository(backend: str = "json", **kwargs) -> ScanRepository:
     Returns:
         ScanRepository 实现实例
     """
-    global _repository
-    if _repository is not None:
-        return _repository
+    cache_key = f"{backend}:{kwargs.get('db_url', kwargs.get('data_dir', ''))}"
+    if cache_key in _repositories:
+        return _repositories[cache_key]
 
+    instance: ScanRepository
     if backend == "json":
-        _repository = JsonFileRepository(data_dir=kwargs.get("data_dir", "./data"))
+        instance = JsonFileRepository(data_dir=kwargs.get("data_dir", "./data"))
     elif backend == "sqlite":
         from lightshield.repository.sqlite_repo import SqliteRepository
 
-        _repository = SqliteRepository(db_url=kwargs.get("db_url", "data/lightshield.db"))
+        instance = SqliteRepository(db_url=kwargs.get("db_url", "data/lightshield.db"))
     elif backend == "postgres":
         # v2.0.0 占位：return PostgresRepository(db_url=kwargs["db_url"])
         raise NotImplementedError("PostgreSQL backend — v2.0.0")
     else:
         raise ValueError(f"不支持的存储后端: {backend}")
 
-    return _repository
+    _repositories[cache_key] = instance
+    return instance

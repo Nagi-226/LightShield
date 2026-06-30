@@ -36,8 +36,10 @@ if __name__ == "__main__" and _sys.path[0] != os.path.dirname(os.path.dirname(os
 from lightshield.adapters.base import BaseAdapter, ScanResult, VulnFinding
 from lightshield.config import get_config
 from lightshield.harden.base import HardenResult
+from lightshield.repository.base import get_repository
+from lightshield.rules.engine import RuleEngine
 from lightshield.sandbox.base import ExecutionResult, SandboxExecutor
-from lightshield.utils.constants import ScanStatus
+from lightshield.utils.constants import RiskLevel, ScanStatus
 from lightshield.utils.validator import TargetValidator
 
 # =============================================================================
@@ -85,6 +87,7 @@ class LightShieldCore:
         self._config = config or get_config()
         self._adapters: dict[str, BaseAdapter] = {}
         self._task_results: dict[str, _TaskInfo] = {}  # v0.0.31: Thread 异步, v1.0: 线程池, v2.0: Redis
+        self._tasks_lock = threading.RLock()  # C-001: 保护 _task_results 并发读写
         self._scan_log: list[dict] = []
 
     # =========================================================================
@@ -372,7 +375,8 @@ class LightShieldCore:
             target=target,
             created_at=now.isoformat(),
         )
-        self._task_results[task_id] = task
+        with self._tasks_lock:
+            self._task_results[task_id] = task
 
         thread = threading.Thread(
             target=self._run_scan_async,
@@ -381,7 +385,8 @@ class LightShieldCore:
             daemon=True,
             name=f"lightshield-scan-{task_id}",
         )
-        task.thread = thread
+        with self._tasks_lock:
+            task.thread = thread
         thread.start()
 
         return task_id
@@ -398,11 +403,13 @@ class LightShieldCore:
 
         不直接抛出异常——所有错误记录在 task.error 中。
         """
-        task = self._task_results.get(task_id)
+        with self._tasks_lock:
+            task = self._task_results.get(task_id)
         if task is None:
             return  # 任务已被移除（极少见）
 
-        task.status = ScanStatus.RUNNING
+        with self._tasks_lock:
+            task.status = ScanStatus.RUNNING
         try:
             task.result = self.run_scan(
                 target,
@@ -410,12 +417,14 @@ class LightShieldCore:
                 confirm_ownership=confirm_ownership,
                 **kwargs,
             )
-            task.status = task.result.status
-            if task.result.error:
-                task.error = task.result.error
+            with self._tasks_lock:
+                task.status = task.result.status
+                if task.result.error:
+                    task.error = task.result.error
         except Exception as exc:
-            task.status = ScanStatus.FAILED
-            task.error = str(exc)
+            with self._tasks_lock:
+                task.status = ScanStatus.FAILED
+                task.error = str(exc)
 
     def get_scan_status(self, task_id: str) -> dict:
         """查询扫描任务状态。
@@ -430,20 +439,26 @@ class LightShieldCore:
         Returns:
             {"task_id": str, "status": str, "target": str, "findings": int, ...}
         """
-        task = self._task_results.get(task_id)
-        if task is None:
-            return {"task_id": task_id, "status": "not_found"}
+        with self._tasks_lock:
+            task = self._task_results.get(task_id)
+            if task is None:
+                return {"task_id": task_id, "status": "not_found"}
+            # 在锁内读取全部可变字段，防止与后台线程并发写入
+            status = task.status
+            target = task.target
+            created_at = task.created_at
+            result = task.result
+            error = task.error
 
-        result = task.result
         return {
             "task_id": task_id,
-            "status": task.status.value,
-            "target": task.target,
-            "created_at": task.created_at,
+            "status": status.value,
+            "target": target,
+            "created_at": created_at,
             "ports": len(result.ports) if result else 0,
             "findings": len(result.findings) if result else 0,
             "duration_seconds": result.duration_seconds if result else 0,
-            "error": task.error,
+            "error": error,
         }
 
     def generate_hardening(
@@ -480,7 +495,6 @@ class LightShieldCore:
         """
         from lightshield.harden.linux_harden import LinuxHardener
         from lightshield.harden.win_harden import WinHardener
-        from lightshield.rules.engine import RuleEngine
         from lightshield.utils.logger import get_logger
 
         logger = get_logger()
@@ -500,9 +514,8 @@ class LightShieldCore:
             recommendations = engine.recommend_hardening(findings or [])
 
         # Step 3: 选择加固适配器
-        # H-005: 规范化 os_platform——统一处理 str/OSPlatform/None
-        # getattr 取 .value → 兼容 OSPlatform 枚举；fallback 到 str → 默认 linux
-        platform = (getattr(os_platform, "value", None) or os_platform or "").lower()
+        # H-005 + v0.0.44: 统一使用 os_platform_normalize 规范化
+        platform = self.os_platform_normalize(os_platform)
         hardener = WinHardener() if platform == "windows" else LinuxHardener()
 
         result = hardener.generate(
@@ -1090,6 +1103,141 @@ class LightShieldCore:
             result=result,
         )
         return result
+
+    # =========================================================================
+    # v0.0.44 Web-Core 门面（Web 层唯一入口）
+    # =========================================================================
+
+    def load_scan(self, scan_id: str) -> ScanResult | None:
+        """从仓库加载一次扫描，返回完整 ScanResult（含结构化 findings）。
+
+        内部完成：repo.get → raw_result 解包 → _reconstruct_scan_result → _reconstruct_findings。
+        Web 层不需要知道 repository backend / raw_result 结构。
+
+        返回 None 表示 scan_id 不存在。仓库异常 → 日志 + 返回 None。
+        """
+        from lightshield.utils.logger import get_logger
+
+        logger = get_logger()
+        db_url = self._config.db_url or "data/lightshield.db"
+        try:
+            repo = get_repository("sqlite", db_url=db_url)
+            scan_data = repo.get(scan_id)
+        except Exception as exc:
+            logger.error("core", f"load_scan 仓库异常: scan_id={scan_id} {exc}")
+            return None
+
+        if scan_data is None:
+            return None
+
+        raw = scan_data.get("raw_result", scan_data)
+        try:
+            result = self._reconstruct_scan_result(raw)
+            findings = self._reconstruct_findings(raw.get("findings", []))
+            result.findings = findings
+        except Exception as exc:
+            logger.error("core", f"load_scan 数据解析失败: scan_id={scan_id} {exc}")
+            return None
+
+        return result
+
+    def get_recommendations(self, scan_id: str) -> list[dict]:
+        """获取加固建议。
+
+        内部完成：load_scan → RuleEngine 加载 → recommend_hardening。
+        Web 层不需要知道 RuleEngine / load_rules / recommend_hardening。
+
+        返回空列表表示：扫描不存在 / 无 findings / 无匹配规则 / 仓库/RuleEngine 异常。
+        """
+        from lightshield.utils.logger import get_logger
+
+        logger = get_logger()
+        scan = self.load_scan(scan_id)
+        if scan is None:
+            return []
+
+        try:
+            engine = RuleEngine()
+            engine.load_rules()
+            return engine.recommend_hardening(scan.findings)
+        except Exception as exc:
+            logger.error("core", f"get_recommendations 异常: scan_id={scan_id} {exc}")
+            return []
+
+    def get_scan_history(self, limit: int = 20) -> list[dict]:
+        """获取最近扫描历史列表。
+
+        Web 层不需要知道 repository backend / db_url。
+        仓库异常 → 返回空列表。
+        """
+        from lightshield.utils.logger import get_logger
+
+        logger = get_logger()
+        db_url = self._config.db_url or "data/lightshield.db"
+        try:
+            repo = get_repository("sqlite", db_url=db_url)
+            return repo.list_recent(limit=limit)
+        except Exception as exc:
+            logger.error("core", f"get_scan_history 仓库异常: {exc}")
+            return []
+
+    @staticmethod
+    def os_platform_normalize(raw: str | OSPlatform | None) -> str:
+        """将 os_platform 输入规范化为字符串值。
+
+        接受：OSPlatform 枚举 / 字符串 / None → 返回标准化的字符串值。
+        永不抛异常——None 或无效值返回 "linux"。
+        """
+        if raw is None:
+            return "linux"
+        val = getattr(raw, "value", None) or str(raw)
+        return val.lower() or "linux"
+
+    def _reconstruct_scan_result(self, raw: dict) -> ScanResult:
+        """从仓库存储的字典重建 ScanResult 对象。"""
+        status_str = raw.get("status", "completed")
+        try:
+            status = ScanStatus(status_str)
+        except ValueError:
+            status = ScanStatus.FAILED
+
+        return ScanResult(
+            status=status,
+            target=raw.get("target", "unknown"),
+            ports=raw.get("ports", []),
+            services=raw.get("services", []),
+            os_info=raw.get("os_info"),
+            findings=[],  # findings 由 _reconstruct_findings 单独处理
+            error=raw.get("error"),
+            duration_seconds=raw.get("duration_seconds", 0.0),
+        )
+
+    def _reconstruct_findings(self, findings_data: list[dict]) -> list[VulnFinding]:
+        """从字典列表重建 VulnFinding 对象列表。"""
+        findings: list[VulnFinding] = []
+        for f in findings_data:
+            severity_str = f.get("severity", "info")
+            try:
+                severity = RiskLevel(severity_str)
+            except ValueError:
+                severity = RiskLevel.INFO
+
+            findings.append(
+                VulnFinding(
+                    vuln_type=f.get("vuln_type", "unknown"),
+                    severity=severity,
+                    title=f.get("title", ""),
+                    description=f.get("description", ""),
+                    remediation=f.get("remediation", ""),
+                    url=f.get("url"),
+                    parameter=f.get("parameter"),
+                    port=f.get("port"),
+                    cve_id=f.get("cve_id"),
+                    cvss_score=f.get("cvss_score"),
+                    evidence=f.get("evidence"),
+                )
+            )
+        return findings
 
     # =========================================================================
     # 审计日志

@@ -272,24 +272,19 @@ class LightShieldConfig:
     # =========================================================================
 
     def to_dict(self) -> dict:
-        """导出为字典，方便传递给其他模块"""
-        return {
-            "scan_timeout": self.scan_timeout,
-            "max_concurrent_scans": self.max_concurrent_scans,
-            "scan_interval": self.scan_interval,
-            "msf_path": self.msf_path,
-            "msf_whitelist": self.msf_whitelist,
-            "msf_blacklist": self.msf_blacklist,
-            "nmap_path": self.nmap_path,
-            "nmap_args": self.nmap_args,
-            "report_output_dir": self.report_output_dir,
-            "report_format": self.report_format,
-            "report_lang": self.report_lang,
-            "log_dir": self.log_dir,
-            "log_level": self.log_level,
-            "harden_dry_run": self.harden_dry_run,
-            "harden_backup": self.harden_backup,
-        }
+        """导出为字典（自动遍历 dataclass 字段，零维护滞后）。
+
+        Returns:
+            包含所有公开字段的字典（跳过 _ 前缀的内部字段）。
+        """
+        import dataclasses
+
+        result: dict = {}
+        for f in dataclasses.fields(self):
+            if f.name.startswith("_"):
+                continue
+            result[f.name] = getattr(self, f.name)
+        return result
 
 
 # =============================================================================

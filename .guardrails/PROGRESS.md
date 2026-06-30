@@ -1,8 +1,9 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-06-29 session-end | **当前版本**：v0.0.43 🟢 | **护栏版本**：v1.1（六层防线 + 九荣九耻 + MCP 安全层）
-> **会话状态**：护栏 v1.1 + 3 MEDIUM 清零 已 push (`58e5ec7`)。六大铁律 + 九荣九耻正式生效。784 passed / 1 skip / 12 门禁全绿。
-> **下次启动**：A 组快速修复 — M-013(归档路径) + M-015(脚本半写残留) + H-008(Repo单例) + CB-C3(裸字符串) → B 组规则引擎 CB-D1/D2 + CB-R4 → C 组 Web-Core 边界需先出 ADR。
+> **最后更新**：2026-06-30 | **当前版本**：v0.0.44 🎉 | **护栏版本**：v1.2（六层防线 + 十荣十耻 + 翻车模式 + 四问自检 + MCP 安全层）
+> **会话状态**：🎉 v0.0.44 发版 — 全部 MEDIUM 清零 + Web-Core 门面重构 + CHANGELOG 回填。798 passed / 1 skip / 12 门禁全绿。
+> **剩余债务**：**0C / 0H / 0M** / 8L / 9I
+> **今日交付**：护栏 v1.2 + 5 Agent 分发 + 12 债务清零 + ADR + 三 Agent 流水线 + CHANGELOG v0.0.40-44 回填
 
 ---
 
@@ -28,6 +29,111 @@
 - `PROGRESS.md`：本记录。
 
 **安全情报来源**：2026-06-29 多Agent集群日报（MCP 投毒 340+感染 / VM2 沙箱逃逸 CVSS 9.0-10.0 / 提示词侧信道 4 攻击向量 / Kimi Code v0.16.0 凭证修复 / 同模型自审 40-60% 缺陷漏检率 / 五大编排模式 / Goal Mode Token 黑洞案例）
+
+---
+
+### 2026-06-30：护栏体系 v1.2 升级 — 十荣十耻 + 翻车模式 + 四问自检
+
+**来源**：ZEEKR ARK OS 2「十荣十耻」v3.7.2（吸收 Karpathy 内部 Claude.md 十条军规）→ 精华融合进 LightShield 防线体系。
+
+**交付**：
+- `AGENT_CODE_OF_CONDUCT.md`：v1.1→v1.2，九荣九耻→**十荣十耻**（新增 #10「以猜测试错为耻，以根因排错为荣」+ 落地机制 + 三次试错闸门）
+- 增强现有条目：
+  - #4「复用现有」→ 新增 **依赖守门** 三问闸门（stdlib→已有库→维护活跃度）+ commit 说理 + YAGNI 原则
+  - #5「主动测试」→ 新增 **影响驱动测试** 流程（grep 所有引用测试文件→全跑，不限于自己模块）+ **异常三问**（参数边界/依赖失败/超时资源）
+  - #8「谨慎重构」→ 新增 **改前影响分析**（Find References + Call Hierarchy + 逐调用方确认兼容）+ 七种翻车自检链接
+- 🆕 **§三 翻车模式详解**（7 种模式，每种配识别信号+止损策略+恢复路径）：
+  ① Kitchen Sink ② Wrong Abstraction ③ Optimistic Path ④ Runaway Refactor
+  ⑤ 知识幻觉 ⑥ 风格漂移 ⑦ 隐式耦合破坏（LightShield 最高频翻车预警标注）
+- 🆕 **§四 Commit 前四问自检**（破解自我监督盲区——事前自检 + 事后交叉审查互补）：
+  ① 范围（diff --stat）② 影响（Find References）③ 覆盖（grep 测试 + 784 tests 基线不降）④ 差异（逐行理解）
+  + 与现有五道门禁 + Codex/Kimi 交叉审查的衔接流程图
+- 审查对照表更新：#1~#10 全部带 🆕 增强问点
+- 防线体系图更新：清晰标注 v1.2 新增模块
+- `CLAUDE.md`：护栏版本引用更新 + 文件索引表格更新
+- `PROGRESS.md`：本记录 + 版本号更新
+- 🆕 **集群 5 Agent 通用认知分发**：在 `CODEX.md`、`CODEBUDDY.md`、`KIMI.md`、`QODERWORK.md`、`ZCODE.md` 的护栏章节各插入统一的「十荣十耻 v1.2 速查表 + 翻车模式七种自检 + Commit 前四问自检」三合一速查块，指向完整准则文档。每个 Agent 会话启动时加载自身 .md 即建立通用行为认知。
+
+**设计原则**：保留 LightShield 独有优势（#9 MCP 安全层 + 项目落地机制 + 置信度标注 + 集群审查体系），从十荣十耻汲取最需要的三块拼图（第 10 条 + 翻车模式 + 四问自检），不做简单替换。**分发策略**：每个 Agent .md 放紧凑速查表（维护轻量），详细落地机制集中在 `AGENT_CODE_OF_CONDUCT.md`（单一事实来源）。
+
+---
+
+### 2026-06-30：A 组 4 MEDIUM 清零
+
+**交付**（全部 784 tests / 0 fail 确认）：
+
+| 编号 | 修复 | 文件 | 改动 |
+|:--:|------|------|------|
+| **M-013** | 报告归档后 CLI 打印归档后路径 | `lightshield/cli.py` | `_run_hooks()` 返回最终路径（归档后或原始）；scan/harden 两个调用方改为先归档再打印 |
+| **M-015** | 加固脚本部分写入失败残留文件清理 | `lightshield/harden/linux_harden.py` `win_harden.py` | 写入异常时清理已落盘的半套文件（防止用户误执行无回滚的加固脚本） |
+| **H-008** | Repository 单例按 backend+db_url 缓存 | `lightshield/repository/base.py` | 全局单例 `_repository` → `_repositories: dict` 按 `backend:key` 缓存；同进程混用不同后端各自独立 |
+| **CB-C3** | config.to_dict() 用 dataclasses 自动遍历 | `lightshield/config.py` | 手写 15 字段 → `dataclasses.fields()` 自动遍历（跳过 `_` 前缀内部字段）；零维护滞后 |
+
+**债务变化**：11M → **7M**（-4）
+
+---
+
+### 2026-06-30：B 组 3 MEDIUM 清零（规则引擎）
+
+**交付**（全部 784 tests / 0 fail 确认）：
+
+| 编号 | 修复 | 文件 | 改动 |
+|:--:|------|------|------|
+| **CB-R4** | 严重度排序字典去重为共享常量 | `constants.py` `engine.py` `pdf_writer.py` | 新增 `SEVERITY_ORDER` 常量（含 info）；`recommend_hardening`/`_deduplicate`/`PdfReportWriter` 三处统一引用；修复 engine.py 原定义缺 info 的 bug |
+| **CB-D1** | `_match_service_fingerprint` 死语句 → 精确匹配 | `engine.py` | 删除丢弃结果的 `rule.get("service")`/`rule.get("auth_result")` 死调用；实现 service 字段精确过滤（查找 finding 端口对应的服务名，仅匹配规则指定服务的 finding） |
+| **CB-D2** | `_match_header` 死语句 → 文档化占位 | `engine.py` | 删除丢弃结果的 `rule.get("header")`/`rule.get("pattern")` 死调用；添加 TODO(v1.0.0) 注释说明待 HTTP 响应头采集就绪后实现精确匹配 |
+
+**债务变化**：7M → **4M**（-3）
+
+---
+
+### 2026-06-30：C-001 多线程加锁（+ 确认 C-002/C-003 已修）
+
+**交付**（784 tests / 0 fail）：
+
+| 编号 | 状态 | 修复 | 文件 |
+|:--:|:--:|------|------|
+| **C-001** | 🆕 修复 | `_task_results` 新增 `threading.RLock`；`submit_scan`/`_run_scan_async`/`get_scan_status` 全部加锁保护 | `lightshield/core.py` |
+| **C-002** | ✅ 已修 (v0.0.43) | `_ensure_ownership` / `_ensure_execute` 已捕获 `EOFError` | `lightshield/cli.py` |
+| **C-003** | ✅ 已修 (v0.0.43) | `/api/login` 已加 `isinstance(username, str)` 类型校验 | `lightshield/web/routes.py` |
+
+**债务变化**：4M → **3M**（-1）
+
+**🟠 下一 Agent 交接**：CC 直接可修项已全部清零。剩余 3 MEDIUM 属于 **Web-Core 边界分层穿透**（CB-R1/R2/L1/L2/L3/C1 共 6 项跨层债务，3M+3L），需要下一 Agent 先出 ADR 定义 `core` 门面接口，再逐个治理。
+
+---
+
+### 2026-06-30：v0.0.44 Web-Core 门面重构（全集群流水线）
+
+**流水线**：CC(ADR) → CodeBuddy(GLM-5.2, 架构二审 9 发现) → CC(ADR 修订 F-1~F-7) → QoderWork(实现) → CC(验收)
+
+**交付**（798 tests / 0 fail，+14 新测试）：
+
+| Agent | 产出 | 文件 |
+|------|------|------|
+| **CC** 🏛️ | ADR 初版 + 二审修订 | `docs/adr-v043-web-core-facade.md`（✅ Accepted） |
+| **CodeBuddy** 🔑 (GLM-5.2) | 架构二审报告（9 项发现，F-1~F-7 全部采纳） | `docs/review-v044-codebuddy-arch-review.md` |
+| **QoderWork** 🏗️ | 4 门面方法 + web 层改造 + 测试 | `lightshield/core.py` `web/pages.py` `web/routes.py` 等 |
+
+**重构核心**：
+- `core.load_scan()` → `ScanResult \| None`（统一项目 dataclass 返回模式）
+- `core.get_recommendations()` → 封装 RuleEngine 加载+推荐
+- `core.get_scan_history()` → 封装 repository 查询
+- `core.os_platform_normalize()` → 统一类型契约，`generate_hardening` 内部调用
+- `_reconstruct_scan_result` / `_reconstruct_findings` 从 web 层迁入 core 内部
+- Web 层依赖从 5 模块 → 2 模块（core + config + reporter 渲染）
+
+**验收（5 项 grep + 测试）**：
+```
+grep "from lightshield.repository" lightshield/web/ → 空
+grep "from lightshield.rules" lightshield/web/      → 空
+grep "from lightshield.adapters" lightshield/web/   → 空
+grep "_reconstruct_findings" lightshield/web/       → 空
+grep "_reconstruct_scan_result" lightshield/web/    → 空
+798 passed / 0 fail / 1 skip
+```
+
+**债务清零**：最后 3 MEDIUM（CB-R1/R2/L1）+ 3 LOW（CB-L2/L3/C1）全部解决。**🎉 0C / 0H / 0M。**
 
 ---
 

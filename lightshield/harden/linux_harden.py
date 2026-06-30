@@ -189,6 +189,14 @@ class LinuxHardener(HardenBase):
                 f.write(rollback_body)
         except OSError as e:
             self._logger.error("hardener", f"加固脚本写入失败：{harden_path}", exception=e)
+            # 清理已写入的半套文件（防止用户误执行无回滚的加固脚本）
+            for p in (harden_path, rollback_path):
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                        self._logger.info("hardener", f"已清理残留文件：{p}")
+                    except OSError:
+                        pass
             return HardenResult(
                 status=HardenStatus.FAILED,
                 target=target,

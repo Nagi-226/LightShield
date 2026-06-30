@@ -23,12 +23,9 @@ from pathlib import Path
 
 from flask import Blueprint, Response, current_app, jsonify, request, send_from_directory, session, stream_with_context
 
-from lightshield.adapters.base import ScanResult, VulnFinding
 from lightshield.config import LightShieldConfig
 from lightshield.report.reporter import ReportGenerator
-from lightshield.repository.base import get_repository
-from lightshield.rules.engine import RuleEngine
-from lightshield.utils.constants import RiskLevel, ScanStatus
+from lightshield.utils.constants import ScanStatus
 from lightshield.utils.logger import get_logger
 from lightshield.utils.validator import TargetValidator
 from lightshield.web.auth import login, login_required, logout
@@ -267,37 +264,21 @@ def api_get_report(scan_id: str):
         {"error": true, "message": "扫描尚未完成，无法生成报告。当前状态: failed", "code": 409}
     """
     config: LightShieldConfig = current_app.config["LIGHTSHIELD_CONFIG"]
+    core = current_app.config["LIGHTSHIELD_CORE"]
 
-    # 从仓库加载扫描数据
-    db_url = config.db_url or "data/lightshield.db"
-    try:
-        repo = get_repository("sqlite", db_url=db_url)
-    except Exception as exc:
-        return jsonify({"error": True, "message": f"数据仓库初始化失败：{exc}", "code": 500}), 500
-
-    scan_data = repo.get(scan_id)
-    if scan_data is None:
+    scan = core.load_scan(scan_id)
+    if scan is None:
         return jsonify({"error": True, "message": f"扫描记录不存在: {scan_id}", "code": 404}), 404
 
     # 仅允许已完成或部分完成的扫描生成报告
-    scan_status = scan_data.get("status", "")
-    if scan_status not in (ScanStatus.COMPLETED.value, ScanStatus.PARTIAL.value):
+    if scan.status not in (ScanStatus.COMPLETED, ScanStatus.PARTIAL):
         return jsonify(
             {
                 "error": True,
-                "message": f"扫描尚未完成，无法生成报告。当前状态: {scan_status}",
+                "message": f"扫描尚未完成，无法生成报告。当前状态: {scan.status.value}",
                 "code": 409,
             }
         ), 409
-
-    # 从 raw_result 中提取完整数据
-    raw = scan_data.get("raw_result", scan_data)
-
-    try:
-        scan_result = _reconstruct_scan_result(raw)
-        findings = _reconstruct_findings(raw.get("findings", []))
-    except Exception as exc:
-        return jsonify({"error": True, "message": f"数据解析失败：{exc}", "code": 500}), 500
 
     # 生成报告
     fmt = request.args.get("format", "markdown")
@@ -306,7 +287,7 @@ def api_get_report(scan_id: str):
 
     reporter = ReportGenerator(output_dir=config.report_output_dir)
     try:
-        report = reporter.generate(scan_result, findings=findings, fmt=fmt)
+        report = reporter.generate(scan, findings=scan.findings, fmt=fmt)
     except Exception as exc:
         return jsonify({"error": True, "message": f"报告生成失败：{exc}", "code": 500}), 500
 
@@ -335,34 +316,22 @@ def api_generate_harden(scan_id: str):
     if not _is_truthy(data.get("confirm_ownership")):
         return jsonify({"error": True, "message": "[R4] 请先确认目标所有权或授权范围", "code": 400}), 400
 
-    config: LightShieldConfig = current_app.config["LIGHTSHIELD_CONFIG"]
-    db_url = config.db_url or "data/lightshield.db"
-    try:
-        repo = get_repository("sqlite", db_url=db_url)
-        scan_data = repo.get(scan_id)
-    except Exception as exc:
-        return jsonify({"error": True, "message": f"扫描记录读取失败：{exc}", "code": 500}), 500
-
-    if scan_data is None:
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    scan = core.load_scan(scan_id)
+    if scan is None:
         return jsonify({"error": True, "message": f"扫描记录不存在: {scan_id}", "code": 404}), 404
 
-    raw = scan_data.get("raw_result", scan_data)
-    findings = _reconstruct_findings(raw.get("findings", []))
-
-    engine = RuleEngine()
-    engine.load_rules()
-    recommendations = engine.recommend_hardening(findings)
+    recommendations = core.get_recommendations(scan_id)
     if not recommendations:
         return jsonify({"success": True, "generated": False, "message": "未发现需要加固的风险项", "code": 200}), 200
 
-    target = scan_data.get("target") or raw.get("target", "unknown")
-    core = current_app.config["LIGHTSHIELD_CORE"]
+    config: LightShieldConfig = current_app.config["LIGHTSHIELD_CONFIG"]
     session["harden_confirmed_at"] = datetime.now(timezone.utc).isoformat()
 
     try:
         result = core.generate_hardening(
-            target,
-            findings=findings,
+            scan.target,
+            findings=scan.findings,
             recommendations=recommendations,
             output_dir=config.report_output_dir,
             os_platform=os_platform,
@@ -434,21 +403,14 @@ def api_harden_closed_loop(scan_id: str):
         ), 400
 
     # ---- 加载扫描记录 → 获取 target ----
-    config: LightShieldConfig = current_app.config["LIGHTSHIELD_CONFIG"]
-    db_url = config.db_url or "data/lightshield.db"
-    try:
-        repo = get_repository("sqlite", db_url=db_url)
-        scan_data = repo.get(scan_id)
-    except Exception as exc:
-        return jsonify({"error": True, "message": f"扫描记录读取失败：{exc}", "code": 500}), 500
-
-    if scan_data is None:
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    scan = core.load_scan(scan_id)
+    if scan is None:
         return jsonify({"error": True, "message": f"扫描记录不存在: {scan_id}", "code": 404}), 404
 
-    target = scan_data.get("target") or scan_data.get("raw_result", {}).get("target", "unknown")
+    target = scan.target
 
     # ---- 执行闭环 ----
-    core = current_app.config["LIGHTSHIELD_CORE"]
     session["harden_confirmed_at"] = datetime.now(timezone.utc).isoformat()
 
     logger.info("web", f"闭环启动: scan_id={scan_id} target={target} mode={mode}")
@@ -561,68 +523,6 @@ def _script_basename(path: str | None) -> str:
     if not path:
         return ""
     return Path(path).name
-
-
-def _reconstruct_scan_result(raw: dict) -> ScanResult:
-    """从仓库存储的字典重建 ScanResult 对象。
-
-    Args:
-        raw: repo.get() 返回的 raw_result 字典（或 scan_data 本身）
-
-    Returns:
-        ScanResult 实例
-    """
-    status_str = raw.get("status", "completed")
-    try:
-        status = ScanStatus(status_str)
-    except ValueError:
-        status = ScanStatus.FAILED
-
-    return ScanResult(
-        status=status,
-        target=raw.get("target", "unknown"),
-        ports=raw.get("ports", []),
-        services=raw.get("services", []),
-        os_info=raw.get("os_info"),
-        findings=[],  # findings 由 _reconstruct_findings 单独处理
-        error=raw.get("error"),
-        duration_seconds=raw.get("duration_seconds", 0.0),
-    )
-
-
-def _reconstruct_findings(findings_data: list[dict]) -> list[VulnFinding]:
-    """从字典列表重建 VulnFinding 对象列表。
-
-    Args:
-        findings_data: 仓库中序列化的 findings 列表
-
-    Returns:
-        VulnFinding 实例列表
-    """
-    findings: list[VulnFinding] = []
-    for f in findings_data:
-        severity_str = f.get("severity", "info")
-        try:
-            severity = RiskLevel(severity_str)
-        except ValueError:
-            severity = RiskLevel.INFO
-
-        findings.append(
-            VulnFinding(
-                vuln_type=f.get("vuln_type", "unknown"),
-                severity=severity,
-                title=f.get("title", ""),
-                description=f.get("description", ""),
-                remediation=f.get("remediation", ""),
-                url=f.get("url"),
-                parameter=f.get("parameter"),
-                port=f.get("port"),
-                cve_id=f.get("cve_id"),
-                cvss_score=f.get("cvss_score"),
-                evidence=f.get("evidence"),
-            )
-        )
-    return findings
 
 
 def _is_truthy(value) -> bool:

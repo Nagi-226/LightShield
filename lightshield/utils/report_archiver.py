@@ -126,11 +126,14 @@ def archive_harden_scripts(
 def _safe_dirname(target: str) -> str:
     """将目标转为安全的目录名。
 
-    替换非法字符为下划线，确保目录名不含路径分隔符。
+    替换非法字符为下划线，确保目录名不含路径分隔符或相对路径穿越。
     """
     safe = target.strip().replace("/", "_").replace("\\", "_").replace(":", "_")
     safe = safe.replace("*", "_").replace("?", "_").replace('"', "_")
     safe = safe.replace("<", "_").replace(">", "_").replace("|", "_")
+    # M-016: 防止 . 或 .. 作为目录名（路径穿越 / 隐藏目录）
+    if safe in (".", ".."):
+        safe = f"_{safe}_"
     # 截断过长目标名
     return safe[:80] if len(safe) > 80 else safe
 

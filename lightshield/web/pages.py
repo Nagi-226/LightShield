@@ -6,10 +6,6 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, current_app, redirect, render_template, request, session, url_for
 
-from lightshield.adapters.base import VulnFinding
-from lightshield.repository.base import get_repository
-from lightshield.rules.engine import RuleEngine
-from lightshield.utils.constants import RiskLevel
 from lightshield.web.i18n import LANG_SESSION_KEY, normalize_locale, translate
 
 pages_bp = Blueprint("pages", __name__)
@@ -62,14 +58,8 @@ def dashboard():
     if "user" not in session:
         return redirect(url_for("pages.index"))
 
-    config = current_app.config.get("LIGHTSHIELD_CONFIG")
-    db_url = getattr(config, "db_url", "") or "data/lightshield.db"
-
-    try:
-        repo = get_repository("sqlite", db_url=db_url)
-        history = repo.list_recent(limit=20)
-    except Exception:
-        history = []
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    history = core.get_scan_history(limit=20)
 
     return render_template(
         "dashboard.html",
@@ -99,16 +89,10 @@ def harden_page(scan_id: str):
     if "user" not in session:
         return redirect(url_for("pages.index"))
 
-    config = current_app.config.get("LIGHTSHIELD_CONFIG")
-    db_url = getattr(config, "db_url", "") or "data/lightshield.db"
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    scan = core.load_scan(scan_id)
 
-    try:
-        repo = get_repository("sqlite", db_url=db_url)
-        scan_data = repo.get(scan_id)
-    except Exception:
-        scan_data = None
-
-    if scan_data is None:
+    if scan is None:
         return render_template(
             "harden.html",
             scan_id=scan_id,
@@ -120,19 +104,15 @@ def harden_page(scan_id: str):
             username=session.get("user", "?"),
         )
 
-    raw = scan_data.get("raw_result", scan_data)
-    findings = _reconstruct_findings(raw.get("findings", []))
-    engine = RuleEngine()
-    engine.load_rules()
-    recommendations = engine.recommend_hardening(findings)
+    recommendations = core.get_recommendations(scan_id)
 
     return render_template(
         "harden.html",
         scan_id=scan_id,
-        scan_data=scan_data,
-        target=scan_data.get("target") or raw.get("target", "unknown"),
+        scan_data={"status": scan.status.value, "target": scan.target},
+        target=scan.target,
         recommendations=recommendations,
-        findings_count=len(findings),
+        findings_count=len(scan.findings),
         show_nav=True,
         username=session.get("user", "?"),
     )
@@ -144,19 +124,12 @@ def harden_verify_page(scan_id: str):
     if "user" not in session:
         return redirect(url_for("pages.index"))
 
-    config = current_app.config.get("LIGHTSHIELD_CONFIG")
-    db_url = getattr(config, "db_url", "") or "data/lightshield.db"
-
-    try:
-        repo = get_repository("sqlite", db_url=db_url)
-        scan_data = repo.get(scan_id)
-    except Exception:
-        scan_data = None
+    core = current_app.config["LIGHTSHIELD_CORE"]
+    scan = core.load_scan(scan_id)
 
     target = translate("common.unknown")
-    if scan_data:
-        raw = scan_data.get("raw_result", scan_data)
-        target = scan_data.get("target") or raw.get("target", translate("common.unknown"))
+    if scan is not None:
+        target = scan.target or translate("common.unknown")
 
     return render_template(
         "harden_verify.html",
@@ -165,30 +138,3 @@ def harden_verify_page(scan_id: str):
         show_nav=True,
         username=session.get("user", "?"),
     )
-
-
-def _reconstruct_findings(findings_data: list[dict]) -> list[VulnFinding]:
-    """Rebuild VulnFinding instances from repository dictionaries."""
-    findings: list[VulnFinding] = []
-    for item in findings_data:
-        try:
-            severity = RiskLevel(item.get("severity", "info"))
-        except ValueError:
-            severity = RiskLevel.INFO
-
-        findings.append(
-            VulnFinding(
-                vuln_type=item.get("vuln_type", "unknown"),
-                severity=severity,
-                title=item.get("title", ""),
-                description=item.get("description", ""),
-                remediation=item.get("remediation", ""),
-                url=item.get("url"),
-                parameter=item.get("parameter"),
-                port=item.get("port"),
-                cve_id=item.get("cve_id"),
-                cvss_score=item.get("cvss_score"),
-                evidence=item.get("evidence"),
-            )
-        )
-    return findings

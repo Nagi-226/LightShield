@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from lightshield.adapters.base import ScanResult, VulnFinding
+from lightshield.utils.constants import SEVERITY_ORDER  # 共享严重度排序
 from lightshield.utils.logger import get_logger
 
 SEVERITY_COLORS = {
@@ -21,8 +22,6 @@ SEVERITY_COLORS = {
     "low": (241, 196, 15),
     "info": (149, 165, 166),
 }
-
-SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
 class PdfReportWriter:

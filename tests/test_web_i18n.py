@@ -232,7 +232,7 @@ def test_dashboard_renders_english_after_language_switch(auth_client):
     """登录用户切换英文后，仪表板以英文渲染。"""
     auth_client.get("/lang/en-US")
 
-    with patch("lightshield.web.pages.get_repository") as get_repo:
+    with patch("lightshield.core.get_repository") as get_repo:
         get_repo.return_value.list_recent.return_value = []
         response = auth_client.get("/dashboard")
 
@@ -249,7 +249,7 @@ def test_harden_page_renders_english_including_not_found_error(auth_client):
 
     repo = MagicMock()
     repo.get.return_value = None  # 触发 scan_data is None 错误分支
-    with patch("lightshield.web.pages.get_repository", return_value=repo):
+    with patch("lightshield.core.get_repository", return_value=repo):
         response = auth_client.get("/harden/LS-20260620-000000-deadbe")
 
     assert response.status_code == 200
@@ -263,7 +263,7 @@ def test_harden_page_not_found_error_is_chinese_by_default(auth_client):
     """默认语言下 harden not-found 错误为中文（服务端 translate 回退默认）。"""
     repo = MagicMock()
     repo.get.return_value = None
-    with patch("lightshield.web.pages.get_repository", return_value=repo):
+    with patch("lightshield.core.get_repository", return_value=repo):
         response = auth_client.get("/harden/LS-20260620-000000-deadbe")
 
     assert response.status_code == 200

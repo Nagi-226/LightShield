@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import secrets
+import threading
 import time
 from collections.abc import Callable
 from functools import wraps
@@ -44,6 +45,7 @@ def _get_credentials() -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 _login_failures: dict[str, dict] = {}
+_login_lock = threading.Lock()  # M-014: 保护 _login_failures 并发读写
 MAX_FAILURES = 5
 BASE_DELAY_SECONDS = 2  # 第 1 次锁定期 2s，第 2 次 4s，... 最大 64s
 MAX_DELAY_EXPONENT = 6  # 2^6 = 64s
@@ -51,16 +53,17 @@ MAX_DELAY_EXPONENT = 6  # 2^6 = 64s
 
 def _is_login_blocked(ip: str) -> bool:
     """检查指定 IP 是否在登录锁定期内。"""
-    record = _login_failures.get(ip)
-    if record is None:
+    with _login_lock:
+        record = _login_failures.get(ip)
+        if record is None:
+            return False
+        blocked_until = record.get("blocked_until", 0)
+        if blocked_until and time.time() < blocked_until:
+            return True
+        # 锁定期已过，清除
+        if blocked_until:
+            record["blocked_until"] = 0
         return False
-    blocked_until = record.get("blocked_until", 0)
-    if blocked_until and time.time() < blocked_until:
-        return True
-    # 锁定期已过，清除
-    if blocked_until:
-        record["blocked_until"] = 0
-    return False
 
 
 # ---------------------------------------------------------------------------
@@ -89,20 +92,21 @@ def login(username: str, password: str) -> bool:
     valid_user, valid_pass = _get_credentials()
     if secrets.compare_digest(username, valid_user) and secrets.compare_digest(password, valid_pass):
         # 成功：清除该 IP 的失败记录
-        _login_failures.pop(ip, None)
+        with _login_lock:
+            _login_failures.pop(ip, None)
         session["user"] = username
         return True
 
     # 失败：记录并计算延时
-    record = _login_failures.get(ip)
-    if record is None:
-        record = _login_failures[ip] = {"failures": 0}
-    record["failures"] += 1
-
-    if record["failures"] >= MAX_FAILURES:
-        exponent = min(record["failures"] - MAX_FAILURES + 1, MAX_DELAY_EXPONENT)
-        delay = BASE_DELAY_SECONDS**exponent
-        record["blocked_until"] = time.time() + delay
+    with _login_lock:
+        record = _login_failures.get(ip)
+        if record is None:
+            record = _login_failures[ip] = {"failures": 0}
+        record["failures"] += 1
+        if record["failures"] >= MAX_FAILURES:
+            exponent = min(record["failures"] - MAX_FAILURES + 1, MAX_DELAY_EXPONENT)
+            delay = BASE_DELAY_SECONDS**exponent
+            record["blocked_until"] = time.time() + delay
 
     return False
 

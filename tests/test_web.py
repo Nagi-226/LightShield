@@ -80,7 +80,7 @@ def mock_core(app):
 @pytest.fixture
 def mock_repo():
     """Mock get_repository，返回含假数据的仓库。"""
-    with patch("lightshield.web.routes.get_repository") as mock_get_repo:
+    with patch("lightshield.core.get_repository") as mock_get_repo:
         repo = MagicMock()
         repo.get.return_value = {
             "scan_id": "LS-20260614-120000-a1b2c3",
@@ -417,7 +417,7 @@ class TestHardenAPI:
 
     def test_generate_harden_returns_404_for_missing_scan(self, auth_client):
         """扫描记录不存在时不应调用核心加固生成逻辑。"""
-        with patch("lightshield.web.routes.get_repository") as mock_get_repo:
+        with patch("lightshield.core.get_repository") as mock_get_repo:
             repo = MagicMock()
             repo.get.return_value = None
             mock_get_repo.return_value = repo
@@ -441,7 +441,7 @@ class TestHardenAPI:
         result.rollback_path = "reports/rollback-127-0-0-1.sh"
         app.config["LIGHTSHIELD_CORE"].generate_hardening = MagicMock(return_value=result)
 
-        with patch("lightshield.web.routes.RuleEngine") as mock_engine_class:
+        with patch("lightshield.core.RuleEngine") as mock_engine_class:
             engine = MagicMock()
             engine.recommend_hardening.return_value = [
                 {

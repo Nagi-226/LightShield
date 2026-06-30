@@ -361,33 +361,49 @@ class RuleEngine:
         return None
 
     def _match_service_fingerprint(self, rule: dict, result: ScanResult) -> VulnFinding | None:
-        """服务指纹匹配（弱口令等特征）"""
-        rule.get("service", "").lower()
-        rule.get("auth_result", "")
+        """服务指纹匹配（弱口令等特征）。
+
+        规则字段说明：
+          - service: 目标服务名（如 "ssh"），用于精确匹配扫描结果中的服务
+          - match_vuln_type: 匹配的漏洞类型（如 "weak_password"）
+          - auth_result: 认证结果标记（如 "weak"），v1.0.0+ 可用于过滤
+        """
+        target_service = rule.get("service", "").lower()
 
         # 从 result 的 findings 中查找匹配
         for f in result.findings:
-            if f.vuln_type == rule.get("match_vuln_type", ""):
-                return VulnFinding(
-                    vuln_type=rule.get("vuln_type", "weak_auth"),
-                    severity=self._parse_severity(rule.get("severity", "high")),
-                    title=rule.get("title", "弱认证"),
-                    description=rule.get("description", ""),
-                    remediation=rule.get("remediation", ""),
-                    port=f.port,
-                    evidence=f.evidence,
+            if f.vuln_type != rule.get("match_vuln_type", ""):
+                continue
+            # 如果规则指定了 service，进一步过滤：查找该 finding 端口对应的服务名
+            if target_service and f.port is not None:
+                svc_match = any(
+                    svc.get("port") == f.port and str(svc.get("name", "")).lower() == target_service
+                    for svc in (result.services or [])
                 )
+                if not svc_match:
+                    continue
+            return VulnFinding(
+                vuln_type=rule.get("vuln_type", "weak_auth"),
+                severity=self._parse_severity(rule.get("severity", "high")),
+                title=rule.get("title", "弱认证"),
+                description=rule.get("description", ""),
+                remediation=rule.get("remediation", ""),
+                port=f.port,
+                evidence=f.evidence,
+            )
         return None
 
     def _match_header(self, rule: dict, result: ScanResult) -> VulnFinding | None:
-        """HTTP 响应头特征匹配"""
-        rule.get("header", "").lower()
-        rule.get("pattern", "")
+        """HTTP 响应头特征匹配。
 
-        # 从 result 的 raw_output 或 services 中查找
+        TODO(v1.0.0): 当前实现为占位——仅检测 HTTP 服务存在性即返回发现，
+        未真正使用规则的 header/pattern 字段做 HTTP 响应头内容匹配。
+        待 web_vuln_scanner 支持 HTTP 响应头采集后实现精确匹配。
+        规则字段（预留）：header（响应头名）、pattern（匹配正则）。
+        """
+        # 检测是否有 HTTP 服务——作为配置问题的信号
         for svc in result.services:
             if svc.get("name") == "http":
-                # 标记为需要进一步检查
                 return VulnFinding(
                     vuln_type=rule.get("vuln_type", "misconfiguration"),
                     severity=self._parse_severity(rule.get("severity", "medium")),
@@ -431,9 +447,10 @@ class RuleEngine:
                             }
                         )
 
-        # 按严重程度排序
-        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-        recommendations.sort(key=lambda r: severity_order.get(r["severity"], 99))
+        # 按严重程度排序（使用共享常量，保持跨模块一致）
+        from lightshield.utils.constants import SEVERITY_ORDER
+
+        recommendations.sort(key=lambda r: SEVERITY_ORDER.get(r["severity"], 99))
 
         self._logger.info("rules", f"生成加固建议 {len(recommendations)} 条")
         return recommendations
@@ -515,17 +532,12 @@ class RuleEngine:
     @staticmethod
     def _deduplicate(findings: list[VulnFinding]) -> list[VulnFinding]:
         """去重：同类型同端口只保留严重等级最高的"""
-        severity_order = {
-            RiskLevel.CRITICAL: 0,
-            RiskLevel.HIGH: 1,
-            RiskLevel.MEDIUM: 2,
-            RiskLevel.LOW: 3,
-            RiskLevel.INFO: 4,
-        }
+        from lightshield.utils.constants import SEVERITY_ORDER
+
         seen: dict[tuple, VulnFinding] = {}
         for f in findings:
             key = (f.vuln_type, f.port, f.parameter)
-            if key not in seen or severity_order[f.severity] < severity_order[seen[key].severity]:
+            if key not in seen or SEVERITY_ORDER[f.severity.value] < SEVERITY_ORDER[seen[key].severity.value]:
                 seen[key] = f
         return list(seen.values())
 

@@ -77,7 +77,7 @@ def test_dashboard_renders_scan_form_and_history(auth_client):
         }
     ]
 
-    with patch("lightshield.web.pages.get_repository", return_value=repo) as get_repo:
+    with patch("lightshield.core.get_repository", return_value=repo) as get_repo:
         response = auth_client.get("/dashboard")
 
     assert response.status_code == 200
@@ -150,8 +150,8 @@ def test_harden_page_renders_recommendations_and_csrf(auth_client):
     }
 
     with (
-        patch("lightshield.web.pages.get_repository", return_value=repo),
-        patch("lightshield.web.pages.RuleEngine") as mock_engine_class,
+        patch("lightshield.core.get_repository", return_value=repo),
+        patch("lightshield.core.RuleEngine") as mock_engine_class,
     ):
         engine = MagicMock()
         engine.recommend_hardening.return_value = [
