@@ -1,4 +1,4 @@
-# LightShield 安装指南
+﻿# LightShield 安装指南
 
 > LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具
 
@@ -29,7 +29,7 @@ LightShield 支持 CentOS 7+ / Ubuntu 18.04+ / Debian 10+。
 
 ```bash
 # 克隆项目
-git clone https://github.com/LightShield/lightshield.git
+git clone https://github.com/Nagi-226/LightShield.git
 cd lightshield
 
 # 一键部署（自动安装 Python/Nmap/依赖）
@@ -55,7 +55,7 @@ sudo apt update
 sudo apt install -y python3 python3-pip python3-venv nmap
 
 # 2. 克隆项目
-git clone https://github.com/LightShield/lightshield.git
+git clone https://github.com/Nagi-226/LightShield.git
 cd lightshield
 
 # 3. 安装 Python 依赖
@@ -78,7 +78,7 @@ LightShield 支持 Windows 10+ / Windows Server 2016+。
 
 ```powershell
 # 克隆项目
-git clone https://github.com/LightShield/lightshield.git
+git clone https://github.com/Nagi-226/LightShield.git
 cd lightshield
 
 # 一键部署
@@ -103,7 +103,7 @@ cd lightshield
 # 安装时勾选 "Add Nmap to the system PATH"
 
 # 3. 克隆项目
-git clone https://github.com/LightShield/lightshield.git
+git clone https://github.com/Nagi-226/LightShield.git
 cd lightshield
 
 # 4. 安装 Python 依赖
@@ -200,6 +200,142 @@ python -m lightshield.cli scan 127.0.0.1 --confirm-ownership
 
 ### Nmap 未找到
 确保 Nmap 已安装并添加到系统 PATH。可以运行 `nmap --version` 验证。
+
+---
+
+## Docker 部署
+
+v0.0.33 新增 Docker 部署支持，适合容器化环境或不想在宿主机安装 Python 依赖的用户。
+
+### 前置要求
+
+- Docker 20.10+
+- Docker Compose v2
+
+### 一键启动
+
+```bash
+# 克隆项目
+git clone https://github.com/Nagi-226/LightShield.git
+cd lightshield
+
+# 构建并启动
+docker compose up -d
+
+# 查看日志
+docker compose logs -f lightshield
+```
+
+默认监听 `http://127.0.0.1:5000`，使用默认凭证 `admin / lightshield` 登录。
+
+### 数据持久化
+
+`docker-compose.yml` 已配置数据卷：
+
+| 卷 | 容器路径 | 用途 |
+|------|---------|------|
+| `lightshield-data` | `/app/data` | SQLite 数据库（扫描历史） |
+| `lightshield-reports` | `/app/reports` | 生成的报告和加固脚本 |
+| `lightshield-logs` | `/app/logs` | 运行日志 |
+
+### 自定义配置
+
+通过环境变量覆盖默认配置（详见 `.env.example`）：
+
+```yaml
+# docker-compose.yml 片段
+environment:
+  - LS_WEB_USERNAME=myadmin
+  - LS_WEB_PASSWORD=mysecret
+  - LS_LOG_LEVEL=DEBUG
+```
+
+### 已知限制
+
+Docker 容器内**无法**使用以下功能（受容器隔离限制）：
+
+- ❌ `--closed-loop --apply`（真机加固执行）——容器内执行加固脚本无意义
+- ❌ Nmap OS 指纹探测（`-O`）——需要容器特权，默认不开启
+- ✅ `scan` / `quick-scan` / `harden`（脚本生成）/ Web 仪表板均可正常使用
+
+> 如需在 Docker 中使用 Nmap 的全部功能（含 OS 探测），请参考 [Nmap in Docker](https://nmap.org/nmap_doc.html) 的特权容器配置，但这会降低隔离性，**不推荐在生产环境使用**。
+
+---
+
+## Windows 已知问题
+
+### 1. PowerShell 执行策略限制
+
+运行 `deploy_win.ps1` 时可能遇到：
+
+```
+无法加载文件 deploy_win.ps1，因为在此系统上禁止运行脚本
+```
+
+**解决方案**：以管理员身份运行 PowerShell，执行：
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### 2. Nmap 路径未自动加入 PATH
+
+Windows 版 Nmap 安装时如果未勾选 "Add to PATH"，需手动添加：
+
+```
+C:\Program Files (x86)\Nmap
+```
+
+到系统环境变量 `PATH` 中，然后重启终端。
+
+### 3. 加固脚本执行被杀毒软件拦截
+
+Windows Defender 或第三方杀毒软件可能将 `.ps1` 加固脚本误报为恶意软件（因为脚本包含 `netsh` / `Set-Service` 等系统修改命令）。
+
+**解决方案**：
+
+- 将 `reports/` 目录加入杀毒软件白名单
+- 或使用 `--output-format text` 生成纯文本建议，手动执行
+
+### 4. WSL2 中使用 LightShield
+
+在 WSL2 (Ubuntu) 中安装 LightShield 后，扫描 Windows 宿主机 IP 需使用宿主机在 WSL 网络中的地址：
+
+```bash
+# 获取 Windows 宿主机 IP（WSL2）
+WIN_HOST=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')
+
+# 扫描宿主机
+lightshield scan $WIN_HOST --confirm-ownership
+```
+
+### 5. 中文显示乱码
+
+Windows CMD 默认编码为 GBK，Markdown 报告（UTF-8）在 CMD 中 `cat` 可能乱码。建议：
+
+```powershell
+# 临时切换为 UTF-8
+chcp 65001
+
+# 或使用 PowerShell 的 Get-Content
+Get-Content ./reports/report-*.md -Encoding UTF8
+```
+
+---
+
+## 验证安装
+
+```bash
+lightshield version
+```
+
+如果看到 `LightShield 轻盾 v0.0.46` 即安装成功。
+
+尝试一次快速扫描以确认 Nmap 集成正常：
+
+```bash
+lightshield quick-scan 127.0.0.1 --confirm-ownership
+```
 
 ---
 

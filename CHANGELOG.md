@@ -1,10 +1,56 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to LightShield 轻盾 will be documented in this file.
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
 > 版本编号统一为单一 `v0.0.XX` 线性序列（不存在 v0.1/0.2/0.3 等格式）。
+
+---
+
+## [0.0.46] - 2026-07-02
+
+### Added
+
+- **覆盖率冲刺**（79.6% → 82% 目标）：
+  - `cli.py` 未覆盖区域补测（286 行 → +180 行测试）
+  - `core.py` 闭环编排补测（124 行 → +95 行测试）
+  - `routes.py` API 端点补测（75 行 → +60 行测试）
+  - 建立 mock 基础设施（Nmap / Nuclei / MSF / Docker 外部依赖 mock）
+- **Mock 基础设施**（后续新功能测试可复用）：
+  - `tests/mocks/nmap_mock.py` — 模拟 Nmap XML 输出
+  - `tests/mocks/docker_mock.py` — 模拟 Docker 容器执行
+  - `tests/mocks/msf_mock.py` — 模拟 MSF scanner 输出
+
+### Changed
+
+- 版本号 0.0.45 → 0.0.46；测试总数 798 → 855（+57）
+- 覆盖率基线：79.6% → 82.3%
+
+---
+
+## [0.0.45] - 2026-07-01
+
+### Added
+
+- **发布准备**（v0.0.44 重构价值兑现）：
+  - CHANGELOG 回填 v0.0.41-0.0.44
+  - git tag v0.0.44
+  - 全量文档同步（README / INSTALL / USAGE / FAQ 更新）
+- **3 个 LOW 顺手修复**：
+  - M-011：CLI 历史保存异常不再静默吞掉（+ `logger.warning`）
+  - M-014：Web 登录失败计数器加锁（`threading.Lock`）
+  - M-016：`_safe_dirname` 过滤 `.` / `..` 目录穿越
+
+### Security
+
+- Web 登录失败计数器线程安全（`threading.Lock` 防竞态）
+- 报告归档目录名安全过滤（防 `.` / `..` 路径穿越）
+
+### Changed
+
+- 版本号 0.0.44 → 0.0.45
+- 债务状态：11 LOW → 8 LOW（3 项顺手清零）
 
 ---
 
@@ -259,8 +305,8 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 - 一键部署脚本 `scripts/deploy_linux.sh` + `scripts/deploy_win.ps1`
 - 121 项单元测试（Reasonix batch1：constants 45项 + logger 29项 + config 47项）
 
-[0.0.38]: https://github.com/LightShield/lightshield/compare/v0.0.37...v0.0.38
-[0.0.37]: https://github.com/LightShield/lightshield/compare/v0.0.30...v0.0.37
-[0.0.30]: https://github.com/LightShield/lightshield/compare/v0.0.20...v0.0.30
-[0.0.20]: https://github.com/LightShield/lightshield/compare/v0.0.10...v0.0.20
-[0.0.10]: https://github.com/LightShield/lightshield/releases/tag/v0.0.10
+[0.0.38]: https://github.com/Nagi-226/LightShield/compare/v0.0.37...v0.0.38
+[0.0.37]: https://github.com/Nagi-226/LightShield/compare/v0.0.30...v0.0.37
+[0.0.30]: https://github.com/Nagi-226/LightShield/compare/v0.0.20...v0.0.30
+[0.0.20]: https://github.com/Nagi-226/LightShield/compare/v0.0.10...v0.0.20
+[0.0.10]: https://github.com/Nagi-226/LightShield/releases/tag/v0.0.10

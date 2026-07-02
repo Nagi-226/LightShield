@@ -1,4 +1,4 @@
-# 常见问题
+﻿# 常见问题
 
 > LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具
 
@@ -87,7 +87,7 @@ LightShield 在扫描报告中已经包含了针对每项风险的加固建议�
 
 **获取帮助的渠道：**
 - 📖 阅读 [使用手册](USAGE.md) 了解命令详情
-- 🐛 在 [GitHub Issues](https://github.com/LightShield/lightshield/issues) 报告问题或提问
+- 🐛 在 [GitHub Issues](https://github.com/Nagi-226/LightShield/issues) 报告问题或提问
 - 📄 查看 [CHANGELOG.md](../CHANGELOG.md) 了解最新变更
 - 🔧 报告中的加固建议基于 OWASP / NIST 标准安全实践，每项风险均有中文说明
 
@@ -139,6 +139,163 @@ v0.0.30 新增 Web 仪表板，提供图形化操作界面，与 CLI 互补而�
 - 用户需要自行审阅脚本内容，确认后在目标机器上手动执行
 
 这一设计确保运维人员始终掌握对系统变更的最终控制权。回滚脚本同样通过下载提供。
+
+---
+
+### Q9: Linux 和 Windows 上的加固脚本有什么差异？
+
+LightShield 会根据 `--os-platform` 参数（或自动检测）生成对应平台的脚本：
+
+| 维度 | Linux (`.sh`) | Windows (`.ps1`) |
+|------|------|------|
+| 防火墙 | `iptables -A INPUT -p tcp --dport <port> -j DROP` | `netsh advfirewall firewall add rule name="..." dir=in action=block protocol=TCP localport=<port>` |
+| 服务管理 | `systemctl stop <service> && systemctl disable <service>` | `Set-Service -Name <service> -StartupType Disabled; Stop-Service -Name <service>` |
+| SSH 加固 | `sed -i` 修改 `sshd_config` | 不适用（Windows 使用 OpenSSH，配置路径不同） |
+| 回滚方式 | `iptables -D` + `systemctl start` + `sed` 还原 | `netsh delete rule` + `Set-Service -StartupType Automatic; Start-Service` |
+| 执行权限 | `chmod +x` + `./script.sh` 或 `bash script.sh` | PowerShell 以管理员身份运行：`.\script.ps1` |
+
+**注意**：脚本生成时需要指定正确的平台，否则生成的命令在错误平台上无法执行：
+
+```bash
+# Linux 目标
+lightshield harden 192.168.1.1 --os-platform linux --confirm-ownership
+
+# Windows 目标
+lightshield harden 192.168.1.1 --os-platform windows --confirm-ownership
+```
+
+---
+
+### Q10: 扫描报错 "Nmap 未安装或路径错误"怎么办？
+
+**原因**：LightShield 通过 `subprocess` 调用 `nmap` 命令，Nmap 不在 PATH 中。
+
+**排查步骤**：
+
+```bash
+# 1. 检查 nmap 是否安装
+nmap --version
+
+# 2. 若未安装：
+# Linux
+sudo apt install nmap        # Ubuntu/Debian
+sudo yum install nmap        # CentOS/RHEL
+# Windows: 从 https://nmap.org/download.html 下载安装
+
+# 3. 若已安装但不在 PATH：
+# 临时指定路径
+lightshield scan 127.0.0.1 --confirm-ownership  # 默认从 PATH 找 nmap
+# 或通过环境变量
+export NMAP_PATH=/usr/local/bin/nmap    # Linux
+$env:NMAP_PATH="C:\Program Files (x86)\Nmap\nmap.exe"   # Windows
+
+# 4. Docker 环境：使用官方镜像（已含 Nmap）
+docker compose up -d
+```
+
+---
+
+### Q11: 报错 "R2 违规: 拒绝 CIDR 网段"但我的目标是合法的？
+
+**原因**：LightShield 的合规红线 R2 **只接受单一 IP 或域名**，拒绝以下格式：
+
+| 被拒绝的格式 | 示例 | 原因 |
+|------|------|------|
+| CIDR 网段 | `192.168.1.0/24` | 批量扫描公网段 |
+| IP 范围 | `192.168.1.1-192.168.1.10` | 批量扫描 |
+| IP 缩写范围 | `192.168.1.1-10` | 批量扫描 |
+| 通配符域名 | `*.example.com` | 批量扫描 |
+| URL 格式 | `http://example.com` | 应输入域名 `example.com` |
+| 带端口 | `example.com:443` | 应输入域名 `example.com` |
+| 带路径 | `example.com/admin` | 应输入域名 `example.com` |
+
+**正确用法**：
+
+```bash
+# 单 IP
+lightshield scan 192.168.1.1 --confirm-ownership
+
+# 单域名
+lightshield scan example.com --confirm-ownership
+
+# localhost
+lightshield scan localhost --confirm-ownership
+
+# IPv6
+lightshield scan ::1 --confirm-ownership
+lightshield scan fe80::1 --confirm-ownership
+```
+
+如需扫描多个目标，请**逐个执行**命令——这是合规设计，不是 bug。
+
+---
+
+### Q12: Docker 中扫描为什么无法做 OS 探测？
+
+**原因**：Nmap 的 OS 指纹探测（`-O`）需要原始套接字权限，Docker 容器默认不开启。
+
+**表现**：
+
+- 扫描报告中 `操作系统` 字段显示 `未知`
+- 详细日志（`--verbose`）中看到 `WARNING: OS didn't match` 或 `WARNING: too few fingerprints`
+
+**解决方案**：
+
+| 方案 | 命令 | 适合场景 |
+|------|------|------|
+| 宿主机直接扫描（推荐） | 在宿主机安装 LightShield 后扫描 | 生产环境 |
+| Docker 特权容器 | `docker run --privileged ...` | 仅测试环境，**不推荐**（安全风险） |
+| 跳过 OS 探测 | `--scan-types port_scan,service_detect` | 不需要 OS 信息时 |
+
+---
+
+### Q13: 加固脚本执行后提示 "所有权未确认"怎么办？
+
+**原因**：加固脚本内置 R4 所有权确认门（`read -r -p "..."`），需要输入 `yes` 才会继续。
+
+**场景一：手动执行脚本**
+
+```bash
+bash ./reports/harden_192_168_1_1_*.sh
+# 脚本会提示：
+# 请确认你拥有目标 192.168.1.1 的所有权（输入 yes 继续）：
+# 输入 yes 后回车
+```
+
+**场景二：在 CI/CD 中自动执行**
+
+```bash
+# 通过管道自动应答（仅限已通过 CLI --confirm-ownership 的场景）
+echo "yes" | bash ./reports/harden_192_168_1_1_*.sh
+```
+
+⚠️ **安全提示**：自动应答会绕过交互式所有权确认。请确保 CI/CD 环境中的目标是自有资产，且脚本已审阅。
+
+**场景三：自动加固闭环（v0.0.40+）**
+
+```bash
+# DRY_RUN 模式（预检，不改系统）
+lightshield harden 127.0.0.1 --closed-loop --confirm-ownership
+
+# APPLY 模式（真机执行，会改真实系统）
+lightshield harden 127.0.0.1 --closed-loop --apply --confirm-ownership
+```
+
+APPLY 模式下，CLI 会要求输入 `EXECUTE` 二次确认，然后自动应答脚本内的 R4 门。
+
+---
+
+### Q14: Web 仪表板登录后立即被登出？
+
+**可能原因与解决方案**：
+
+| 原因 | 表现 | 解决方案 |
+|------|------|------|
+| Session 过期（8 小时） | 登录后过一段时间操作被踢出 | 重新登录 |
+| Cookie 被浏览器拦截 | 登录成功但页面不跳转 | 检查浏览器是否禁用了 Cookie；允许 127.0.0.1 的 Cookie |
+| 反向代理未传递 Cookie | Nginx 后登录失败 | 配置 `proxy_pass_header Set-Cookie;` |
+| 多个标签页登录冲突 | A 标签登录后 B 标签失效 | 同一浏览器同一时间只用一个标签 |
+| CSRF Token 过期 | 提交扫描时 403 | 刷新页面重新获取 CSRF Token |
 
 ---
 

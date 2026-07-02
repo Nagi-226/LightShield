@@ -208,6 +208,7 @@ A-6 🆕：扫描 Agent 读取的外部文件 + symlink 操作（输入面安全
 
 ---
 
+## 三、Gate B：范围忠实度
 
 > 基于 Nagi M9：Scope Fidelity Gate。防止 Agent "多做"。
 

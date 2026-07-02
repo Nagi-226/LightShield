@@ -81,7 +81,8 @@ http://127.0.0.1:5000
 | 5 | GET | `/api/scan/{task_id}/stream` | 登录 | 扫描 |
 | 6 | GET | `/api/report/{scan_id}` | 登录 | 报告 |
 | 7 | POST | `/api/harden/{scan_id}` | 登录 + CSRF | 加固 |
-| 8 | GET | `/api/script/{scan_id}/{filename}` | 登录 + CSRF + R4 | 加固 |
+| 8 | POST | `/api/harden/{scan_id}/verify` | 登录 + CSRF | 加固闭环 |
+| 9 | GET | `/api/script/{scan_id}/{filename}` | 登录 + CSRF + R4 | 加固 |
 
 ---
 
@@ -338,7 +339,121 @@ curl -i -b cookies.txt -X POST http://127.0.0.1:5000/api/harden/LS-20260615-1530
 
 ---
 
-## 8. GET /api/script/{scan_id}/{filename} — 下载加固 / 回滚脚本
+# 加固闭环
+
+## 8. POST /api/harden/{scan_id}/verify — 触发加固闭环（v0.0.40+）
+
+**用途**：触发 `core.run_harden_closed_loop()`，执行扫描→推荐→生成→执行→复扫→验证全链路。支持 DRY_RUN（预检，不改系统）和 APPLY（真机执行，改真实系统）两种模式。
+
+**请求示例**：
+
+```bash
+# DRY_RUN 模式（预检，不改系统）
+curl -i -b cookies.txt -X POST http://127.0.0.1:5000/api/harden/LS-20260615-153012-a1b2/verify \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
+  -d '{"mode":"dry_run","os_platform":"linux"}'
+```
+
+```bash
+# APPLY 模式（真机执行，需双确认）
+curl -i -b cookies.txt -X POST http://127.0.0.1:5000/api/harden/LS-20260615-153012-a1b2/verify \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $TOKEN" \
+  -d '{"mode":"apply","os_platform":"linux","confirm_ownership":true,"confirm_execute":true}'
+```
+
+**请求体**：
+
+| 字段 | 类型 | 必填 | 默认 | 说明 |
+|------|------|:--:|------|------|
+| `mode` | string | 否 | `dry_run` | `dry_run`（预检）或 `apply`（真机执行） |
+| `os_platform` | string | 否 | `linux` | `linux` 或 `windows` |
+| `confirm_ownership` | bool | APPLY 必填 | `false` | R4 所有权确认（APPLY 模式必须 `true`） |
+| `confirm_execute` | bool | APPLY 必填 | `false` | R4 执行确认（APPLY 模式必须 `true`） |
+
+**成功响应**（`200`，DRY_RUN 完成）：
+
+```json
+{
+  "target": "192.168.1.10",
+  "os_platform": "linux",
+  "mode": "dry_run",
+  "overall": "generated_only",
+  "audit_id": "CL-20260615-160000-a1b2c3",
+  "before_scan": {"status": "completed", "findings": [...]},
+  "harden": {"status": "generated", "action_count": 5, "script_path": "..."},
+  "execution": {"status": "skipped", "sandbox": "dry_run"},
+  "after_scan": null,
+  "verification": null,
+  "success": true,
+  "scan_id": "LS-20260615-153012-a1b2"
+}
+```
+
+**成功响应**（`200`，APPLY 验证通过）：
+
+```json
+{
+  "target": "192.168.1.10",
+  "os_platform": "linux",
+  "mode": "apply",
+  "overall": "verified",
+  "audit_id": "CL-20260615-160500-d4e5f6",
+  "before_scan": {"status": "completed", "findings": [...]},
+  "harden": {"status": "executed", "action_count": 5},
+  "execution": {"status": "success", "exit_code": 0, "duration_seconds": 12.3},
+  "after_scan": {"status": "completed", "findings": []},
+  "verification": {
+    "verdict": "verified",
+    "resolved": [{"vuln_type": "high_risk_port", "port": 23}],
+    "remaining": [],
+    "regressed": []
+  },
+  "success": true,
+  "scan_id": "LS-20260615-153012-a1b2"
+}
+```
+
+**错误响应**（`422`，APPLY 未通过护栏）：
+
+```json
+{
+  "target": "192.168.1.10",
+  "overall": "failed",
+  "execution": {
+    "status": "rejected",
+    "sandbox": "host",
+    "error": "APPLY 需要回滚脚本已就绪（rollback_path 不存在或为空）"
+  },
+  "success": false,
+  "scan_id": "LS-20260615-153012-a1b2"
+}
+```
+
+**错误码**：
+
+| 状态码 | 说明 |
+|:--:|------|
+| 400 | `mode` 非 `dry_run`/`apply`；`os_platform` 非法；APPLY 模式缺双确认 |
+| 401 | 未登录 |
+| 403 | CSRF 校验失败 |
+| 404 | 扫描记录不存在 |
+| 422 | 闭环执行失败（护栏拒绝 / 执行异常 / 验证失败）—— `overall` 字段为 `failed` |
+| 429 | 触发速率限制 |
+
+**overall 字段取值**：
+
+| 值 | 含义 | 适用模式 |
+|------|------|:--:|
+| `verified` | 复扫确认所有风险已消除 | APPLY |
+| `partial` | 部分风险已修复，仍有残留或新增 | APPLY |
+| `failed` | 加固未消除任何风险，或执行/护栏拒绝 | APPLY |
+| `generated_only` | 仅生成脚本，未执行复扫 | DRY_RUN |
+
+---
+
+## 9. GET /api/script/{scan_id}/{filename} — 下载加固 / 回滚脚本
 
 **用途**：下载之前由 `/api/harden` 生成的脚本文件。**三重校验**：
 
@@ -427,5 +542,46 @@ curl -b cookies.txt -OJ \
 |------|:--:|------|
 | `/api/scan` | R2, R6 | 单目标校验（API 层 + core 双层）；频率限制 |
 | `/api/harden/{scan_id}` | R4 | `confirm_ownership` 必须真值；写入 `harden_confirmed_at` |
+| `/api/harden/{scan_id}/verify` | R4, R6 | APPLY 模式双确认；DRY_RUN-first 前置；rollback 就绪检查 |
 | `/api/script/{scan_id}/{filename}` | R4 | 文件名白名单 + CSRF + `harden_confirmed_at` 三重校验 |
 | 全部 `/api/*` | R6 | 每 IP 每小时速率限制，默认 100 次 |
+
+---
+
+## 附录：完整错误码表
+
+| HTTP 状态码 | 含义 | 触发场景 |
+|:--:|------|------|
+| **200** | 成功 | 所有 GET 端点 + 部分 POST 成功 |
+| **202** | 已接受（异步处理） | `POST /api/scan` 提交扫描任务 |
+| **400** | 请求格式错误 | 请求体为空 / 缺少必填字段 / 字段值非法 / R2 校验失败 / R4 未确认 |
+| **401** | 未认证 | 未登录或 Session 过期 |
+| **403** | 禁止访问 | CSRF 校验失败 / R4 未确认（脚本下载） |
+| **404** | 资源不存在 | 任务 ID / 扫描 ID / 脚本文件不存在 |
+| **409** | 冲突 | 扫描未完成无法生成报告 |
+| **422** | 不可处理实体 | 加固闭环执行失败（护栏拒绝 / 执行异常 / 验证失败） |
+| **429** | 请求过多 | 触发速率限制（每 IP 每小时 100 次） |
+| **500** | 服务器内部错误 | 仓库初始化 / 数据解析 / 报告生成 / 脚本生成失败 |
+
+### 错误信封统一格式
+
+所有失败响应遵循：
+
+```json
+{
+  "error": true,
+  "message": "<中文错误说明>",
+  "code": <HTTP 状态码>
+}
+```
+
+**特殊情况**：`/api/harden/{scan_id}/verify` 的 `422` 响应额外包含闭环结果字段（`target` / `overall` / `execution` / `audit_id` 等），以便前端展示失败详情。`error` 字段仍为 `true`。
+
+### 合规相关错误消息前缀
+
+| 前缀 | 含义 | 示例 |
+|------|------|------|
+| `[R2 违规]` | 目标校验失败 | `[R2 违规] 拒绝 CIDR 网段` |
+| `[R4]` | 所有权未确认 | `[R4] 请先确认目标所有权或授权范围` |
+
+带有这些前缀的错误消息表示请求触发了合规红线拦截，需修正输入或完成所有权确认后重试。

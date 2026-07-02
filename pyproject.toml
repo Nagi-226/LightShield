@@ -8,13 +8,39 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightshield"
-version = "0.0.44"
+version = "0.0.46"
 description = "LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "LightShield Team"},
+    {name = "Nagi_226"},
+]
+keywords = ["security", "vulnerability-scanner", "hardening", "nmap", "self-check", "compliance", "owasp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Framework :: Flask",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Security :: Vulnerability Scanners",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+    "Typing :: Typed",
 ]
 
 # === 运行时核心依赖 ===
@@ -46,9 +72,12 @@ lightshield = "lightshield.cli:main"
 
 # === 项目分类 ===
 [project.urls]
-Homepage = "https://github.com/LightShield/lightshield"
-Source = "https://github.com/LightShield/lightshield"
-BugTracker = "https://github.com/LightShield/lightshield/issues"
+Homepage = "https://github.com/Nagi-226/LightShield"
+Repository = "https://github.com/Nagi-226/LightShield"
+Issues = "https://github.com/Nagi-226/LightShield/issues"
+Changelog = "https://github.com/Nagi-226/LightShield/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/Nagi-226/LightShield/tree/main/docs"
+"Bug Tracker" = "https://github.com/Nagi-226/LightShield/issues"
 
 # === 打包配置 ===
 [tool.setuptools.packages.find]
@@ -69,8 +98,8 @@ source = ["lightshield"]
 omit = ["tests/*", "*/__main__"]
 
 [tool.coverage.report]
-fail_under = 60              # 当前最低覆盖率门槛（v0.0.30→70, v1.0.0→80）
-                                # 当前 61%: cli/core 在无真实 Nmap/用户交互时难测试
+fail_under = 79              # 当前最低覆盖率门槛（v0.0.46 基线 82.3%，保留 3% 缓冲）
+                                # v1.0.0 目标：80
 exclude_also = [
     "if __name__ == .__main__.:",
     "raise NotImplementedError",

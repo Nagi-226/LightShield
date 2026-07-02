@@ -122,6 +122,195 @@ lightshield harden 192.168.1.1 --output-format text --confirm-ownership
 
 ---
 
+## 自动加固闭环
+
+### `lightshield harden --closed-loop` — 加固闭环（v0.0.40+）
+
+自动加固闭环将"扫描→推荐→生成→执行→复扫→验证"七步串联为一条命令，支持两种模式：
+
+| 模式 | 标志 | 作用 | 改系统？ | 复扫？ |
+|------|------|------|:--:|:--:|
+| **DRY_RUN**（默认） | `--closed-loop` | 预检：R1 攻击关键字扫描 + 锁死容器烟测 | ❌ | ❌ |
+| **APPLY** | `--closed-loop --apply` | 真机执行加固脚本，复扫验证修复效果 | ✅ | ✅ |
+
+#### DRY_RUN 模式（预检，不改系统）
+
+```bash
+lightshield harden 127.0.0.1 --closed-loop --confirm-ownership
+```
+
+执行步骤：
+1. ✅ 基线扫描（发现风险）
+2. ✅ 规则推荐（生成加固建议）
+3. ✅ 脚本生成（输出 `.sh` / `.ps1`）
+4. 🔄 预检（R1 攻击关键字扫描 + Docker 锁死容器烟测）
+5. ⏭️ 不复扫、不改系统
+
+输出示例：
+
+```
+[闭环/DRY_RUN] 正在预检加固脚本（不改系统）...
+  ① 基线扫描 ✅
+  ② 规则推荐 ✅
+  ③ 脚本生成 ✅
+  ④ 预检中（R1 扫描 + 容器烟测）...
+
+============================================================
+  加固闭环结果 — 127.0.0.1
+  模式  ：dry_run
+  OS    ：linux
+  审计ID：CL-20260615-160000-a1b2c3
+  ─────────────────────────────────────────
+  基线扫描：completed (3 条风险)
+  加固建议：5 条操作
+  执行状态：skipped
+  ─────────────────────────────────────────
+  总判定  ：📋 仅生成（未复扫）
+============================================================
+```
+
+#### APPLY 模式（真机执行，改真实系统）
+
+⚠️ **APPLY 模式会在宿主机本机执行加固脚本，真实修改系统配置。**
+
+```bash
+# 必须同时传 --confirm-ownership 和 --apply
+lightshield harden 127.0.0.1 --closed-loop --apply --confirm-ownership
+```
+
+执行步骤：
+1. ✅ 基线扫描
+2. ✅ 规则推荐
+3. ✅ 脚本生成
+4. 🔄 DRY_RUN-first 前置预检（必须通过）
+5. 🔄 真机执行加固脚本（改 iptables / 服务 / 配置）
+6. 🔄 复扫同一台真机
+7. ✅ 验证比对（resolved / remaining / regressed）
+8. ✅ 汇总判定
+
+**APPLY 模式四重护栏**（任一不满足即拒绝执行）：
+
+| 护栏 | 内容 |
+|:--:|------|
+| 1 | R4 双重确认（`--confirm-ownership` + `--apply` + 输入 `EXECUTE`） |
+| 2 | DRY_RUN-first 前置（先通过预检才能 APPLY） |
+| 3 | rollback 脚本就绪（回滚脚本必须已生成） |
+| 4 | R1 最终扫描（执行前再扫一次攻击关键字） |
+
+输出示例：
+
+```
+[闭环/APPLY] 正在真机执行加固闭环...
+  ① 基线扫描 ✅（已在前面完成）
+  ② 规则推荐 ✅
+  ③ 脚本生成 ✅
+  ④ 真机执行中...
+
+============================================================
+  加固闭环结果 — 127.0.0.1
+  模式  ：apply
+  OS    ：linux
+  审计ID：CL-20260615-160500-d4e5f6
+  ─────────────────────────────────────────
+  基线扫描：completed (3 条风险)
+  加固建议：5 条操作
+  执行状态：success (exit_code=0, 12.3s)
+  复扫状态：completed
+  复扫发现：0 条风险
+  ─────────────────────────────────────────
+  验证判定：verified
+  已修复  ：3 条
+  仍存在  ：0 条
+  新增风险：0 条
+  ─────────────────────────────────────────
+  总判定  ：✅ 验证通过
+============================================================
+```
+
+#### 验证判定（verdict）规则
+
+| verdict | 含义 | 条件 |
+|------|------|------|
+| `verified` | 验证通过 | 所有风险已修复，无残留，无新增 |
+| `partial` | 部分修复 | 有风险已修复，但仍有残留或新增 |
+| `failed` | 未修复 | 未消除任何风险，或仅有新增风险 |
+| `generated_only` | 仅生成 | DRY_RUN 模式，未执行复扫 |
+
+---
+
+## 查看历史
+
+### `lightshield history` — 扫描历史查询
+
+```bash
+# 查看最近 20 条扫描记录
+lightshield history
+
+# 查看最近 50 条
+lightshield history --limit 50
+
+# 按目标过滤
+lightshield history 192.168.1.1
+
+# 查看指定扫描详情
+lightshield history --scan-id LS-20260615-153012-a1b2
+
+# 以 JSON 格式输出（便于脚本处理）
+lightshield history --format json
+```
+
+扫描历史存储在 SQLite 数据库（`data/lightshield.db`），包含目标、状态、端口数、漏洞数、CVE 数、耗时等摘要信息。
+
+---
+
+## 规则导入
+
+### 从远程 URL 导入规则
+
+```bash
+lightshield scan 127.0.0.1 --rules-url https://example.com/custom-rules.json --confirm-ownership
+```
+
+规则文件格式为 JSON 数组或 `{"rules": [...]}` 对象，每条规则须包含 `rule_id` 和 `match_type` 字段。导入的规则与内置规则合并，不覆盖已有规则（按 `rule_id` 去重）。
+
+### 从本地文件导入
+
+```python
+from lightshield.rules.engine import RuleEngine
+
+engine = RuleEngine()
+engine.load_rules()
+engine.import_rules_from_file("/path/to/custom-rules.json", rule_type="vuln")
+```
+
+---
+
+## Bark 通知推送
+
+扫描或加固闭环完成后，可通过 [Bark](https://apps.apple.com/us/app/bark-push-notifications/id1403753865) 推送结果到手机：
+
+```bash
+# 通过 CLI 参数
+lightshield scan 127.0.0.1 --bark-key YOUR_BARK_KEY --confirm-ownership
+
+# 或通过环境变量（推荐，避免在命令历史中泄露）
+export LS_BARK_KEY=YOUR_BARK_KEY
+lightshield scan 127.0.0.1 --confirm-ownership
+```
+
+扫描完成后，手机会收到类似通知：
+
+```
+🔴 LightShield 扫描完成
+目标: 127.0.0.1
+发现: 3 个漏洞
+  🔴 严重: 1
+  🟠 高危: 2
+耗时: 15s
+```
+
+---
+
 ## 查看报告
 
 ### Markdown 格式（默认）

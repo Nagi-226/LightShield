@@ -1,4 +1,4 @@
-你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
+﻿你是 LightShield 项目的工具链+基础设施专家，使用 DeepSeek-V4-flash 模型。
 
 ## 项目背景
 LightShield v0.0.10 MVP 已完成（14 个 Python 模块），v0.0.11 正在添加 CLI 入口。
@@ -56,10 +56,10 @@ dev = [
 lightshield = "lightshield.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/lightshield/lightshield"
-Documentation = "https://github.com/lightshield/lightshield/blob/main/README.md"
-Repository = "https://github.com/lightshield/lightshield.git"
-Issues = "https://github.com/lightshield/lightshield/issues"
+Homepage = "https://github.com/Nagi-226/LightShield"
+Documentation = "https://github.com/Nagi-226/LightShield/blob/main/README.md"
+Repository = "https://github.com/Nagi-226/LightShield.git"
+Issues = "https://github.com/Nagi-226/LightShield/issues"
 
 [tool.setuptools.packages.find]
 include = ["lightshield*"]
