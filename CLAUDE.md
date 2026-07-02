@@ -3,8 +3,8 @@
 > **用途**：给 Claude Code 的项目全局指令，每次会话自动加载。
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
-> **护栏体系**：基于 Nagi Dev Guardrails v3.2 的六层防御架构，详见 `.guardrails/`。v1.2 十荣十耻 + 翻车模式 + 四问自检 + 6 Agent 全分发。
-> **上次会话**：2026-06-30 — v0.0.45 覆盖率提升（74.5%→79.6%，+133 tests，4 文件 0%→92~100%）。全部 MEDIUM 清零保持。
+> **护栏体系**：基于 Nagi Dev Guardrails v3.3 的六层防御架构（+ Goal Drift 防护），详见 `.guardrails/`。v1.3 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 五模式六反制 + 注意力管理 + 6 Agent 全分发。
+> **上次会话**：2026-07-01 — 护栏 v1.3 升级：AGENT_CODE_OF_CONDUCT §八（Goal Drift 防护）+ QUALITY_GATES Gate A-6（外部输入安全扫描）+ §十二（CI/CD Secret 隔离）+ 任务模板（核心约束摘要 + 提问姿态约束）。全部基于 06-29~07-01 三份集群日报 + 注意力机制文章分析落地。
 >   - 质量基线：**931 tests** / 0 fail / 1 skip / 12 门禁全绿 / 覆盖率 79.6%
 >   - 🎉 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM** / 8 LOW / 9 INFO
 >   - T1 完成：port_scanner(0→100%) / repository/base(32→96%) / linux_harden(16→92%)
@@ -158,16 +158,21 @@ Phase 3: 修复（集中 — CC + QoderWork）
 
 ### 任务文件模板规范
 
+**模板文件**：`.cluster/tasks/_TEMPLATE.md`（创建新任务时复制此模板）。
+
 每个任务文件必须包含：
+
+- **🆕 核心约束摘要（≤5 条）**：基于注意力机制原理——上下文中的每条信息都在争夺 Agent 的注意力，无关信息会稀释关键指令。此段是任务文件中最重要的段落，子 Agent 在每次关键决策前必须重读此段。约束在任务全程有效，任何偏离 → 立即暂停并上报 CC
+- **🆕 提问姿态约束**：封闭句式（"这个方案对不对"）→ Agent 注意力锁定在一侧 → 只能得到附和式输出。开放句式（"分别分析优缺点和潜在风险"）→ 双向知识激活 → 获得独立分析。任务文件中的所有指令必须使用开放句式（详见 `.guardrails/AGENT_CODE_OF_CONDUCT.md §八` Goal Drift 防护中的注意力管理）
 - 项目上下文（简短）
 - ⚠️ 合规约束片段（R1-R6）
 - 接口契约（明确的输入/输出/异常）
 - **🆕 CodeBuddy 任务必须标注**：`【CodeBuddy 模式：A/B】` + `【模型切换：XXX】`。Mode A = CodeBuddy IDE（手动），Mode B = WorkBuddy（CLI 调度）
-- **🆕 不确定性声明**：Agent 必须列出本次任务中置信度🟡中/🔴低的技术判断，标注替代方案或待确认点（详见 `.guardrails/AGENT_CODE_OF_CONDUCT.md §三`）
+- **🆕 不确定性声明**：Agent 必须列出本次任务中置信度🟡中/🔴低的技术判断，标注替代方案或待确认点（详见 `.guardrails/AGENT_CODE_OF_CONDUCT.md §五`）
 - 代码要求（注释、异常处理、类型标注）
-- 验收清单
+- 验收清单（即子目标列表——Agent 每完成一项打勾，完成前不扩展新目标，防 Subgoal Displacement）
 
-详见 `.cluster/CLUSTER.md` 和 `.cluster/tasks/pending/` 下的任务文件。
+详见 `.cluster/CLUSTER.md` 和 `.cluster/tasks/_TEMPLATE.md`。
 
 ---
 

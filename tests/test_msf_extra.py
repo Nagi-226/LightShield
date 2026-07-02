@@ -4,7 +4,7 @@ import contextlib
 
 import pytest
 
-from lightshield.adapters.msf_adapter import MsfScannerAdapter, SecurityViolationError
+from lightshield.adapters.msf_adapter import InvalidTargetError, MsfScannerAdapter, SecurityViolationError
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ class TestExecMsfModule:
 
     def test_invalid_target_rejected(self, adapter):
         """白名单模块但目标不合法 → 拒绝。"""
-        with pytest.raises((SecurityViolationError, ValueError)):
+        with pytest.raises((InvalidTargetError, SecurityViolationError, ValueError)):
             adapter.exec_msf_module("auxiliary/scanner/ssh/ssh_version", "192.168.1.0/24")
 
 
