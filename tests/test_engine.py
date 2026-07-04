@@ -3,7 +3,7 @@
 被测类：RuleEngine
 
 测试点：
-  - load_rules() 后 vuln_rule_count==14 且 harden_rule_count==6
+  - load_rules() 后 vuln_rule_count==16 且 harden_rule_count==6
   - match(scan_result) 四类匹配（port/service_version/service_fingerprint/header）
   - recommend_hardening(findings) 按 severity 排序，返回 dict 含五字段
   - summarize_risks(findings) 统计正确（含 total）
@@ -69,9 +69,9 @@ def sample_scan_result():
 class TestLoadRules:
     """load_rules() 规则加载"""
 
-    def test_vuln_rule_count_is_14(self, engine):
-        """加载后 vuln_rule_count == 14"""
-        assert engine.vuln_rule_count == 14, f"期望 14 条漏洞规则，实际 {engine.vuln_rule_count}"
+    def test_vuln_rule_count_is_16(self, engine):
+        """加载后 vuln_rule_count == 16"""
+        assert engine.vuln_rule_count == 16, f"期望 16 条漏洞规则，实际 {engine.vuln_rule_count}"
 
     def test_harden_rule_count_is_6(self, engine):
         """加载后 harden_rule_count == 6"""
@@ -112,16 +112,24 @@ class TestMatch:
         assert len(weak) >= 1
 
     def test_header_match(self, engine):
-        """HTTP header 匹配"""
+        """HTTP header 规则按响应头内容命中"""
         result = ScanResult(
             status=ScanStatus.COMPLETED,
             target="example.com",
             ports=[{"port": 80, "state": "open", "service": "http"}],
-            services=[{"name": "http", "version": "nginx", "port": 80}],
+            services=[
+                {
+                    "name": "http",
+                    "version": "nginx/1.17.10",
+                    "port": 80,
+                    "headers": {"Server": "nginx/1.17.10"},
+                }
+            ],
         )
         findings = engine.match(result)
-        # header 规则触发条件较宽松
-        assert isinstance(findings, list)
+        header_findings = [f for f in findings if f.vuln_type == "outdated_software"]
+        assert len(header_findings) == 1
+        assert header_findings[0].evidence == "Server: nginx/1.17.10"
 
     def test_match_returns_list(self, engine, sample_scan_result):
         """match() 总是返回列表"""
@@ -156,6 +164,72 @@ class TestMatchFaultTolerance:
         finally:
             # 清理注入的规则
             engine._vuln_rules = [r for r in engine._vuln_rules if r.get("rule_id") != "BROKEN-001"]
+
+
+class TestMatchHeader:
+    """_match_header() 响应头匹配细节。"""
+
+    @staticmethod
+    def _result(headers: dict | None = None) -> ScanResult:
+        service = {"name": "http", "version": "nginx", "port": 80}
+        if headers is not None:
+            service["headers"] = headers
+        return ScanResult(
+            status=ScanStatus.COMPLETED,
+            target="example.com",
+            services=[service],
+        )
+
+    def test_match_header_uses_case_insensitive_header_name_and_search(self, engine):
+        """Header 名大小写不敏感，pattern 使用子串匹配。"""
+        rule = {
+            "rule_id": "HEADER-001",
+            "match_type": "header",
+            "header": "server",
+            "pattern": r"nginx/1\.17",
+            "vuln_type": "outdated_software",
+            "severity": "medium",
+            "title": "Server 头版本暴露",
+        }
+        finding = engine._match_header(rule, self._result({"SERVER": "prod nginx/1.17.10"}))
+
+        assert finding is not None
+        assert finding.port == 80
+        assert finding.parameter == "SERVER"
+        assert finding.evidence == "SERVER: prod nginx/1.17.10"
+
+    def test_match_header_no_pattern_match_returns_none(self, engine):
+        """Header 存在但 pattern 不匹配时返回 None。"""
+        rule = {
+            "rule_id": "HEADER-002",
+            "match_type": "header",
+            "header": "Server",
+            "pattern": r"Apache/2\.4\.57",
+        }
+
+        assert engine._match_header(rule, self._result({"Server": "nginx/1.24.0"})) is None
+
+    def test_match_header_missing_headers_returns_none(self, engine):
+        """HTTP 服务未携带 headers 字段时返回 None。"""
+        rule = {
+            "rule_id": "HEADER-003",
+            "match_type": "header",
+            "header": "Server",
+            "pattern": r"nginx",
+        }
+
+        assert engine._match_header(rule, self._result()) is None
+
+    def test_match_header_invalid_pattern_returns_none(self, engine):
+        """无效正则只跳过当前 header 规则。"""
+        rule = {
+            "rule_id": "HEADER-004",
+            "match_type": "header",
+            "header": "Server",
+            "pattern": r"nginx/(",
+        }
+
+        assert engine._match_header(rule, self._result({"Server": "nginx/1.17.10"})) is None
 
 
 # =============================================================================

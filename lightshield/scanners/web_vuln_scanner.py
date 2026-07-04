@@ -11,8 +11,9 @@ import os
 import re
 import sys
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import requests
@@ -68,6 +69,23 @@ SENSITIVE_DIRS: list[str] = [
     "/graphql",
     "/actuator",
 ]
+
+_COLLECTED_RESPONSE_HEADERS: dict[str, str] = {
+    "server": "Server",
+    "content-security-policy": "Content-Security-Policy",
+    "x-frame-options": "X-Frame-Options",
+    "x-content-type-options": "X-Content-Type-Options",
+    "strict-transport-security": "Strict-Transport-Security",
+    "referrer-policy": "Referrer-Policy",
+    "permissions-policy": "Permissions-Policy",
+    "feature-policy": "Feature-Policy",
+    "x-xss-protection": "X-XSS-Protection",
+    "cross-origin-opener-policy": "Cross-Origin-Opener-Policy",
+    "cross-origin-resource-policy": "Cross-Origin-Resource-Policy",
+    "cross-origin-embedder-policy": "Cross-Origin-Embedder-Policy",
+    "access-control-allow-origin": "Access-Control-Allow-Origin",
+    "access-control-allow-credentials": "Access-Control-Allow-Credentials",
+}
 
 
 @dataclass(frozen=True)
@@ -144,6 +162,11 @@ class WebVulnScanner(BaseAdapter):
             url = self._normalize_url(target)
             params = kwargs.get("params")
             findings: list[VulnFinding] = []
+            services: list[dict] = []
+
+            http_service = self._collect_http_service(url, params=params)
+            if http_service is not None:
+                services.append(http_service)
 
             if kwargs.get("check_sqli", True):
                 findings.extend(self.detect_sqli(url, params=params))
@@ -156,6 +179,7 @@ class WebVulnScanner(BaseAdapter):
                 status=ScanStatus.COMPLETED,
                 target=target,
                 findings=findings,
+                services=services,
                 raw_output=f"web_vuln findings={len(findings)}",
                 duration_seconds=time.monotonic() - started_at,
             )
@@ -340,6 +364,56 @@ class WebVulnScanner(BaseAdapter):
             self._logger.warning(self.name, f"请求失败：{url} | {exc}")
             return None
 
+    def _collect_http_service(self, url: str, params: dict | None = None) -> dict | None:
+        """探测 HTTP 服务并保存小范围响应头。"""
+        response = self._safe_get(url, params=params)
+        if response is None:
+            return None
+
+        headers = self._filter_response_headers(response)
+        service = {
+            "name": "http",
+            "port": self._url_port(url),
+            "version": self._server_product(headers.get("Server", "")),
+        }
+        if headers:
+            service["headers"] = headers
+        return service
+
+    def _filter_response_headers(self, response: requests.Response) -> dict[str, str]:
+        """只保留安全相关响应头和 Server，避免 services 记录膨胀。"""
+        raw_headers = getattr(response, "headers", {})
+        if not isinstance(raw_headers, Mapping):
+            return {}
+
+        selected: dict[str, str] = {}
+        for name, value in raw_headers.items():
+            canonical_name = _COLLECTED_RESPONSE_HEADERS.get(str(name).lower())
+            if canonical_name is not None:
+                selected[canonical_name] = str(value)
+        return selected
+
+    @staticmethod
+    def _server_product(server_header: str) -> str:
+        """从 Server 头提取首个产品标识，保留版本信息便于展示。"""
+        if not server_header:
+            return ""
+        return server_header.split()[0][:80]
+
+    @staticmethod
+    def _url_port(url: str) -> int:
+        """从 URL 提取端口，未显式指定时按协议回退。"""
+        parsed = urlparse(url)
+        try:
+            port = parsed.port
+        except ValueError:
+            port = None
+        if port is not None:
+            return int(port)
+        if parsed.scheme == "https":
+            return 443
+        return 80
+
     def _rate_limit(self) -> None:
         """同一扫描器实例内的请求间隔控制。"""
         now = time.monotonic()
@@ -493,14 +567,14 @@ if __name__ == "__main__":
         def __init__(self) -> None:
             super().__init__(request_interval=0.0)
 
-        def _safe_get(self, url: str, params: dict | None = None) -> _FakeResponse | None:  # type: ignore[override]
+        def _safe_get(self, url: str, params: dict | None = None) -> requests.Response | None:
             if url.endswith("/.env"):
-                return _FakeResponse("<title>env</title>DB_PASSWORD=redacted")
+                return cast(requests.Response, _FakeResponse("<title>env</title>DB_PASSWORD=redacted"))
             if params and any("'" in str(value) for value in params.values()):
-                return _FakeResponse("You have an error in your SQL syntax")
+                return cast(requests.Response, _FakeResponse("You have an error in your SQL syntax"))
             if params and any("<script>" in str(value) for value in params.values()):
-                return _FakeResponse(str(next(iter(params.values()))))
-            return _FakeResponse("normal page")
+                return cast(requests.Response, _FakeResponse(str(next(iter(params.values())))))
+            return cast(requests.Response, _FakeResponse("normal page"))
 
     scanner = _SelfCheckScanner()
     assert scanner.capabilities() == ["web_vuln", "directory_enum"]

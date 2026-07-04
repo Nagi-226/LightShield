@@ -35,6 +35,7 @@ def _fake_response(
     text: str = "normal page",
     status_code: int = 200,
     elapsed_seconds: float = 0.1,
+    headers: dict | None = None,
 ) -> MagicMock:
     """构造一个模拟的 requests.Response"""
     resp = MagicMock()
@@ -42,6 +43,7 @@ def _fake_response(
     resp.status_code = status_code
     resp.elapsed = _FakeElapsed(elapsed_seconds)
     resp.url = "http://example.com/test"
+    resp.headers = headers or {}
     return resp
 
 
@@ -132,6 +134,36 @@ class TestScan:
             )
             assert result.status == ScanStatus.COMPLETED
             assert len(result.findings) == 0
+
+    def test_scan_collects_selected_response_headers(self, scanner):
+        """scan() 将安全相关响应头写入 HTTP service。"""
+        response = _fake_response(
+            headers={
+                "Server": "nginx/1.17.10",
+                "X-Frame-Options": "DENY",
+                "Set-Cookie": "session=secret",
+            }
+        )
+        with patch.object(scanner, "_safe_get", return_value=response):
+            result = scanner.scan(
+                "https://example.com/app",
+                check_sqli=False,
+                check_xss=False,
+                check_dirs=False,
+            )
+
+        assert result.status == ScanStatus.COMPLETED
+        assert result.services == [
+            {
+                "name": "http",
+                "port": 443,
+                "version": "nginx/1.17.10",
+                "headers": {
+                    "Server": "nginx/1.17.10",
+                    "X-Frame-Options": "DENY",
+                },
+            }
+        ]
 
     def test_scan_no_params_uses_query_string(self, scanner):
         """scan() 不带 params 时应从 URL 查询串解析"""

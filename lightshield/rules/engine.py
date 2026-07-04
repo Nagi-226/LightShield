@@ -22,6 +22,7 @@
 import hashlib
 import json
 import os
+import re
 import time
 
 import requests
@@ -396,21 +397,53 @@ class RuleEngine:
     def _match_header(self, rule: dict, result: ScanResult) -> VulnFinding | None:
         """HTTP 响应头特征匹配。
 
-        TODO(v1.0.0): 当前实现为占位——仅检测 HTTP 服务存在性即返回发现，
-        未真正使用规则的 header/pattern 字段做 HTTP 响应头内容匹配。
-        待 web_vuln_scanner 支持 HTTP 响应头采集后实现精确匹配。
-        规则字段（预留）：header（响应头名）、pattern（匹配正则）。
+        规则字段：
+          - header: 响应头名（大小写不敏感）
+          - pattern: 用 re.search 做子串匹配的正则
         """
-        # 检测是否有 HTTP 服务——作为配置问题的信号
+        header_name = str(rule.get("header", "")).strip().lower()
+        pattern = rule.get("pattern", "")
+        if not header_name or not isinstance(pattern, str) or not pattern:
+            return None
+
+        try:
+            compiled_pattern = re.compile(pattern)
+        except re.error as exc:
+            self._logger.warning(
+                "rules",
+                f"Header 规则正则无效，已跳过：rule_id={rule.get('rule_id', '?')} pattern={pattern!r} ({exc})",
+            )
+            return None
+
         for svc in result.services:
-            if svc.get("name") == "http":
+            if not isinstance(svc, dict) or str(svc.get("name", "")).lower() != "http":
+                continue
+            headers = svc.get("headers", {})
+            if not isinstance(headers, dict) or not headers:
+                continue
+
+            actual_name = ""
+            actual_value = None
+            for key, value in headers.items():
+                if str(key).lower() == header_name:
+                    actual_name = str(key)
+                    actual_value = str(value)
+                    break
+            if actual_value is None:
+                continue
+
+            if compiled_pattern.search(actual_value):
                 return VulnFinding(
                     vuln_type=rule.get("vuln_type", "misconfiguration"),
                     severity=self._parse_severity(rule.get("severity", "medium")),
-                    title=rule.get("title", "HTTP 配置问题"),
+                    title=rule.get("title", "HTTP 响应头配置问题"),
                     description=rule.get("description", ""),
                     remediation=rule.get("remediation", ""),
                     port=svc.get("port"),
+                    cve_id=rule.get("cve_id"),
+                    cvss_score=rule.get("cvss_score"),
+                    parameter=actual_name,
+                    evidence=f"{actual_name}: {actual_value}",
                 )
         return None
 

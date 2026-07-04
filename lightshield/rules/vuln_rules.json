@@ -162,6 +162,30 @@
       "title": "检测到弱口令",
       "description": "目标系统的认证凭据过于简单，可被轻易猜测或暴力破解。这是最常见的入侵途径之一。",
       "remediation": "1. 立即修改为强密码（12+位，含大小写字母、数字、特殊字符）\n2. 启用多因素认证 (MFA)\n3. 实施账户锁定策略（连续失败 N 次后锁定）"
+    },
+    {
+      "rule_id": "VULN-015",
+      "name": "Nginx Server 头暴露老旧版本",
+      "match_type": "header",
+      "header": "Server",
+      "pattern": "(?i)nginx/1\\.([0-9]|1[0-7])\\.",
+      "severity": "medium",
+      "vuln_type": "outdated_software",
+      "title": "Server 头暴露老旧 Nginx 版本",
+      "description": "Server 响应头暴露了 Nginx 1.18 之前的版本特征。版本泄露会降低攻击成本，老旧版本可能缺少安全修复。",
+      "remediation": "升级 Nginx 到受支持的稳定版本，并配置 server_tokens off 减少版本暴露。"
+    },
+    {
+      "rule_id": "VULN-016",
+      "name": "Apache Server 头暴露老旧版本",
+      "match_type": "header",
+      "header": "Server",
+      "pattern": "(?i)apache/2\\.4\\.(?:[0-9]|[1-4][0-9]|5[0-7])\\b",
+      "severity": "medium",
+      "vuln_type": "outdated_software",
+      "title": "Server 头暴露老旧 Apache httpd 版本",
+      "description": "Server 响应头暴露了 Apache httpd 2.4.58 之前的版本特征。版本泄露会降低攻击成本，老旧版本可能缺少安全修复。",
+      "remediation": "升级 Apache httpd 到受支持的稳定版本，并关闭或最小化 ServerTokens 版本暴露。"
     }
   ]
 }
