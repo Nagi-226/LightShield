@@ -396,7 +396,7 @@ class WebVulnScanner(BaseAdapter):
     @staticmethod
     def _server_product(server_header: str) -> str:
         """从 Server 头提取首个产品标识，保留版本信息便于展示。"""
-        if not server_header:
+        if not server_header or not server_header.strip():
             return ""
         return server_header.split()[0][:80]
 

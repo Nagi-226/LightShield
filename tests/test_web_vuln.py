@@ -165,6 +165,32 @@ class TestScan:
             }
         ]
 
+    def test_scan_handles_blank_server_header(self, scanner):
+        """scan() 对纯空白 Server 头不崩溃（M-01 回归）。"""
+        response = _fake_response(headers={"Server": "   "})
+        with patch.object(scanner, "_safe_get", return_value=response):
+            result = scanner.scan(
+                "https://example.com",
+                check_sqli=False,
+                check_xss=False,
+                check_dirs=False,
+            )
+        assert result.status == ScanStatus.COMPLETED
+        assert result.services[0]["version"] == ""
+
+    def test_scan_handles_empty_server_header(self, scanner):
+        """scan() 对空字符串 Server 头不崩溃。"""
+        response = _fake_response(headers={"Server": ""})
+        with patch.object(scanner, "_safe_get", return_value=response):
+            result = scanner.scan(
+                "https://example.com",
+                check_sqli=False,
+                check_xss=False,
+                check_dirs=False,
+            )
+        assert result.status == ScanStatus.COMPLETED
+        assert result.services[0]["version"] == ""
+
     def test_scan_no_params_uses_query_string(self, scanner):
         """scan() 不带 params 时应从 URL 查询串解析"""
 
