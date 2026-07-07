@@ -4,13 +4,12 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.3 的六层防御架构（+ Goal Drift 防护），详见 `.guardrails/`。v1.3 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 五模式六反制 + 注意力管理 + 6 Agent 全分发。
-> **上次会话**：2026-07-01 — 护栏 v1.3 升级：AGENT_CODE_OF_CONDUCT §八（Goal Drift 防护）+ QUALITY_GATES Gate A-6（外部输入安全扫描）+ §十二（CI/CD Secret 隔离）+ 任务模板（核心约束摘要 + 提问姿态约束）。全部基于 06-29~07-01 三份集群日报 + 注意力机制文章分析落地。
->   - 质量基线：**931 tests** / 0 fail / 1 skip / 12 门禁全绿 / 覆盖率 79.6%
->   - 🎉 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM** / 8 LOW / 9 INFO
->   - T1 完成：port_scanner(0→100%) / repository/base(32→96%) / linux_harden(16→92%)
->   - T2 完成：web_vuln/msf/host_exec/report_archiver/cli_helpers 边界测试 +23
->   - 剩余 ~5.4% 在 cli.py(286)/core closed_loop(124)/routes(75) —— 需 mock 基础设施
->   - 下次启动：v0.0.46 — 继续推覆盖率到 82% 或转向功能方向
+> **上次会话**：2026-07-07 — v0.0.49：版本回滚修复（v1.0.0/v1.0.1 → v0.0.49）+ 合规审计通过 + LOW-001~005 补充 + 任务清理。v0.0.47 Kimi 审查闭环（1 MEDIUM 已在 v0.0.48 修复）。全量测试 1001/0/1 通过。
+>   - 质量基线：**1001 tests** / 0 fail / 1 skip / 12 门禁全绿 / 覆盖率 ~82.95%
+>   - 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM** / 13 LOW / 12 INFO
+>   - 已归档：25 个历史任务文件 → `.cluster/tasks/archive/`
+>   - 当前 pending：覆盖率 85% 冲刺（非阻塞）
+>   - 下次启动：覆盖率 85% 冲刺 → v0.0.50+。v1.0.0 正式版为远期里程碑
 > **进度追踪**：`.guardrails/PROGRESS.md`
 
 ---

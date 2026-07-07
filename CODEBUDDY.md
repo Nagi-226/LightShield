@@ -424,34 +424,45 @@ File → Open Folder → E:\Github Project\LightShield\
 
 | 版本 | 任务 | 模式 | 切换模型 | 说明 |
 |------|------|:--:|:------:|------|
-| v0.0.40 | verify 数据结构 + 测试 | A | DeepSeek-V4-Pro | 原 Reasonix 派工，`VerificationResult` + `verify_hardening()` + 测试 |
-| v0.0.40 | 闭环 i18n key | A | DeepSeek-V4-Flash | 原 Hermes 派工，~17 个 closed_loop.* key |
-| 全阶段 | 样板/基础设施 | A/B | DeepSeek-V4-Flash | 原 Hermes 职责——`__init__.py`、deploy 脚本、Dockerfile 等。新任务优先走 Mode B |
-| 🆕 **v0.0.44** | **🔑 CC 架构二审** | **A** | **GLM-5.2 · ZCode替补** | **当前任务** — Web-Core 边界 ADR 架构二审（1M 上下文全项目 + 全部 ADR） |
+| v0.0.40 | verify 数据结构 + 测试 | A | DeepSeek-V4-Pro | ✅ 已完成 |
+| v0.0.40 | 闭环 i18n key | A | DeepSeek-V4-Flash | ✅ 已完成 |
+| v0.0.44 | 🔑 CC 架构二审 | A | GLM-5.2 | ✅ 已完成 — `docs/review-v044-codebuddy-arch-review.md`，9 发现，F-1~F-7 全部采纳 |
+| v0.0.49 | 合规审计文档 + 版本同步 | A | GLM-5.2 | ✅ 已完成 — SECURITY/CODE_OF_CONDUCT/CONTRIBUTING + 7 文档增强 |
+| **v0.0.50** | **覆盖率 LOW-001~005 + 任务清理** | **B** | **DeepSeek-V4-Pro** | **⬅ 已完成** — 5 个已知测试缺口修复 + 25 任务归档 |
+| 全阶段 | 样板/基础设施 | A/B | DeepSeek-V4-Flash | 原 Hermes 职责。新任务优先走 Mode B |
 
 ---
 
-### 🆕 v0.0.44 当前任务：CC 架构二审 — Web-Core 边界 ADR
+### 🆕 v0.0.50 已完成任务：覆盖率 LOW-001~005 + 85% 冲刺
 
-> **【模型切换：GLM-5.2 · ZCode替补模式】** — ZCode 长期下线，你切 GLM-5.2 自动升级为特种部队。
+> **【CodeBuddy 模式：B · WorkBuddy CLI】** — 批量模板化测试生成，零推理量需求
+> **【模型切换：DeepSeek-V4-Pro】** — 测试生成不需要 GLM-5.2 的推理深度
+> **【依赖】** 🟢 不阻塞版本迭代（与合规审计并行执行）
 
-**背景**：CC 已写完 `docs/adr-v043-web-core-facade.md`（Web-Core 分层边界 ADR）。你是架构二审——在 ADR 合入前审它的全局一致性。
+**背景**：v0.0.48 阶段合规审计通过（996 tests / 0C/0H/0M）。Kimi (K2.7-code) 在 v0.0.46 独立审查中发现了 5 个测试覆盖缺口（LOW-001~005），全部是已知债务。覆盖率 ~82.7%，目标 85%。
 
-**你的任务（不是审代码，是审架构）**：
-1. 用 1M 上下文一次性装载 `lightshield/core.py` + `lightshield/web/pages.py` + `lightshield/web/routes.py` + `docs/adr-v043-web-core-facade.md` + `docs/adr-v040-execution-substrate.md`（已有 ADR 参考）
-2. 按 `.guardrails/AGENT_CODE_OF_CONDUCT.md §翻车模式` 自检
-3. 输出 `docs/review-v044-codebuddy-arch-review.md`
+**任务文件**：`.cluster/tasks/pending/CODEBUDDY-v047-coverage.md`
 
-**五维审查**（详见 CLAUDE.md §零-B「ZCode 架构二审」职责）：
-- ① 分层语义自洽：ADR 定义的 5 个门面方法是否覆盖了 web 层全部 6 项穿透点？
-- ② ADR vs 实现对照：ADR 设计的 core 门面接口签名与现有 core.py 结构兼容吗？
-- ③ 跨模块接口契约：`load_scan()` 返回 dict vs 返回 dataclass — 哪种更符合项目现有模式？
-- ④ 抽象层级合理性：5 个门面方法是多了还是少了？有没有该合并没合并的？
-- ⑤ 遗漏关注点：ADR 没定义但应该定义的东西（如门面方法的异常语义、`_reconstruct_scan_result` 迁移到 core 还是独立模块）
+**调用**：
+```bash
+workbuddy craft "$(cat .cluster/tasks/pending/CODEBUDDY-v047-coverage.md)"
+```
 
-**合规约束**：R1-R6 + 六大铁律 + 十荣十耻（见本文件 §六/§七/护栏章节）
+**阶段 A（优先）— LOW-001~005 修复**：
+- LOW-001：`_merge_findings` 去重 key url/parameter/title 差异场景
+- LOW-002：`_resolve_script_path` 子目录绕过用例补强
+- LOW-003：`_validate_download_csrf` form token 场景
+- LOW-004：`_is_truthy(None)` 边界覆盖
+- LOW-005：`_print_execution_result` >20 行截断边界
 
-**输出**：`docs/review-v044-codebuddy-arch-review.md`（结论：Approved / Changes Requested / Blocked + 发现清单）
+**阶段 B（可选）— 覆盖率 85%**：
+- 目标文件：`cli.py`(286行)、`core.closed_loop`(124行)、`routes.py`(75行)
+- 策略：先 `--cov-report=term-missing` 定位精确未覆盖行 → 优先纯函数 → mock 隔离 → 复杂 I/O 放最后
+
+**为什么不用 GLM-5.2**：
+- 本任务是批量测试生成（模板化、低推理量）——DS-V4-Pro 完全够用
+- GLM-5.2 月配额 3-5 次，应预留给架构二审（ZCode 替补）或后续全项目审计
+- 产出质量不因模型选择而有实质差异（测试代码 vs 架构决策）
 
 ---
 

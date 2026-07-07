@@ -227,13 +227,28 @@ Skill 示例：
 
 | 版本 | 任务 | 模式 | 说明 |
 |------|------|:--:|------|
-| v0.0.40 | 闭环实现全量审查 | A | Codex+CodeBuddy 产出合入前的跨模型独立审查 |
-| v0.0.40 | 安全关键路径复查 | A | HostExecutor 闸门逻辑、APPLY 护栏的独立模型验证 |
-| v0.0.40 | Web E2E 自动化测试 | B | 加固闭环全链路 Web 端操作验证 |
-| v0.0.40 | 部署 + API 验证 | B | Docker compose 一键部署 + 8 端点 smoke test |
-| 每版本 | 强制独立审查 | A | 替代 CodeWhale，模型真正不同 |
+| v0.0.40 | 闭环实现全量审查 | A | ✅ 已完成 |
+| v0.0.40 | 安全关键路径复查 | A | ✅ 已完成 |
+| v0.0.40 | Web E2E 自动化测试 | B | ⬜ 待后续版本执行 |
+| v0.0.46 | 独立审查 | A | ✅ 已完成 — 报告 `docs/review-v046-kimi.md`，0C/0H/0M，5 LOW + 4 INFO |
+| v0.0.47 | 独立审查（🟡 阻塞 v0.0.49） | A | ✅ 审查报告已输出（`docs/review-v047-kimi.md`：1 MEDIUM / 2 INFO），已在 v0.0.48 修复 |
+| v0.0.50+ | 发布前终审 | A | 后续里程碑版本独立审查 |
 | 每版本 | 发布检查清单 | B | 版本号一致性 + pre-commit + CHANGELOG + GitHub Release |
 | 全阶段 | 文档截图更新 | B | 中英文界面截图随版本增量更新 |
+
+### 当前任务：KIMI-v047-review（🔴 最高优先级）
+
+- **任务文件**：`.cluster/tasks/pending/KIMI-v047-review.md`
+- **审查对象**：commit `4aaa40c`（v0.0.47 diff vs v0.0.46）
+- **变更范围**：5 个源文件（不含 graphify-out 自动生成）
+  - `lightshield/scanners/web_vuln_scanner.py` — `_COLLECTED_RESPONSE_HEADERS` 白名单 + 响应头采集
+  - `lightshield/rules/engine.py` — `_match_header` 完整实现（替代占位）
+  - `lightshield/rules/vuln_rules.json` — VULN-015 Nginx / VULN-016 Apache
+  - `tests/test_engine.py` — `_match_header` 四象限测试
+  - `tests/test_web_vuln.py` — 响应头采集过滤测试
+- **质量基线**：996 tests / 0 fail / 1 skip
+- **阻塞关系**：Kimi 审查通过 → CC 合规审计 → 版本 tag
+- **调用**：`kimi exec "$(cat .cluster/tasks/pending/KIMI-v047-review.md)"`
 
 ---
 

@@ -29,6 +29,54 @@ All notable changes to LightShield 轻盾 will be documented in this file.
 
 ---
 
+## [0.0.49] - 2026-07-07
+
+### Added
+
+- **CC 合规审计**：`docs/audit-v048-compliance.md`（R1-R6 全通过、五门禁全绿、996 tests、0C/0H/0M）
+- **LOW-001~005 测试补充**（CodeBuddy Mode B / DS-V4-Pro）：
+  - LOW-001：`_merge_findings` 去重 key 补全（url/parameter/title 差异场景）
+  - LOW-002：`_resolve_script_path` 子目录绕过用例补强
+  - LOW-003：`_validate_download_csrf` form token 场景
+  - LOW-004：`_is_truthy(None)` 边界覆盖
+  - LOW-005：`_print_execution_result` >20 行截断边界
+- **CHANGELOG 回填**：v0.0.47 / v0.0.48
+
+### Changed
+
+- 版本号 0.0.48 → 0.0.49；测试总数 996 → 1001（+5）
+- 覆盖率基线：82.7% → 82.95%
+- 任务目录清理：25 个历史任务 pending → archive
+- CLAUDE.md / CODEBUDDY.md / KIMI.md / PROGRESS.md 状态同步
+
+---
+
+## [0.0.48] - 2026-07-04
+
+### Fixed
+
+- **M-01**：`_server_product` 纯空白 `Server` 头触发 `IndexError`（Kimi v0.0.47 审查发现，1 MEDIUM）
+
+### Changed
+
+- 版本号 0.0.47 → 0.0.48
+
+---
+
+## [0.0.47] - 2026-07-03
+
+### Added
+
+- **Codex HTTP header 匹配引擎**：`_match_header` 完整实现（替代占位），`_COLLECTED_RESPONSE_HEADERS` 白名单 + 响应头采集
+- **VULN-015 Nginx / VULN-016 Apache**：老旧版本检测规则（基于 HTTP Server 响应头）
+
+### Changed
+
+- 版本号 0.0.46 → 0.0.47；测试总数 991 → 996（+65）
+- Kimi 独立审查通过（`docs/review-v047-kimi.md`：1 MEDIUM → v0.0.48 修复 / 2 INFO）
+
+---
+
 ## [0.0.45] - 2026-07-01
 
 ### Added
