@@ -25,6 +25,23 @@
     <div><span>{{ t('common.findings') }}</span><strong id="meta-findings">-</strong></div>
   </div>
 
+  <div id="severity-bar" class="severity-bar" role="status" aria-label="{{ t('report.severity_distribution') }}" hidden>
+    <div class="severity-segments" aria-hidden="true">
+      <span class="sev-seg sev-critical" data-sev="critical"></span>
+      <span class="sev-seg sev-high" data-sev="high"></span>
+      <span class="sev-seg sev-medium" data-sev="medium"></span>
+      <span class="sev-seg sev-low" data-sev="low"></span>
+      <span class="sev-seg sev-info" data-sev="info"></span>
+    </div>
+    <div class="severity-labels">
+      <span class="sev-label sev-label-critical">{{ t('report.sev_critical') }} <strong>0</strong></span>
+      <span class="sev-label sev-label-high">{{ t('report.sev_high') }} <strong>0</strong></span>
+      <span class="sev-label sev-label-medium">{{ t('report.sev_medium') }} <strong>0</strong></span>
+      <span class="sev-label sev-label-low">{{ t('report.sev_low') }} <strong>0</strong></span>
+      <span class="sev-label sev-label-info">{{ t('report.sev_info') }} <strong>0</strong></span>
+    </div>
+  </div>
+
   <div id="report-error" class="form-error" role="alert" hidden></div>
   <article id="report-content" class="markdown-body" aria-live="polite">
     <div class="loading-line"><span></span>{{ t('report.loading_md') }}</div>
@@ -89,12 +106,37 @@
   }
 
   function decorateRiskLabels() {
-    const levels = ["critical", "high", "medium", "low", "info"];
+    const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+    const levels = Object.keys(counts);
     reportContent.querySelectorAll("td, li, strong, code").forEach((node) => {
       const text = node.textContent.trim().toLowerCase();
       if (levels.includes(text)) {
         node.classList.add(`risk-${text}`);
+        counts[text]++;
       }
+    });
+    populateSeverityBar(counts);
+  }
+
+  function populateSeverityBar(counts) {
+    const bar = document.getElementById("severity-bar");
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (total === 0) {
+      bar.hidden = true;
+      return;
+    }
+    bar.hidden = false;
+
+    const order = ["critical", "high", "medium", "low", "info"];
+    order.forEach((sev) => {
+      const pct = (counts[sev] / total) * 100;
+      const seg = bar.querySelector(`.sev-seg[data-sev="${sev}"]`);
+      if (seg) {
+        seg.style.width = `${Math.max(pct, pct > 0 ? 1.5 : 0)}%`;
+        if (pct === 0) seg.style.display = "none";
+      }
+      const label = bar.querySelector(`.sev-label-${sev} strong`);
+      if (label) label.textContent = counts[sev];
     });
   }
 

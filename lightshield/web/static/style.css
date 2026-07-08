@@ -48,6 +48,14 @@
   --risk-medium-text: #6e4700;
   --risk-low-text: #635100;
   --risk-info-text: #38464f;
+  /* report severity bar */
+  --sev-critical: #8e44ad;
+  --sev-high: #e74c3c;
+  --sev-medium: #f39c12;
+  --sev-low: #27ae60;
+  --sev-info: #95a5a6;
+  --sev-bar-bg: rgba(19, 45, 64, 0.07);
+  --font-mono: "Cascadia Code", "JetBrains Mono", "SF Mono", "Cascadia Mono", "SFMono-Regular", Consolas, "Source Code Pro", monospace;
 }
 
 [data-theme="dark"] {
@@ -99,6 +107,14 @@
   --risk-medium-text: #fff0d3;
   --risk-low-text: #fff8c9;
   --risk-info-text: #e3e8ec;
+  /* report severity bar — dark */
+  --sev-critical: #b97fd9;
+  --sev-high: #f07070;
+  --sev-medium: #f5b041;
+  --sev-low: #58d68d;
+  --sev-info: #b0babb;
+  --sev-bar-bg: rgba(255, 255, 255, 0.06);
+  --font-mono: "Cascadia Code", "JetBrains Mono", "SF Mono", "Cascadia Mono", "SFMono-Regular", Consolas, "Source Code Pro", monospace;
 }
 
 * {
@@ -626,8 +642,83 @@ select option {
 code,
 .scan-id {
   color: var(--code-text);
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-family: var(--font-mono);
 }
+
+/* =========================================================================
+   Severity Distribution Bar — at-a-glance risk overview
+   ========================================================================= */
+
+.severity-bar {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  background: var(--panel-gradient);
+  box-shadow: var(--shadow);
+}
+
+.severity-segments {
+  display: flex;
+  height: 0.6rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--sev-bar-bg);
+}
+
+.sev-seg {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  transition: width 520ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.sev-critical { background: var(--sev-critical); }
+.sev-high    { background: var(--sev-high); }
+.sev-medium  { background: var(--sev-medium); }
+.sev-low     { background: var(--sev-low); }
+.sev-info    { background: var(--sev-info); }
+
+.severity-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.4rem;
+  margin-top: 0.85rem;
+}
+
+.sev-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sev-label::before {
+  content: "";
+  display: inline-block;
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.sev-label-critical::before { background: var(--sev-critical); }
+.sev-label-high::before     { background: var(--sev-high); }
+.sev-label-medium::before   { background: var(--sev-medium); }
+.sev-label-low::before      { background: var(--sev-low); }
+.sev-label-info::before     { background: var(--sev-info); }
+
+.sev-label strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+/* =========================================================================
+   Enhanced Risk Badges — geometric indicator + color
+   ========================================================================= */
 
 .status-badge {
   display: inline-flex;
@@ -722,6 +813,13 @@ code,
   font-size: 0.78rem;
 }
 
+.report-meta strong {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
 .markdown-body {
   padding: clamp(1rem, 3vw, 2rem);
   border-radius: 1.2rem;
@@ -734,21 +832,49 @@ code,
   letter-spacing: -0.04em;
 }
 
+.markdown-body h2 {
+  margin-top: 2.4rem;
+  padding-top: 1.6rem;
+  border-top: 2px solid var(--line);
+  font-size: 1.45rem;
+}
+
+.markdown-body h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
   margin: 1rem 0;
+  font-size: 0.92rem;
 }
 
 .markdown-body th,
 .markdown-body td {
-  padding: 0.72rem;
+  padding: 0.8rem 0.85rem;
   border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
 }
 
 .markdown-body th {
-  color: var(--accent-2);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   background: var(--table-head-bg);
+}
+
+.markdown-body tbody tr:nth-child(even) {
+  background: var(--row-alt);
+}
+
+.markdown-body tbody tr:hover {
+  background: var(--row-hover);
 }
 
 .markdown-body pre {
@@ -789,10 +915,36 @@ code,
 .risk-medium,
 .risk-low,
 .risk-info {
-  display: inline-block;
-  padding: 0.15rem 0.42rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 0.48rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
+
+.risk-critical::before,
+.risk-high::before,
+.risk-medium::before,
+.risk-low::before,
+.risk-info::before {
+  content: "";
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.risk-critical::before { background: currentColor; box-shadow: 0 0 6px currentColor; }
+.risk-high::before     { background: currentColor; border-radius: 999px; }
+.risk-medium::before   { background: currentColor; }
+.risk-low::before      { background: currentColor; transform: rotate(45deg); }
+.risk-info::before     { background: transparent; border: 1.5px solid currentColor; border-radius: 999px; }
 
 .loading-line {
   display: inline-flex;

@@ -103,7 +103,13 @@
     "download_script": "Download hardening script",
     "download_rollback": "Download rollback script",
     "load_fail_body": "Unable to load the report. Please return to the dashboard to check the scan status.",
-    "err_load": "Failed to load report"
+    "err_load": "Failed to load report",
+    "severity_distribution": "Risk severity distribution",
+    "sev_critical": "Critical",
+    "sev_high": "High",
+    "sev_medium": "Medium",
+    "sev_low": "Low",
+    "sev_info": "Info"
   },
   "harden": {
     "page_title": "Hardening",

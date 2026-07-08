@@ -103,7 +103,13 @@
     "download_script": "下载加固脚本",
     "download_rollback": "下载回滚脚本",
     "load_fail_body": "无法加载报告，请返回仪表板确认扫描状态。",
-    "err_load": "报告加载失败"
+    "err_load": "报告加载失败",
+    "severity_distribution": "风险严重度分布",
+    "sev_critical": "严重",
+    "sev_high": "高危",
+    "sev_medium": "中危",
+    "sev_low": "低危",
+    "sev_info": "信息"
   },
   "harden": {
     "page_title": "加固建议",
