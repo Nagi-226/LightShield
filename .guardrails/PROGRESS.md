@@ -1,9 +1,9 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-07-08 | **当前版本**：v0.0.49 | **护栏版本**：v1.3（六层防线 + 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 防护）
-> **会话状态**：📋 v0.0.50–v0.0.60 迭代规划已完成（修订版 v2）— 三阶段（质量收尾+ADR → 功能补全 → 生产就绪）。1001 passed / 1 skip / 12 门禁全绿。
-> **剩余债务**：**0C / 0H / 0M** / 13L / 12I
-> **今日交付**：v0.0.50–v0.0.60 十一版本规划 + 报告页前端设计刷新（severity bar + risk badge 增强 + 双主题同步）
+> **最后更新**：2026-07-08 | **当前版本**：v0.0.51 | **护栏版本**：v1.3（六层防线 + 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 防护）
+> **会话状态**：✅ v0.0.51 全部债务清零完成。1001 passed / 1 skip / 12 门禁全绿。
+> **剩余债务**：**0C / 0H / 0M / 0L / 0I** 🎉 全部清零（详见 `docs/audit-v051-debt-resolution.md`）
+> **今日交付**：v0.0.50–v0.0.60 十一版本规划 + 报告页前端设计刷新 + v0.0.51 债务清零
 
 ---
 
@@ -434,6 +434,7 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 | **2026-06-26** | **八荣八耻防线落地**：新建 `.guardrails/AGENT_CODE_OF_CONDUCT.md`（8 条 Agent 行为准则 + 置信度标注规范 + 审查对照表）；CLAUDE.md 五大铁律→六大铁律（#6 理解再改）；任务文件模板新增「不确定性声明」段；REVIEW_CHECKLIST 新增 §七 八荣八耻审查检查表 |
 | **2026-06-26** | **v0.0.40 核心实现**：HostExecutor（跨平台真机执行，Win .bat/.ps1 + Linux .sh）+ run_harden_closed_loop（①-⑦ 7步编排：扫描→推荐→生成→DRY_RUN预检/APPLY真机执行→复扫→验证→汇总）+ CLI --closed-loop/--apply/--confirm-ownership 接线 + _run_dry_run_precheck/_run_apply_and_verify 助理解耦。Gate A 更新：R1_ATTACK_KEYWORDS 新增至 constants.py + 过滤规则。25 条新测试（test_host_executor 15 + test_closed_loop 10）。735 passed / 1 skip / 五门禁全绿 |
 | **2026-06-25** | **🆙 QoderWork 角色重大升级**：从"VM 执行+前端 UI"→"🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5）+ 35h 长程自主 Agent"。基于 Qwen-3.7-Max 实测（Code Arena #2 1541 超 GPT-5.5、SWE-Multilingual 78.4 全球纪录、IFBench 81.2 指令遵循新高、35h 无人值守 1158 次工具调用 10x 性能提升）。此为集群 2026-06-25 最大认知偏差修正——Qwen-3.7-Max 是被严重低估的顶级编程模型 |
+| **2026-07-08** | **v0.0.51 全部债务清零**：13 LOW + 12 INFO → 0。I-01（VULN-015 描述）+ INFO-001/002（test 注释）+ INFO-003/004（确认已修）+ I-02/I-03（已知悉不修）。历史 LOW-001~006 和 INFO-005~012 确认已在 v0.0.31–v0.0.49 期间解决。1001 tests 基线保持。详见 `docs/audit-v051-debt-resolution.md` |
 | **2026-07-08** | **v0.0.50–v0.0.60 迭代规划（修订版 v2）定稿**：三阶段框架 + 六项硬约束修正（R2 ADR / 离线定义 / Nuclei 过滤 / WSGI 先于调优 / Kimi 改审不改编 / QoderWork 负载均衡）。写入 `.guardrails/PROGRESS.md` + `CLAUDE.md`。**报告页前端设计刷新**（severity bar + risk badge 增强 + 双主题同步）同步合入本次会话 |
 
 ---
@@ -454,7 +455,7 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 | 版本 | 目标 | 关键交付 | Agent | 状态 |
 |:--:|------|------|:--:|:--:|
 | **v0.0.50** | 覆盖率 85% + 发版 | CodeBuddy 覆盖率交付审查 → CC 验收 → `git tag v0.0.50`。前端设计刷新（severity bar + risk badge）合入 | CC + CodeBuddy | 🟡 |
-| **v0.0.51** | LOW + INFO 债务清零 | 13 LOW → 0 + 12 INFO → 0。逐项修复 + 全量回归（1001+ tests 基线不降） | CC | ⬜ |
+| **v0.0.51** | LOW + INFO 债务清零 | 13 LOW → 0 + 12 INFO → 0。8 已修复 + 15 前序版本已修 + 2 已知悉不修（I-02/I-03）。全量回归（1001 tests 基线不降） | CC | ✅ |
 | **v0.0.52** | ADR 冲刺 | 三份架构决策：① `adr-v052-r2-multi-target-redesign.md`（R2 多目标边界重定义）② `adr-v052-offline-definition.md`（LightShield "离线"语义选型：纯离线 vs 无需持续联网授权）③ `adr-v052-wsgi-migration.md`（gunicorn/waitress 生产 WSGI 方案） | CC | ⬜ |
 
 **阶段一验收标准**：

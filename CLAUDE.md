@@ -6,8 +6,8 @@
 > **护栏体系**：基于 Nagi Dev Guardrails v3.3 的六层防御架构（+ Goal Drift 防护），详见 `.guardrails/`。v1.3 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 五模式六反制 + 注意力管理 + 6 Agent 全分发。
 > **上次会话**：2026-07-08 — v0.0.50–v0.0.60 十一版本迭代规划（修订版 v2）+ 报告页前端设计刷新（severity bar + risk badge 增强）。全量测试 1001/0/1 通过。
 >   - 质量基线：**1001 tests** / 0 fail / 1 skip / 12 门禁全绿 / 覆盖率 ~82.95%
->   - 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM** / 13 LOW / 12 INFO
->   - 已归档：24 个历史任务文件 → `.cluster/tasks/archive/`
+>   - 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM / 0 LOW / 0 INFO** 🎉 全部清零
+>   - 债务清零报告：`docs/audit-v051-debt-resolution.md`
 >   - 当前 pending：CODEBUDDY-v050-coverage（覆盖率 85% 冲刺·已派工 CodeBuddy B）+ CB-ENV-001（基础设施）
 >   - 下次启动：CodeBuddy 覆盖率交付审查 → v0.0.50 tag → v0.0.51 债务清零 → v0.0.52 ADR×3。v0.0.60 = v1.0.0-rc1
 >   - 🆕 **迭代规划**：v0.0.50–v0.0.60 详见 `.guardrails/PROGRESS.md`（三阶段：质量收尾+ADR → 功能补全 → 生产就绪）

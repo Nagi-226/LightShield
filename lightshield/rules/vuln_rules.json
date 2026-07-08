@@ -172,7 +172,7 @@
       "severity": "medium",
       "vuln_type": "outdated_software",
       "title": "Server 头暴露老旧 Nginx 版本",
-      "description": "Server 响应头暴露了 Nginx 1.18 之前的版本特征。版本泄露会降低攻击成本，老旧版本可能缺少安全修复。",
+      "description": "Server 响应头暴露了 Nginx 1.18 之前的 1.x 版本特征（1.0–1.17）。版本泄露会降低攻击成本，老旧版本可能缺少安全修复。",
       "remediation": "升级 Nginx 到受支持的稳定版本，并配置 server_tokens off 减少版本暴露。"
     },
     {

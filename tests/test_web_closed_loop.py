@@ -24,6 +24,8 @@ from lightshield.web.app import create_app
 def app():
     """创建测试 Flask 应用（mock core + 测试密钥）。"""
     config = LightShieldConfig()
+    # Test-only: intentionally fixed values for deterministic test behavior.
+    # These credentials are never used in production — TESTING=True disables real auth.
     config.jwt_secret = "test-secret-key"
     config.web_username = "admin"
     config.web_password = "lightshield"
