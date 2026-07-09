@@ -64,14 +64,27 @@ Qwen-3.7-Max 的 **35 小时长程自主 Agent** 能力是集群独有——实�
 - Gate E：每次合入前的常规回归（轻量，验证基本路径）
 - Phase 3 修复验证：三阶段审计后的定向修复验证（重量级，验证具体 bug 是否修好 + 不引入新 bug）
 
-### 🟢 当前激活任务：v0.0.40 闭环回归 Gate E 夹具（待实现阶段产出后启动）
+### 🟢 当前激活任务：v0.0.53 HTML 报告生成（模式 A · IDE）
 
-> **角色调整**：你验证得出的特权容器（`--cap-add NET_ADMIN` + bridge）**不进产品**，而是**正名为集群 E2E 测试夹具**——专用于回归测试 v0.0.40 闭环实现（`run_harden_closed_loop`）。
+> **背景**：v0.0.52 三份 ADR 全部 Accepted。阶段二启动，v0.0.53 是阶段二第一个实现任务——HTML 安全报告，用户最直接感知的价值。
 >
-> - **前置**：等 Codex/Reasonix/Qoder 把闭环实现合入（verify + HostExecutor + 编排 + Web 对比页）。
-> - **任务**：在特权容器夹具里跑完整闭环 `扫描→推荐→生成→APPLY(真机语义)→复扫→verify`，作为 Gate E 回归。夹具是测试基础设施，**不混入 `lightshield/` 产品代码**。
-> - **合规**：全程 tcpdump 抓包**留实据**（上次缺这一项），证明零外联；靶机自建、仅扫内网。
-> - **接口契约（已转正式版，先读）**：[`docs/design-v040-closed-loop.md`](docs/design-v040-closed-loop.md) + ADR [`docs/adr-v040-execution-substrate.md`](docs/adr-v040-execution-substrate.md)。
+> **前置**：
+> - `adr-v052-offline-definition.md` ✅ — 离线定义不影响报告生成（不涉及网络）
+> - `adr-v052-r2-multi-target-redesign.md` ✅ — R2 不影响 HTML 报告（单目标报告即可，多目标对比是 v0.0.61+ 的事）
+> - v0.0.50 覆盖率交付 🟡 — 不阻塞（CLI 报告生成 + Web 报告查看均已有测试覆盖，HTML 是纯新增格式）
+> - **报告页前端设计刷新**（severity bar + risk badge 增强，双主题，2026-07-08 已合入）：你的 HTML 报告的视觉语言必须与此刷新保持一致
+>
+> **任务概要**：
+> 1. `ReportGenerator` 新增 `generate_html()` 方法 — 输出完整 HTML 文件（standalone，含内联 CSS）
+> 2. 漏洞分布饼图 — 基于当前扫描结果的 severity 分布（Canvas/SVG，无外部依赖）
+> 3. 风险趋势线图 — 同一资产历次扫描的漏洞数量变化（读 SQLite scan history）
+> 4. 打印友好 CSS — `@media print` 隐藏图表交互元素，保留数据表格和风险摘要
+> 5. 双主题 — `prefers-color-scheme: light/dark`，CSS 变量体系与 `style.css` 一致
+> 6. Markdown/Text/PDF 保留共存 — `generate_html()` 是**新增格式**，不替换不删除现有三种
+>
+> **输出**：`lightshield/report/html_writer.py`（新文件）+ `lightshield/report/reporter.py` 新增 `generate_html()` + CLI `--output-format html`
+>
+> **验收**：见任务文件 `QODERWORK-v053-html-report.md`（待 CC 写入 `.cluster/tasks/pending/`）
 
 ## 二、LightShield 项目上下文
 
@@ -888,7 +901,8 @@ Quest Agent 调用方式：复制任务文件 prompt → 粘贴到 Quest Agent �
 |------|------|:--:|------|
 | v0.0.04 | base.py + core.py 双审（与 CodeWhale 搭档） | IDE | 发现 2B+6S ✅ |
 | v0.0.40 | Web「加固+复扫+对比」页面 | IDE | 一键加固→复扫→前后风险对比 UI（原 Qoder IDE 派工，见 `QODERWORK-v040-web-compare-page.md`） |
-| 🆕 **v0.0.44** | **Web-Core 门面重构** | **A (IDE)** | **当前任务** — 按 ADR 实现 4 门面 + web 层改造 |
+| 🆕 **v0.0.53** | **HTML 报告生成** | **A (IDE)** | **🟢 当前任务** — 漏洞分布饼图 + 风险趋势线 + 打印友好 CSS + 双主题。Markdown 保留共存。`ReportGenerator.generate_html()` 新方法 |
+| v0.0.44 | Web-Core 门面重构 | A (IDE) | ✅ 已于 2026-06-30 交付 |
 
 ---
 
