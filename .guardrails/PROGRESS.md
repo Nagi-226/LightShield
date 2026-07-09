@@ -456,12 +456,12 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 |:--:|------|------|:--:|:--:|
 | **v0.0.50** | 覆盖率 85% + 发版 | CodeBuddy 覆盖率交付审查 → CC 验收 → `git tag v0.0.50`。前端设计刷新（severity bar + risk badge）合入 | CC + CodeBuddy | 🟡 |
 | **v0.0.51** | LOW + INFO 债务清零 | 13 LOW → 0 + 12 INFO → 0。8 已修复 + 15 前序版本已修 + 2 已知悉不修（I-02/I-03）。全量回归（1001 tests 基线不降） | CC | ✅ |
-| **v0.0.52** | ADR 冲刺 | 三份架构决策：① `adr-v052-r2-multi-target-redesign.md`（R2 多目标边界重定义）② `adr-v052-offline-definition.md`（LightShield "离线"语义选型：纯离线 vs 无需持续联网授权）③ `adr-v052-wsgi-migration.md`（gunicorn/waitress 生产 WSGI 方案） | CC | ⬜ |
+| **v0.0.52** | ADR 冲刺 | 三份架构决策：① `adr-v052-offline-definition.md`（LightShield "离线"语义选型：纯离线 vs 无需持续联网授权）✅ ② `adr-v052-r2-multi-target-redesign.md`（R2 多目标边界重定义）✅ ③ `adr-v052-wsgi-migration.md`（gunicorn/waitress 生产 WSGI 方案）✅。🆕 **顺序调整**（2026-07-09）：offline 先行→R2 在 offline 约束框架下设计→WSGI 独立收尾 | CC | ✅ |
 
 **阶段一验收标准**：
 - 0C / 0H / 0M / **0L / 0I**（全部债务清零）
 - 覆盖率 ≥85%
-- 三份 ADR **Accepted**（R2 / 离线 / WSGI）
+- 三份 ADR **Accepted**（离线 / R2 / WSGI）
 
 ---
 
@@ -523,8 +523,8 @@ TechWriter      —       —        —        —        —       —        
 
 | # | 约束 | 类型 | 触发条件 | 阻塞 |
 |---|------|:--:|------|------|
-| 1 | **R2 多目标需要 ADR** | 合规 | v0.0.57 之前 | 批量扫描延后至 v0.0.61+ |
-| 2 | **离线定义需要 ADR** | 产品身份 | v0.0.55 之前 | NVD 自动同步行为待定 |
+| 1 | **离线定义需要 ADR** | 产品身份 | v0.0.55 之前 | NVD 自动同步行为待定 |
+| 2 | **R2 多目标需要 ADR** | 合规 | v0.0.57 之前 | 批量扫描延后至 v0.0.61+ |
 | 3 | **Nuclei 过滤机制先行** | 合规 R1/R5 | v0.0.54 内置 | 同步功能排在过滤之后 |
 | 4 | **WSGI 切换先于 API 调优** | 技术顺序 | v0.0.56 内部 | 前半不完成不进后半 |
 | 5 | **Kimi 改审不改编** | 角色匹配 | v0.0.58 | E2E 编写 → CodeBuddy；Kimi 审覆盖率 |
