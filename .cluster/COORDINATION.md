@@ -79,7 +79,7 @@ class LightShieldConfig:
 
 ```
 v0.0.40 可并行任务：
-├── CODEX-v040  HostExecutor + 编排（安全关键，GPT-5.5）
+├── CODEX-v040  HostExecutor + 编排（安全关键，GPT-5.6-Sol）
 ├── CB-v040      verify 数据结构（切 DS V4-Pro，原 Reasonix）
 ├── CB-v040      i18n 闭环 key（切 DS Flash，原 Hermes）
 ├── QW-v040      Web 对比页面（QoderWork 模式 A，Qwen-3.7-Max）

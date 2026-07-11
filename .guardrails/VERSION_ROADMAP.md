@@ -82,7 +82,7 @@ v0.0.10  报告生成    → 中文Markdown报告
 | 属性 | 值 |
 |------|-----|
 | **目标** | SQL 注入检测、XSS 检测、目录枚举（自研脚本） |
-| **Agent** | **Codex（GPT-5.5）** |
+| **Agent** | **Codex（GPT-5.6-Sol）** |
 | **产出** | `lightshield/scanners/web_vuln_scanner.py` |
 | **依赖** | v0.0.05（端口扫描结果作为输入） |
 | **审查** | Qoder（双审 — Qwen 独立视角验证检测≠利用边界） |
@@ -103,7 +103,7 @@ v0.0.10  报告生成    → 中文Markdown报告
 | 属性 | 值 |
 |------|-----|
 | **目标** | Metasploit auxiliary/scanner 安全调用封装（白名单机制，R5） |
-| **Agent** | **Codex（GPT-5.5）** |
+| **Agent** | **Codex（GPT-5.6-Sol）** |
 | **产出** | `lightshield/adapters/msf_adapter.py` |
 | **依赖** | v0.0.05（Nmap 适配器作为模板） |
 | **审查** | Qoder（双审 — 逐条验证白名单不可绕过） |

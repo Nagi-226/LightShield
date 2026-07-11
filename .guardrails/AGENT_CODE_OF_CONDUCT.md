@@ -174,7 +174,7 @@
 |---------|------|
 | **铁律 #6「理解再改」**——修改前必须先 Read 目标区域完整上下文 | `CLAUDE.md` |
 | 分批提交——重构不改行为、改行为不重构、一个 commit 只做一件事 | 本准则 |
-| Codex 交叉审查——CC 自写代码必须经过 GPT-5.5 独立审查 | `CLAUDE.md §编排规则 #4` |
+| Codex 交叉审查——CC 自写代码必须经过 GPT-5.6-Sol 独立审查（⚠️ over-agency：CC 需二次验证） | `CLAUDE.md §编排规则 #4` |
 | ruff diff 检查——每次改动范围明确，不顺手改无关代码 | pre-commit |
 | EnterPlanMode——大改动先出方案再动手 | `CLAUDE.md` |
 | 🆕 **改前影响分析（必做）** — Find References + Call Hierarchy + 七种翻车自检 | 本准则 |
@@ -286,7 +286,7 @@ Gate B 范围忠实度 (流程·SF-L1~L4)
     ↓
 Gate C 质量审计 (流程·M8 五维扫描)
     ↓
-Codex 交叉审查 (事后·GPT-5.5 独立审查)
+Codex 交叉审查 (事后·GPT-5.6-Sol 独立审查·⚠️ over-agency)
     ↓
 Kimi 独立审查 (每版本一次·不同模型审查)
 ```

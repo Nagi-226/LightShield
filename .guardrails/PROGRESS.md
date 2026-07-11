@@ -1,9 +1,9 @@
 # 📊 LightShield 开发进度追踪
 
-> **最后更新**：2026-07-08 | **当前版本**：v0.0.51 | **护栏版本**：v1.3（六层防线 + 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 防护）
-> **会话状态**：✅ v0.0.51 全部债务清零完成。1001 passed / 1 skip / 12 门禁全绿。
-> **剩余债务**：**0C / 0H / 0M / 0L / 0I** 🎉 全部清零（详见 `docs/audit-v051-debt-resolution.md`）
-> **今日交付**：v0.0.50–v0.0.60 十一版本规划 + 报告页前端设计刷新 + v0.0.51 债务清零
+> **最后更新**：2026-07-11 | **当前版本**：v0.0.52 | **护栏版本**：v1.3（六层防线 + 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 防护）
+> **会话状态**：✅ v0.0.52 ADR×3 Accepted → Codex 角色精炼（分级派遣）。1001 passed / 1 skip / 12 门禁全绿。
+> **剩余债务**：**0C / 0H / 0M / 0L / 0I** 🎉 全部清零
+> **今日交付**：Codex GPT-5.6-Sol 升级 + 分级派遣体系落地 + v0.0.50–v0.0.60 路线图同步调整
 
 ---
 
@@ -392,10 +392,10 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 | Agent | 已完成 | 待完成 | 备注 |
 |------|:--:|:--:|------|
 | Claude Code | 18 | 1 | v0.0.40 架构/集成；已切回 DeepSeek-V4-Pro；吸收 Hermes 样板职责 + CodeWhale 审查方法论 |
-| Codex | 11 | 1 | v0.0.40 HostExecutor+编排（安全关键）；新增 CC 胶水代码交叉审查 |
+| Codex | 11 | 2 | 🔪 高精度手术刀（分级派遣·2026-07-11）。GPT-5.5→**GPT-5.6-Sol**（Coding Agent #1·ExploitBench2 +53%·价格不变 $5/$30）。仅安全关键实现+跨模块突破+发版终审+安全 commit 审查。v0.0.54 Nuclei 安全审查 + v0.0.60 Phase 2 |
 | CodeBuddy | 2 | 2 | v0.0.40 verify+i18n（两任务）；吸收 Reasonix+Hermes |
 | Kimi 🆕 | 0 | 3 | 双模式：模式A(K2.7-code) v0.0.40 闭环全量独立审查 + 安全关键路径复查；模式B(K2.6) v0.0.40 Web E2E 自动化测试 + 部署验证 + 文档截图 |
-| QoderWork | 10 | 2 | 🆙 角色升级：从"VM+前端"→"🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5）+ 35h 长程自主 Agent"。v0.0.40 Web 对比页 + Gate E 夹具 |
+| QoderWork | 10 | 3 | 🏗️ 高级开发主力（Code Arena #2 1541·35h 长程·VM 隔离·集群编码 #3）。v0.0.53 HTML 报告 + v0.0.54 规则引擎 + 🆕 v0.0.55 CVE 扩充（Codex 移交） |
 | ZCode 3.0 | 1 | 0 | 🆙 角色升级：从"文档自动化"→"🎯 高级开发·特种部队（与 Codex 同级，关键时刻动用）"。GLM-5.2 Code Arena #2（1595）、FrontierSWE 与 Opus 差距<1%、Design Arena #1。配额消耗高+速度慢 → 一般任务不轻易使用 |
 | ~~Reasonix~~ | ~~6~~ | — | 🪦 2026-06-25 退役 → CodeBuddy (DS V4-Pro) |
 | ~~CodeWhale~~ | ~~3~~ | — | 🪦 2026-06-25 退役 → CC + 审查清单 + Codex 交叉审 |
@@ -436,6 +436,8 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 | **2026-06-25** | **🆙 QoderWork 角色重大升级**：从"VM 执行+前端 UI"→"🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5）+ 35h 长程自主 Agent"。基于 Qwen-3.7-Max 实测（Code Arena #2 1541 超 GPT-5.5、SWE-Multilingual 78.4 全球纪录、IFBench 81.2 指令遵循新高、35h 无人值守 1158 次工具调用 10x 性能提升）。此为集群 2026-06-25 最大认知偏差修正——Qwen-3.7-Max 是被严重低估的顶级编程模型 |
 | **2026-07-08** | **v0.0.51 全部债务清零**：13 LOW + 12 INFO → 0。I-01（VULN-015 描述）+ INFO-001/002（test 注释）+ INFO-003/004（确认已修）+ I-02/I-03（已知悉不修）。历史 LOW-001~006 和 INFO-005~012 确认已在 v0.0.31–v0.0.49 期间解决。1001 tests 基线保持。详见 `docs/audit-v051-debt-resolution.md` |
 | **2026-07-08** | **v0.0.50–v0.0.60 迭代规划（修订版 v2）定稿**：三阶段框架 + 六项硬约束修正（R2 ADR / 离线定义 / Nuclei 过滤 / WSGI 先于调优 / Kimi 改审不改编 / QoderWork 负载均衡）。写入 `.guardrails/PROGRESS.md` + `CLAUDE.md`。**报告页前端设计刷新**（severity bar + risk badge 增强 + 双主题同步）同步合入本次会话 |
+| **2026-07-11** | **🆕 Codex GPT-5.6-Sol 升级 + 分级派遣体系落地**：OpenAI 2026-07-09 发布 GPT-5.6 家族。Codex GPT-5.5→Sol（Coding Agent #1·ExploitBench2 +53%·价格不变）。ZCode 建议 + CC 裁决：分级派遣——Codex 从"安全+前端+审查全干"→🔪 高精度手术刀（仅安全关键实现·跨模块突破·发版终审·安全 commit 审查）。常规 commit 交叉审查交 Kimi 批量审。Codex vs ZCode = 手术刀 vs 阔剑·正交分工。设 v0.0.55 观察点评估 Kimi 漏报率。同步更新 CLAUDE.md·CLUSTER.md·REVIEW_CHECKLIST.md·AGENT_CODE_OF_CONDUCT.md |
+| **2026-07-11** | **v0.0.50–v0.0.60 路线图同步调整**：① v0.0.53 移除 Codex 前端审查（常规前端→CC/Kimi）② v0.0.54 新增 Codex 🔪 安全审查（Nuclei 白名单过滤器·R1/R5 红线·不可绕过性验证）③ v0.0.55 CVE 扩充从 Codex→QoderWork（数据管道工作·Codex 留给刀刃）。净效果：Codex 任务数 3→2，每个都是真正的安全关键场景。VERSION_ROADMAP.md 模型引用同步更新 |
 
 ---
 
@@ -471,9 +473,9 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 
 | 版本 | 目标 | 关键交付 | Agent | 状态 |
 |:--:|------|------|:--:|:--:|
-| **v0.0.53** | HTML 报告 | 漏洞分布饼图 + 风险趋势线 + 打印友好 CSS。Markdown 保留共存（2 版本迁移通知期后切换默认格式） | **QoderWork**（实现） + Codex（前端审查） | ⬜ |
-| **v0.0.54** | 规则引擎 + Nuclei 过滤 | ① 规则库 30+ → 50+ ② **Nuclei 模板白名单过滤器**（passive/detect 放行，exploit/brute 拒绝 + 来源审计日志）——过滤机制必须先行，再开放同步 | **QoderWork**（实现） + CC（合规审查） | ⬜ |
-| **v0.0.55** | CVE 扩充 | CVE 105 → 150+ / 组件 26 → 35。NVD 同步行为**取决于 v0.0.52 ADR-B**：纯离线 → `fetch_latest_cves()` 仅手动触发；非持续授权 → 可选 `--auto-sync-cve` | **Codex** | ⬜ |
+| **v0.0.53** | HTML 报告 | 漏洞分布饼图 + 风险趋势线 + 打印友好 CSS。Markdown 保留共存（2 版本迁移通知期后切换默认格式） | **QoderWork**（实现） + CC/Kimi（前端审查——非安全关键，Codex 不参与） | ⬜ |
+| **v0.0.54** | 规则引擎 + Nuclei 过滤 | ① 规则库 30+ → 50+ ② **Nuclei 模板白名单过滤器**（passive/detect 放行，exploit/brute 拒绝 + 来源审计日志）——过滤机制必须先行，再开放同步。🆕 **Codex 安全审查**：白名单过滤器是 R1/R5 合规红线——过滤漏洞 = 攻击模板穿透。Codex 负责审查白名单逻辑完整性（不可绕过性验证） | **QoderWork**（实现） + **Codex**（🔪 安全审查·R1/R5 红线） + CC（终审） | ⬜ |
+| **v0.0.55** | CVE 扩充 | CVE 105 → 150+ / 组件 26 → 35。NVD 同步行为**取决于 v0.0.52 ADR-B**：纯离线 → `fetch_latest_cves()` 仅手动触发；非持续授权 → 可选 `--auto-sync-cve`。🆕 **Agent 调整**：CVE 扩充是数据管道工作（下载/解析/写 JSON 规则），非安全关键实现——从 Codex 移交 QoderWork。Codex 留给刀刃场景 | **QoderWork**（实现·🆕 Codex 移交） + CC（验收） | ⬜ |
 | **v0.0.56** | WSGI + 性能 | **前半**：gunicorn（Linux）/ waitress（Windows）生产 WSGI + SQLite WAL 模式 + 查询索引。**后半**：API p95 调优（基于真实 WSGI，目标 <100ms）——顺序不能反 | CC | ⬜ |
 | **v0.0.57** | 资产清单 | 资产持久化（`AssetRegistry`）+ 多次扫描对比报告（同一资产历次 scan 变化 diff）。**批量多目标扫描不在此版本**——需等待 v0.0.52 ADR-A（R2 重设计）通过后 v0.0.61+ 实现 | **CodeBuddy** + CC | ⬜ |
 
@@ -508,13 +510,13 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 ```
 Agent        v0.0.50  v0.0.51  v0.0.52  v0.0.53  v0.0.54  v0.0.55  v0.0.56  v0.0.57  v0.0.58  v0.0.59  v0.0.60
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
-Claude Code   验收      ✅      ADR×3    —       合规审     —       ✅      集成      —        —       审计+RC
-Codex           —       —        —      前端审     —       ✅       —        —        —        —       交叉审
-CodeBuddy     ✅B       —        —        —        —       —        —       ✅B      ✅B(编)    —        —
-Kimi            —       —        —        —        —       —        —        —       ✅(审)    —       BUG审
-ZCode           —       —        —        —        —       —        —        —        —        —       二审
-QoderWork       —       —        —       ✅       ✅        —        —        —        —        —        —
-TechWriter      —       —        —        —        —       —        —        —        —       ✅        —
+Claude Code   验收      ✅      ADR×3   验收      终审     验收      ✅      集成      —        —       审计+RC
+Codex           —       —        —        —      🔪安全审    —       —        —        —        —       🔪交叉审
+CodeBuddy     ✅B       —        —        —        —        —        —       ✅B      ✅B(编)    —        —
+Kimi            —       —        —        —        —        —        —        —       ✅(审)    —       BUG审
+ZCode           —       —        —        —        —        —        —        —        —        —       二审
+QoderWork       —       —        —       ✅       ✅       ✅🆕      —        —        —        —        —
+TechWriter      —       —        —        —        —        —        —        —        —       ✅        —
 ```
 
 ---
@@ -535,9 +537,9 @@ TechWriter      —       —        —        —        —       —        
 ### 为什么是这个顺序
 
 1. **债务先清零**（50-52）：在加新功能前把地基扫干净——13 LOW + 12 INFO 带着进 v1.0.0 不像话。三份 ADR 是整个阶段二的关键路径
-2. **报告和规则跟上**（53-55）：用户最直接感知的价值——报告好看、检测准确
+2. **报告和规则跟上**（53-55）：用户最直接感知的价值——报告好看、检测准确。🆕 Codex 仅在 v0.0.54 做 Nuclei 安全审查（R1/R5 红线），v0.0.53/55 由 QoderWork 独立承担
 3. **性能和资产**（56-57）：WSGI 生产化 + 资产清单持久化——为 v1.0.0 的多资产管理奠基
-4. **审计和文档收尾**（58-60）：E2E 验证 → 文档完备 → 合规审计 → RC。全集群在 v0.0.60 集结
+4. **审计和文档收尾**（58-60）：E2E 验证 → 文档完备 → 合规审计 → RC。全集群在 v0.0.60 集结。Codex 以 🔪 手术刀姿态参与 Phase 2 可行性边界验证 + 发版前安全终审
 
 ### 里程碑速查
 

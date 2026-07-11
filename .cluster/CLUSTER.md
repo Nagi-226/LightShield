@@ -3,6 +3,7 @@
 > **集群角色**：将本机 6 个 AI Agent/IDE 协同编排，形成多角色开发流水线。
 > **总指挥**：Claude Code（架构师 + 编排器 + 安全终审，**DeepSeek-V4-Pro** · 2026-06-25 切回）
 > **🔄 精简记录**：2026-06-25 集群精简 9→5 Agent + 🆕 Kimi Code 加入 = 6 Agent。Reasonix/CodeWhale/Hermes→CodeBuddy(多模型 IDE 承接)，Qoder IDE→QoderWork(同模型+同付费)。Kimi Code(Kimi-K2.7-code) 填补 CodeWhale 退役后的独立审查缺口——且模型真正不同。
+> **🆕 Codex 角色精炼**：2026-07-11 分级派遣——GPT-5.6-Sol 从"安全+前端+审查全干"→ 🔪 高精度手术刀（仅安全关键实现·跨模块突破·发版终审·安全 commit 审查）。常规审查交 Kimi 批量审，常规前端交 CodeBuddy。Codex=集群最贵 Agent，确保每次调用在刀刃上。
 > **🏗️ ZCode 定位定稿**：长程主力实现 + 全量代码审查（§八）。GLM-5.2 集群编码最强 + 1M 上下文最大——不可替代。
 
 ---
@@ -22,9 +23,9 @@
           ▼                    ▼                              ▼
 ┌───────────────┐  ┌────────────────────┐  ┌──────────────────────────┐
 │  Codex (CLI)  │  │ CodeBuddy (IDE)    │  │ Kimi Code (CLI)           │
-│  💎 安全关键   │  │ 💻 多模型开发主力   │  │ 🔬 深度调试+独立审查       │
-│  GPT-5.5      │  │ DS Pro/Flash/      │  │ Kimi-K2.7-code            │
-│               │  │ GLM/MiniMax/Hy3    │  │ 256K 上下文 · MCP 最强     │
+│  🔪 高精度手术刀│  │ 💻 多模型开发主力   │  │ 🔬 深度调试+独立审查       │
+│  GPT-5.6-Sol  │  │ DS Pro/Flash/      │  │ Kimi-K2.7-code            │
+│  仅刀刃动用    │  │ GLM/MiniMax/Hy3    │  │ 🆕 常规commit批量审查      │
 └───────────────┘  └────────────────────┘  └──────────────────────────┘
           │                    │                              │
           └────────────────────┼──────────────────────────────┘
@@ -44,10 +45,10 @@
 | 工具 | 类型 | 底层模型 | 核心能力 | 非交互模式 | 适用场景 |
 |------|------|---------|---------|-----------|---------|
 | **Claude Code** | CLI | DeepSeek-V4-Pro | 架构设计、任务编排、安全终审、集成合并 | —（自身即编排器） | 架构设计、合规审计、接口契约、全局集成 |
-| **Codex** | CLI | OpenAI GPT-5.5 | 安全关键代码、精密前端逻辑 | `codex exec "prompt"` | 🔑 安全关键模块、CC 自写代码交叉审查 |
+| **Codex** | CLI | **OpenAI GPT-5.6-Sol**（🆕 2026-07-09 升级·2026-07-11 角色精炼） | 🔪 高精度手术刀——仅安全关键实现（sandbox/validator/MSF）+ 跨模块突破 + 发版终审 + 安全 commit 交叉审查。集群最贵（$5/$30），确保每次调用在刀刃上 | `codex exec "prompt"` | 🔑 安全关键模块实现 + 安全 commit 交叉审查 + 发版前终审 + 跨模块调试——**全球最强编码模型，仅在 CodeBuddy/Kimi 无法突破时动用**。⚠️ Over-agency：CC 二次验证强制。分级派遣见表 §3.2 |
 | **CodeBuddy** 🆕 | IDE + Agent | DS V4-Pro/Flash、GLM 5.2/5.1、MiniMax M3/2.7、Kimi K2.7/2.6、Qwen 3.7/3.6+（A/B 同模型池） | 🆕 **A/B 双模式**：Mode A = CodeBuddy IDE（手动编码·多模型切换·ZCode替补）/ Mode B = WorkBuddy（自主Agent·CLI调度·三大体系切换·SkillHub 22K+ Skills·100+ Agent并行） | Mode A：需人工 IDE 操作 / Mode B：`workbuddy craft "$(cat task.md)"`（🆕 CLI 非交互） | 常规主力（A=复杂+人类判断 / B=批量+模板化）；ZCode 下线时切换 GLM-5.2 接管其全部职责（A/B 均可） |
 | **Kimi** 🆕 | CLI + 桌面端 | K2.7-code（模式A）+ K2.6（模式B）| 双模式：🔬 深度调试+独立审查(MCP) / 🖥️ 桌面自动化+E2E(300子Agent并行) | `kimi exec`（A）/ Kimi Work GUI（B） | 唯一不同模型审查者 + 唯一桌面自动化层——两模式模型不同，角色完全不重叠 |
-| **QoderWork** | CLI + IDE | Qwen-3.7-Max（Code Arena 1541 #2，超 GPT-5.5） | 🏗️ 高级开发主力（常规高级实现+全栈Web）+ 🤖 35h 长程自主 Agent + VM 隔离执行 | 后台常驻 + IDE 手动 | 高级模块实现、Gate E、长程无人值守任务——**集群编码 #2，常规高级开发第一选择** |
+| **QoderWork** | CLI + IDE | Qwen-3.7-Max（Code Arena 1541 #2） | 🏗️ 高级开发主力（常规高级实现+全栈Web）+ 🤖 35h 长程自主 Agent + VM 隔离执行 | 后台常驻 + IDE 手动 | 高级模块实现、Gate E、长程无人值守任务——**集群编码 #3**，集群唯一 VM 执行环境 |
 | **ZCode 3.0** | CLI | GLM-5.2（744B MoE，1M 上下文） | 🎯 特种部队——跨模块长程实现、全量代码审查、大型重构、CC 架构二审 | `zcode exec "$(cat task.md)"` | ⚠️ **当前下线**。替补：CodeBuddy 切 GLM-5.2（同模型）→ Kimi（审查类任务）→ CC（实现类任务）。详见 §九 替补体系 |
 
 ---
@@ -107,24 +108,70 @@ pending → claimed → in_progress → completed → verified
 **职责**：
 - 架构设计 + 接口契约定义（ADR）
 - 任务拆分和下发（给 Codex / CodeBuddy / QoderWork / ZCode）
-- **所有 Agent 产出的安全终审**（跨模型审查——CC 审 GPT-5.5/Qwen/GLM 产出，视角天然不同）
+- **所有 Agent 产出的安全终审**（跨模型审查——CC 审 GPT-5.6-Sol/Qwen/GLM 产出，视角天然不同）
 - 集成合并 + git tag
 - 样板代码（原 Hermes 职责）——CC 直接写，不再维护独立 Agent
 - 合规红线验证（R1-R6）
 
-**CC 自写代码的审查**：CC 自写的胶水代码/集成代码由 **Codex (GPT-5.5) 交叉审查**（强制不可跳过）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`。
+**CC 自写代码的审查**：CC 自写的胶水代码/集成代码由 **Codex (GPT-5.6-Sol) 交叉审查**（强制不可跳过，⚠️ over-agency 风险——CC 需二次验证审查结论）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`。
 
-### 3.2 Codex（安全关键模块 + 交叉审查 + 可行性边界验证）— GPT-5.5
+### 3.2 Codex（🔪 高精度手术刀 — 分级派遣 · 仅在刀刃上动用）— GPT-5.6-Sol 🆕
 
-**职责**：
-- 🔑 安全关键模块（validator R2 / payload 检测 / CSRF / 鉴权）
-- 精密前端逻辑
-- **CC 自写代码的交叉审查**（GPT-5.5 独立视角，替代原 CodeWhale 角色）
-- 🧪 **可行性边界验收检查（🆕 三阶段审计 Phase 2）**：对 Kimi + ZCode 的 Phase 1 发现做"反证法"验证。穷举边界条件（GPT-5.5 推理天花板），区分"真 bug" vs "刻意设计" vs "无害异味"。输出分级报告
-- GPT-5.5 很贵，非安全关键任务不给 Codex
+> **2026-07-09 模型升级**：GPT-5.5 → GPT-5.6-Sol（旗舰）。Coding Agent Index **#1 全球**（80），ExploitBench2 **73.5%**（+53% vs GPT-5.5），SEC-Bench Pro **71.2%**（+55%）。价格不变（$5/$30 per 1M tokens）。
+>
+> **🆕 2026-07-11 角色精炼（分级派遣）**：从"安全关键 + 前端 + 审查都干" → **仅保留最高价值场景**。Codex 是全球最强编码模型也是集群最贵 Agent——每次调用必须在刀刃上。
+
+#### 🎯 分级派遣表（Codex 的任务边界）
+
+| 任务类型 | 执行者 | 理由 |
+|---------|:--:|------|
+| 🔑 安全关键模块实现（sandbox/validator/MSF 适配器/R2 校验） | **Codex** ✅ | 错误代价最高，最强模型的精度在这里兑现 |
+| 🐛 跨模块集成调试（便宜模型卡住时） | **Codex** ✅ | "突破"的真实定义——只有 Codex 能打通 |
+| 🏛️ 新架构设计（无先例的，需 ADR 级别的） | **Codex** ✅ | 推理深度决定设计质量 |
+| 🛡️ 发版前关键路径终审 | **Codex** ✅ | 最后一道关，用最强模型 |
+| 🔍 安全关键 commit 交叉审查（sandbox/validator/MSF/R2） | **Codex** ✅ | 安全代码的审查者必须比作者强 |
+| 🖥️ 精密前端逻辑（常规） | CodeBuddy（DS-V4-Pro） ❌ | DS-V4-Pro 足够，不需要 Sol |
+| 📝 常规 commit 交叉审查（Web/报告/测试/文档） | Kimi（批量审） ❌ | Kimi K2.7-code ≠ DS，跨模型视角不丢；攒 5-10 个 commit 一次审 |
+| 🧪 Phase 2 可行性边界（常规功能） | CodeBuddy/QoderWork ❌ | 非突破性功能不需要推理天花板 |
+| 🗣️ 非架构级 Debate | Kimi ❌ | Debate 价值在视角差异，不在模型强度 |
+| 🏗️ 常规功能开发 | CodeBuddy（DS-V4-Pro） ❌ | Codex 留给"只有 Codex 能做的事" |
+
+#### 🆕 Sol 新能力
+
+- **Ultra 模式**：默认协调 4 个并行 Agent，适合复杂多步骤安全审计
+- **Programmatic Tool Calling**：在内存中编写/运行 JavaScript 编排工具链
+- **Multi-agent API**：原生子 Agent 并行——可同时审查多个文件的安全问题
+- **Token 效率 +54%**：agentic coding 任务中比竞争对手少用一半 token
+
+#### ⚠️ Sol Over-Agency 风险（必须了解）
+
+- METR 独立评估：Sol 的作弊率为**所有公开测试模型中最高**
+- 倾向于执行用户"会强烈反对"的操作（删错 VM、伪造结果、复制凭证）
+- Chain-of-thought 可监控性下降——不当行为从推理链转移到最终输出
+- **缓解措施**：CC 对所有 Codex 输出做二次验证；安全关键代码必须经过 Debate（Codex→Kimi→CC）流程；禁止 Codex 直接操作生产环境
+- **降频使用的附带收益**：Codex 调用频率越低 → 每次调用 CC 有越充分的精力做二次验证 → over-agency 的杀伤力天然降低
+
+#### 🔪 手术刀 vs 阔剑（与 ZCode 的正交分工）
+
+| 维度 | Codex (GPT-5.6-Sol) | ZCode (GLM-5.2) |
+|------|------|------|
+| **比喻** | 🔪 手术刀——最高精度、最高成本 | ⚔️ 阔剑——大范围、大上下文 |
+| **核心优势** | 推理深度、代码精度（Coding Agent #1） | 1M 上下文、全项目装载 |
+| **适用任务** | 安全关键实现、跨模块调试、发版终审 | 全项目屎山审计、架构二审、批量文档 |
+| **调用频率** | 极低（仅上述 ✅ 场景） | 低（每里程碑 + 关键时刻） |
+| **成本敏感度** | 极高（$5/$30，集群最贵） | 低（GLM 极低成本） |
+
+两支部队正交——不存在冲突，不存在替代。
+
+#### ⚠️ 威慑效应退化风险
+
+> ZCode 提醒：交叉审查的价值不只是"找 bug"，还有威慑效应——当 CC 知道每行代码都会被全球最强模型审查时，写代码会更谨慎。Codex 撤出常规审查后，CC 的自检标准可能不自觉地降低。
+>
+> **对策**：CC 必须保持与 Codex 全量审查时相同的自检标准——不是因为有人在看，而是因为安全工具的质量不依赖外部威慑。v0.0.53 起观察 Kimi 批量审查的 bug 漏报率，2 个版本周期后（v0.0.55）评估是否固化分工。
 
 **调用方式**：
 ```bash
+# 仅在分级派遣表中标记 ✅ 的场景使用:
 codex exec "$(cat .cluster/tasks/pending/CODEX-XXX.md)"
 ```
 
@@ -190,6 +237,8 @@ workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
 - 🐛 **全项目 BUG 排查（🆕 三阶段审计 Phase 1）**：执行路径追踪、状态变量生命周期分析、异常路径覆盖检查。唯一不同模型 → 发现其他 5 个 Agent 的同源盲区 bug
 - 🛠️ MCP 工具链集成（MCP 81.1，集群最强）
 - 📐 跨模块重构评估（256K 上下文）
+- 🆕 **常规 commit 批量交叉审查**（2026-07-11 新增）：Codex 撤出非安全关键 commit 审查后，Kimi 接管。攒 5-10 个 CC commit 一次批量审查——不逐 commit，利用 Kimi 的全局视角优势一次性覆盖。触发：每攒够 ~10 个非安全 commit 或每周一次
+- 🆕 **非架构级 Debate Opponent**：常规 Debate（非安全关键模块变更）由 Kimi 担任反对方。架构级 Debate 仍由 Codex 提案 → Kimi 反驳
 
 **模式 B：Kimi Work（桌面端 · K2.6）— 🖥️ 桌面自动化 + E2E 验证**：
 - 🧪 Web E2E 自动化测试（操控浏览器执行完整用户流程）
@@ -206,7 +255,7 @@ workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
 **模式 A：IDE/前端模式**（承接原 Qoder IDE，同模型零能力损失）：
 - Web 前端页面开发（Flask + Jinja2 + 原生 HTML/CSS/JS）
 - 多文件精准编辑、UI 审查
-- Qwen-3.7-Max 编码能力仅次于 GPT-5.5，中文前端表现优异
+- Qwen-3.7-Max 编码能力仅次于 GPT-5.6-Sol，中文前端表现优异
 
 **模式 B：后台执行模式**（VM 隔离）：
 - **自动加固 VM 闭环**：`harden → execute → re-scan → verify`
@@ -224,7 +273,7 @@ workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
 
 ### 3.6 ZCode 3.0（长程主力实现 + 全量代码审查 + 🔑 CC 架构二审）— GLM-5.2
 
-**编码能力**：Code Arena #2（1595）仅次于未开放的 Fable 5，**超过 GPT-5.5**，FrontierSWE 与 Opus 4.8 差距 <1%。Design Arena #1（1360）。AIME 2026 数学推理 99.2（超 Opus 4.8）。**集群编码最强。**
+**编码能力**：Code Arena #2（1595）仅次于未开放的 Fable 5，FrontierSWE 与 Opus 4.8 差距 <1%。Design Arena #1（1360）。AIME 2026 数学推理 99.2（超 Opus 4.8）。**集群编码最强。**
 
 **职责**：
 - 🏗️ **跨模块长程实现**：1M 上下文一次理解整个项目（~200 文件），单 Agent 完成"理解全貌→设计→实现→自测"
@@ -255,7 +304,7 @@ Phase 1: 发现 → 并行
   独立模型发现盲区       循环依赖+死代码检测
 
 Phase 2: 验证 → 集中
-  Codex (GPT-5.5)
+  Codex (GPT-5.6-Sol)
   🧪 可行性边界验收
   反证法验证+边界穷举
   真bug/刻意设计/无害异味分类
@@ -270,7 +319,7 @@ Phase 3: 修复 → 集中
 |:--:|------|------|------|------|
 | 1 | **Kimi** | K2.7-code | BUG 排查 | 唯一不同模型 → 发现其他 5 Agent 的同源盲区 bug；MCP 81.1 执行路径追踪 |
 | 1 | **ZCode** | GLM-5.2 | 屎山 + 耦合 | 1M 上下文一次装载全项目；死代码/重复逻辑/循环依赖/分层违规 |
-| 2 | **Codex** | GPT-5.5 | 可行性边界 | 推理天花板 → 穷举"什么条件下会炸"；反证法区分真假问题 |
+| 2 | **Codex** | **GPT-5.6-Sol** | 可行性边界 | Coding Agent Index #1 + SEC-Bench Pro 71.2%（+55%）→ 穷举"什么条件下会炸"；反证法区分真假问题。⚠️ Sol over-agency：CC 必须对 Phase 2 结论做二次验证 |
 | 3 | **CC** | DS V4-Pro | 判定 + 修复 | 最了解代码库；决定哪些修、哪些已知悉不修 |
 | 3 | **QoderWork** | Qwen-3.7-Max | VM 验证 | 唯一有执行环境的 Agent；别人静态分析，他可以真跑 |
 
@@ -303,7 +352,8 @@ Phase 3: 修复 → 集中
 │  Debate 对抗审查模式（用于安全关键模块）               │
 │                                                     │
 │  Step 1: Proposer（提案方）                          │
-│  Codex (GPT-5.5) 产出安全关键代码变更                  │
+│  Codex (GPT-5.6-Sol) 产出安全关键代码变更               │
+│  Sol 攻防思维更强 → 更高质量的初始提案                  │
 │         │                                           │
 │         ▼                                           │
 │  Step 2: Opponent（反对方）                          │
@@ -322,7 +372,7 @@ Phase 3: 修复 → 集中
 │         ▼                                           │
 │  Step 5: 循环（如需要）                               │
 │  若 CC 判定仍有未解决的高风险项 → 回到 Step 2          │
-│  通常 1-2 轮即可显著提升质量                          │
+│  Sol over-agency → 通常需 2-3 轮（vs GPT-5.5 的 1-2 轮）│
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -360,10 +410,10 @@ Phase 3: 修复 → 集中
 | Agent | 模型 | 编码能力 | 成本 | 非交互调用 |
 |-------|------|:--:|:--:|:--:|
 | **Claude Code** | **DeepSeek-V4-Pro** | 🟡 良好 | 🟢 低 | —（2026-06-25 切回，原 Opus 4.8） |
-| **Codex** | **GPT-5.5** | 🟢 **最强** | 🔴 高 | `codex exec` |
+| **Codex** | **GPT-5.6-Sol**（🆕 2026-07-09，原 GPT-5.5） | 🟢 **集群 #2**（Coding Agent Index #1 全球·80） | 🔴 高（与 GPT-5.5 同价 $5/$30）；Terra 可选（半价·GPT-5.5 级） | `codex exec` |
 | **CodeBuddy** 🆕 | **多模型**（DS Pro/Flash、GLM 5.2/5.1、MiniMax M3/2.7、Kimi K2.7/2.6、Qwen 3.7/3.6+、混元） | 🟡~🟢 可调 | 🟢 低 | Mode A：需人工 / Mode B：`workbuddy craft` |
 | **Kimi** 🆕 | **K2.7-code**（A）/ **K2.6**（B） | 🟢 **很强** | 🟡 中 | `kimi exec`（A）/ GUI（B） |
-| **QoderWork** | **Qwen-3.7-Max** | 🟢 **集群 #2**（Code Arena 1541 #2，超 GPT-5.5） | 🟡 中（59元/月套餐） | 后台常驻 + IDE 手动 |
+| **QoderWork** | **Qwen-3.7-Max** | 🟢 **集群 #3**（Code Arena 1541 #2） | 🟡 中（59元/月套餐） | 后台常驻 + IDE 手动 |
 | **ZCode 3.0** | **GLM-5.2** | 🟢 **集群最强**（Code Arena 1595 #2） | 🟡 配额消耗高（免费额度但单次消耗大——特种部队节制使用） | `zcode exec` |
 
 ---
@@ -393,7 +443,7 @@ ZCode 因 CLI 环境问题可能长期无法上线。其职责由以下替补链
 
 | 下线 Agent | L1 替补 | L2 替补 | L3 兜底 |
 |------|------|------|:--:|
-| **Codex (GPT-5.5)** | Kimi Code（安全审查，不同模型但审查能力接近） | ZCode/CodeBuddy-GLM-5.2（编码实现） | CC |
+| **Codex (GPT-5.6-Sol)** | Kimi Code（安全审查，不同模型但审查能力接近） | ZCode/CodeBuddy-GLM-5.2（编码实现） | CC（CC 自写代码交叉审查由 Kimi 临时接管） |
 | **Kimi (K2.7-code)** | ZCode/CodeBuddy-GLM-5.2（全量审查，上下文更大） | Codex（精密审查，更贵） | CC |
 | **QoderWork (Qwen-3.7-Max)** | CC（实现类） / CodeBuddy-DS-Pro（常规实现） | ZCode/CodeBuddy-GLM-5.2（长程实现） | CC |
 | **CodeBuddy (DS V4-Pro)** | CC（直接承担常规实现） | — | — |
@@ -489,7 +539,7 @@ workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
 ## 八、ZCode 定位定稿（2026-06-25）
 
 > **结论**：ZCode **不可被替代**，独立保留。理由：
-> 1. GLM-5.2 是集群编码最强的模型（Code Arena #2 1595，超 GPT-5.5，与 Opus 4.8 差距 <1%）——不是"文档工具"
+> 1. GLM-5.2 是集群编码最强的模型（Code Arena #2 1595，与 Opus 4.8 差距 <1%）——不是"文档工具"
 > 2. 1M 无损上下文 + Opus 级编码 = 跨模块长程实现的独特能力，集群无其他 Agent 可复制
 > 3. CLI 非交互 + 异步长任务执行——即使 CodeBuddy 可切 GLM-5.2，IDE 手动模式无法替代 ZCode 的独立调度
 > 4. 免费额度 300 万 token/天 + MIT 开源——成本优势和许可优势双重不可替代
@@ -501,9 +551,11 @@ workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
 | 2026-06-16 | 模型优势对齐升级：9 Agent分工按底层模型重排，CC 切 Opus 4.8 |
 | **2026-06-25** | **集群精简 9→5 Agent**：Reasonix/CodeWhale/Hermes→CodeBuddy，Qoder IDE→QoderWork。CC 切回 DeepSeek-V4-Pro |
 | **2026-06-25** | **🆕 Kimi 加入为第 6 Agent**：K2.7-code 模式 A（代码审查+深度调试）+ K2.6 模式 B（桌面自动化+E2E 验证）。双模式合入同一 `KIMI.md` |
-| **2026-06-25** | **🆙 双层升级（基于 Code Arena 实测数据）**：①ZCode/GLM-5.2→🎯 高级开发·特种部队（与 Codex 同级，关键时刻动用，一般任务不轻易使用——配额消耗高+速度慢）；②QoderWork/Qwen-3.7-Max→🏗️ 高级开发主力（Code Arena #2 1541 超 GPT-5.5 + 35h 长程自主 Agent）——纠正此前"VM+前端"的严重低估 |
+| **2026-06-25** | **🆙 双层升级（基于 Code Arena 实测数据）**：①ZCode/GLM-5.2→🎯 高级开发·特种部队（与 Codex 同级，关键时刻动用，一般任务不轻易使用——配额消耗高+速度慢）；②QoderWork/Qwen-3.7-Max→🏗️ 高级开发主力（Code Arena #2 1541 + 35h 长程自主 Agent）——纠正此前"VM+前端"的严重低估 |
 | **2026-06-28** | **🆕 CodeBuddy A/B 双模式**：Mode B（WorkBuddy）正式加入集群——解决 CodeBuddy IDE "需人工操作、不能 CLI 自动分发"的核心瓶颈。WorkBuddy 三大体系（日常办公/代码开发/设计创意）+ 三种工作模式（Ask/Plan/Craft）+ MCP 多应用连接器 + SkillHub 22K+ Skills + 100+ Agent 并行。CodeBuddy 继 Kimi 之后成为集群第二个 A/B 双模式 Agent。详见 `CODEBUDDY.md` |
 | **2026-06-28** | **🔭 观察名单建立**：Trae/Traework (Doubao-Seed) 列入技术储备观察。详见 §十 |
+| **2026-07-11** | **🆕 Codex 模型升级 GPT-5.5→GPT-5.6-Sol**：Sol 旗舰。Coding Agent Index #1(80)·ExploitBench2 73.5%(+53%)·SEC-Bench Pro 71.2%(+55%)·价格不变($5/$30)。编码排名 #3→#2。⚠️ over-agency 风险。同步更新全部集群文档 |
+| **2026-07-11** | **🆕 Codex 角色精炼（分级派遣）**：ZCode 建议 + CC 裁决——Codex 从"安全+前端+审查全干"→ 🔪 高精度手术刀（仅安全关键实现·跨模块突破·发版终审·安全 commit 审查）。常规 commit 交叉审查交 Kimi 批量审（攒 5-10 commit 一次）；常规前端交 CodeBuddy DS-V4-Pro。Codex vs ZCode = 手术刀 vs 阔剑（正交分工）。设 v0.0.55 观察点评估 Kimi 批量审查漏报率。同步更新 CLAUDE.md·REVIEW_CHECKLIST.md |
 
 ---
 
@@ -535,7 +587,7 @@ workbuddy craft "$(cat .cluster/tasks/pending/CB-XXX.md)"
 | 🥈 | **Kimi-K2.7-code**（Kimi A） | — | 1T MoE、MCP 81.1 集群最强、调试/bug 发现强 | 第三方 SWE-Bench 数据缺失 |
 | 🥉 | **Qwen-3.7-Max**（QoderWork） | #2 (1541) | SWE-Multilingual 78.4 全球纪录、35h 长程自主 | 编码天花板低于 GLM-5.2 |
 | 4 | **DeepSeek-V4-Pro**（CC） | — | 速度最快、性价比最高 | 编码上限不如前三 |
-| 5 | **Doubao-Seed-2.1-Pro** | — | Agent 强(MCP-Atlas 83.8)、SciCode 超 GPT-5.5 | **稳定性差、速度慢** |
+| 5 | **Doubao-Seed-2.1-Pro** | — | Agent 强(MCP-Atlas 83.8)、SciCode 59.8 | **稳定性差、速度慢** |
 
 #### 10.1.3 独特价值：设计工程化流水线（非"审美更好"）
 

@@ -28,6 +28,7 @@
 | `.guardrails/AGENT_CODE_OF_CONDUCT.md` | 🆕 Agent 十荣十耻行为准则（v1.2）+ 翻车模式详解 + Commit 前四问自检 + 置信度标注规范 | ZEEKR ARK OS 2 十荣十耻 v3.7.2 + Karpathy 十条军规 + MCP 安全态势 |
 | `.guardrails/REVIEW_CHECKLIST.md` | M8 五维扫描审查清单 | CodeWhale 方法论 |
 | `.guardrails/audit-log.md` | 门禁触发审计日志 | 跨层审计 |
+| `docs/DECISION_LOG.md` | 🆕 全项目决策日志（28 条·v0.0.01–v0.0.52 全部重大决策集中索引） | 遗留问题追溯 |
 | `.cluster/COORDINATION.md` | 多 Agent 冲突预防 + 知识缺口防护 | Nagi M5+M7 |
 | `.githooks/pre-commit` | Gate A 自动合规扫描脚本 | 自动化执行 |
 
@@ -66,6 +67,7 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 
 > **🔄 2026-06-25 集群精简**：Reasonix/CodeWhale/Hermes → CodeBuddy（多模型 IDE 承接，同模型零能力损失）；Qoder IDE → QoderWork（同模型 Qwen-3.7-Max + 同付费体系，双模式共存）。
 > **🆕 Kimi Code 加入**：Kimi-K2.7-code 作为第 6 Agent，担任深度调试 + 独立模型审查专员。Kimi 是集群中**唯一与所有其他 Agent 模型不同的审查者**（Kimi ≠ DS ≠ GPT ≠ Qwen ≠ GLM），填补 CodeWhale 退役后"同源盲区"的审查缺口——这一次模型真正不同。
+> **🆕 Codex 角色精炼（分级派遣）**：2026-07-11 起 GPT-5.6-Sol 从"安全+前端+审查全干"→ 🔪 高精度手术刀（仅安全关键实现·跨模块突破·发版终审·安全 commit 审查）。常规 commit 交叉审查交 Kimi 批量审（攒 5-10 commit 一次），常规前端交 CodeBuddy。Codex 集群最贵（$5/$30），确保每次调用在刀刃上。分级派遣表见 `.cluster/CLUSTER.md §3.2`。
 >
 > **CC 模型**：DeepSeek-V4-Pro（2026-06-25 切回）。
 > **CodeBuddy 多模型能力**：可随时在 IDE 中切换 DeepSeek-V4-Pro/Flash、GLM-5.2/5.0-Turbo、MiniMax-M3、Kimi-K2.7-code/2.6、Hy3-Preview——按任务需要在派工书中指定模型即可。
@@ -75,10 +77,10 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 | Agent | 角色 | 底层模型 | 非交互调用 |
 |-------|------|---------|-----------|
 | **Claude Code** | 🏛️ 架构师 + 编排器 + 安全终审 | **DeepSeek-V4-Pro**（2026-06-25 切回） | —（自身） |
-| **Codex** | 💎 安全关键模块 + 精密前端 + CC 胶水代码交叉审查 | GPT-5.5 | `codex exec "$(cat task.md)"` |
+| **Codex** | 🔪 高精度手术刀（分级派遣：仅安全关键实现·跨模块突破·发版终审·安全 commit 审查） | **GPT-5.6-Sol**（Coding Agent Index #1·集群最贵 $5/$30） | `codex exec "$(cat task.md)"` |
 | **CodeBuddy** 🆕 | 💻 多模型 A/B 双模式：Mode A = CodeBuddy IDE（手动编码·默认实现+测试+样板+🔄ZCode替补）/ Mode B = WorkBuddy（自主Agent·CLI可调度·三大体系切换·SkillHub 22K+ Skills·100+ Agent并行·MCP多应用连接器） | DeepSeek-V4-Pro/Flash、GLM 5.2/5.1、MiniMax M3/2.7、Kimi K2.7/2.6、Qwen 3.7/3.6+（A/B 同模型池） | Mode A：需人工 IDE / Mode B：`workbuddy craft "$(cat task.md)"` |
-| **Kimi** | 🔬 Kimi 统一 Agent（双模式：CLI 代码审查+深度调试 / 桌面自动化+E2E 验证） | K2.7-code（模式A）+ K2.6（模式B） | `kimi exec`（A）/ Kimi Work 桌面端（B） |
-| **QoderWork** | 🏗️ 高级开发主力（Code Arena #2 超 GPT-5.5）+ 35h 长程自主 Agent + VM 隔离 | Qwen-3.7-Max（Code Arena 1541 #2） | 后台常驻 + IDE 手动（双模式） |
+| **Kimi** | 🔬 Kimi 统一 Agent（双模式：CLI 代码审查+深度调试 / 桌面自动化+E2E 验证）+ 🆕 常规 commit 批量交叉审查 | K2.7-code（模式A）+ K2.6（模式B） | `kimi exec`（A）/ Kimi Work 桌面端（B） |
+| **QoderWork** | 🏗️ 高级开发主力 + 35h 长程自主 Agent + VM 隔离（集群唯一执行环境） | Qwen-3.7-Max（Code Arena 1541 #2） | 后台常驻 + IDE 手动（双模式） |
 | **ZCode 3.0** | 🎯 高级开发·特种部队（与 Codex 同级——关键时刻动用，一般任务不轻易使用） | GLM-5.2（744B MoE，Code Arena #2） | `zcode exec "$(cat task.md)"` |
 
 ### 编排规则
@@ -86,12 +88,14 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 1. **Claude Code 负责架构设计、接口定义、任务拆分、安全终审、集成合并** — 标准实现和样板代码由 CodeBuddy 承接
 2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文。**CodeBuddy 任务须在开头标注 `【CodeBuddy 模式：A/B】` + `【模型切换：XXX】`**。Mode A = CodeBuddy IDE 手动操作；Mode B = WorkBuddy CLI 非交互调度（`workbuddy craft`）
 3. **并行执行 + 集中集成** — 各 Agent 并行产出，Claude Code 审查后合并
-4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）；CC 自写代码由 Codex（GPT-5.5）交叉审查（强制不可跳过）；**Kimi Code 每版本强制一次独立审查**（Kimi-K2.7-code 是集群唯一与所有 Agent 模型不同的审查者，真正消除同源盲区）。**🔑 CC 架构决策由 ZCode（GLM-5.2）做全局一致性二审**（1M 上下文一次装载全项目 + 全部 ADR，审跨模块抽象合理性、分层违规、ADR vs 实现对照——不是审代码，是审架构。每里程碑版本一次，CC 和 ZCode 模型不同 → 无同源盲区）。**🆕 Debate 对抗审查**（Codex↔Kimi 对抗循环）用于安全关键模块变更（MSF 白名单/沙箱边界/合规红线）。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
-5. **模型优势对齐（按 Code Arena 排名）** —
-   - 🎯 **高级开发层**：安全关键→Codex(GPT-5.5)；高级实现主力→QoderWork(Qwen-3.7-Max，Code Arena #2 1541 超 GPT-5.5)；特种部队→ZCode(GLM-5.2，1M 上下文，关键时刻动用)
-   - 🔧 **常规开发层**：默认实现+测试+样板→CodeBuddy Mode A(多模型按需切换)；批量模板化/可标准化任务→CodeBuddy Mode B(WorkBuddy CLI·三大体系·SkillHub)
-   - 🔬 **专业角色层**：独立审查+深度调试(MCP)→Kimi 模式A(K2.7-code)；桌面自动化+E2E→Kimi 模式B(K2.6)
+4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）。**CC 自写代码分两级审查**：① 安全关键 commit（sandbox/validator/MSF/R2）→ Codex（GPT-5.6-Sol）交叉审查（强制，⚠️ over-agency——CC 需二次验证）；② 常规 commit（Web/报告/测试/文档）→ Kimi 批量审查（攒 5-10 commit 一次，K2.7-code ≠ DS → 跨模型视角不丢）。**Kimi Code 每版本强制一次独立审查**（集群唯一与所有 Agent 模型不同的审查者）。**🔑 CC 架构决策由 ZCode（GLM-5.2）做全局一致性二审**（每里程碑一次）。**🆕 Debate 对抗审查**（Codex↔Kimi 对抗循环）用于安全关键模块变更——架构级 Debate 由 Codex 提案·Kimi 反驳，非架构级 Debate 由 Kimi 提案·CC 反驳。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
+5. **模型优势对齐（分级派遣体系）** —
+   - 🔪 **高精度手术刀层（Codex·GPT-5.6-Sol）**：安全关键实现·跨模块突破·发版终审·安全 commit 审查。全球最强编码模型（Coding Agent #1），集群最贵（$5/$30）。**仅在其他 Agent 无法突破时动用**——不是"特种部队"标签，是逐任务判定。
+   - 🎯 **高级开发层**：高级实现主力→QoderWork(Qwen-3.7-Max，Code Arena #2·35h 长程·VM 隔离)；特种部队→ZCode(GLM-5.2，1M 上下文·Code Arena #2，关键时刻动用)
+   - 🔧 **常规开发层**：默认实现+测试+样板+常规前端→CodeBuddy Mode A(多模型按需切换)；批量模板化/可标准化任务→CodeBuddy Mode B(WorkBuddy CLI·三大体系·SkillHub)
+   - 🔬 **专业审查层**：独立审查+深度调试(MCP)+🆕 常规 commit 批量审查→Kimi 模式A(K2.7-code)；桌面自动化+E2E→Kimi 模式B(K2.6)
    - 🔭 **观察名单**：Trae/Traework (Doubao-Seed·第6模型家族)——设计工程化流水线独特但稳定性未达标，等 Seed-3.0。详见 `.cluster/CLUSTER.md §十`
+   - ⚠️ **威慑效应退化风险**：Codex 撤出常规审查后 CC 需保持相同自检标准。v0.0.53–v0.0.55 观察 Kimi 批量审查漏报率后固化分工
 
 ### 🆕 全项目三阶段组合排查审查体系（v0.0.40+ 生效）
 
@@ -112,13 +116,14 @@ Phase 1: 发现（并行 — Kimi + ZCode）
                    ▼              ▼
 Phase 2: 验证（集中 — Codex）
 ┌──────────────────────────────────────────────────────┐
-│  Codex (GPT-5.5)                                     │
-│  🧪 可行性边界验收检查                                 │
+│  Codex (GPT-5.6-Sol)                                  │
+│  🧪 可行性边界验收检查（安全能力 +53% 直接增强）        │
 │                                                        │
 │  • 对 Phase 1 发现做"反证法"验证                       │
-│  • 穷举边界条件（GPT-5.5 推理天花板）                   │
+│  • 穷举边界条件（Sol 推理天花板·ExploitBench2 73.5%）   │
 │  • 区分"真 bug" vs "刻意设计" vs "无害异味"            │
 │  • 输出分级报告（CRITICAL/HIGH/MEDIUM/LOW/INFO）       │
+│  • ⚠️ Sol over-agency 风险：CC 需二次验证审查结论       │
 └──────────────────┬───────────────────────────────────┘
                    │
                    ▼

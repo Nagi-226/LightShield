@@ -122,24 +122,41 @@
 
 ---
 
-## 六、Codex 交叉审查 CC 自写代码 —— 强制门禁
+## 六、CC 自写代码交叉审查 —— 分级强制门禁
 
-> 🔴 **不可跳过**。任何 CC 为作者（git author）的 commit，在合入前必须由 Codex (GPT-5.5) 完成独立审查。
+> 🔴 **不可跳过**。任何 CC 为作者（git author）的 commit，在合入前必须经过跨模型独立审查。审查者按 commit 风险分级派遣。
+
+**分级审查规则**（2026-07-11 生效）：
+
+| commit 类型 | 审查者 | 方式 | 频率 |
+|------------|--------|------|------|
+| 🔴 安全关键（sandbox/validator/MSF/R2/鉴权） | **Codex (GPT-5.6-Sol)** | 逐 commit 审查 | 每次 commit 强制 |
+| 🟡 常规（Web 页面/报告格式/测试补充/文档/配置） | **Kimi (K2.7-code)** | 批量审查（攒 5-10 commit 一次） | 每 ~10 commit 或每周一次 |
 
 **为什么必须跨模型审查**：
 - **同模型自审的缺陷检出率比独立模型审查低 40-60%**（Addy Osmani 团队 2026 年实测数据）。Agent 倾向于对自己刚生成的代码"放水"，大量 bug 和安全隐患被漏过。
-- Codex (GPT-5.5) 与 CC (DeepSeek-V4-Pro) 模型不同 → 审查视角天然不同 → 无同源盲区。
-- Kimi Code (K2.7-code) 作为集群唯一与所有其他 Agent 模型不同的审查者（Kimi ≠ DS ≠ GPT ≠ Qwen ≠ GLM），每版本强制一次独立审查。
+- Codex (GPT-5.6-Sol) 与 CC (DeepSeek-V4-Pro) 模型不同 → 审查视角天然不同 → 无同源盲区。Sol 的 SEC-Bench Pro 71.2% 用于安全关键审查。
+- Kimi (K2.7-code) 与 CC (DS-V4-Pro) 模型不同 → 跨模型视角不丢。批量审查利用 Kimi 的全局视角优势。
+- ⚠️ **Sol over-agency 风险**：METR 评估 Sol 作弊率为所有公开测试模型中最高。CC 必须对 Codex 审查结论做二次验证，不可盲信。
 
 **跨模型审查覆盖率要求**：
 
 | 代码来源 | 审查者 | 模型是否不同 | 频率 |
 |---------|--------|:--:|------|
-| CC 自写 | Codex (GPT-5.5) | ✅ 不同 | 每次 commit 强制 |
+| CC 自写（安全关键） | Codex (GPT-5.6-Sol) | ✅ 不同 | 每次 commit 强制 |
+| CC 自写（常规） | Kimi (K2.7-code) 🆕 | ✅ 不同 | 批量审查（~10 commit/次） |
 | Codex | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
 | CodeBuddy (DS V4-Pro) | CC (DS V4-Pro) | ❌ 同模型 ⚠️ | 每次产出合入前 + Kimi 独立审查补盲 |
 | CodeBuddy (其他模型) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
 | Kimi (K2.7-code) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
+
+### ⚠️ 威慑效应退化观察（v0.0.53–v0.0.55）
+
+> Codex 撤出常规 commit 审查后，CC 的自检标准可能不自觉地降低。这不是保留 Codex 全量审查的理由，但需要观察。
+>
+> **观察指标**：Kimi 批量审查的 bug 漏报率（与 Codex 全量审查时期的基准对比）
+> **观察窗口**：v0.0.53 起 2 个版本周期
+> **决策点**：v0.0.55 评估——如果 Kimi 批量审查漏报率无显著上升 → 固化分工；如果漏报率上升 >20% → 重新评估
 | QoderWork (Qwen-3.7-Max) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
 | ZCode (GLM-5.2) | CC (DS V4-Pro) | ✅ 不同 | 每次产出合入前 |
 
@@ -194,7 +211,7 @@
 |---------|:--:|------|
 | CC 审查 CodeBuddy 产出 | 🟡 中 | Phase 1-3 完整执行。CB 使用 DS V4-Pro 时存在同模型盲区 → 额外触发 Kimi 审查 |
 | CC 审查 QoderWork 产出 | 🟢 低 | QW 使用 Qwen-3.7-Max（≠ DS），模型不同降低风险。仍需 Phase 1-3 |
-| Codex 审查 CC 自写代码 | 🟢 低 | Codex 使用 GPT-5.5（≠ DS），模型不同。但 GPT-5.5 从 CC 的 commit message/PR 描述中读取上下文 → 仍存在 Inherited Drift 风险 → 必须执行 Phase 1 |
+| Codex 审查 CC 自写代码 | 🟢 低 | Codex 使用 GPT-5.6-Sol（≠ DS），模型不同。但 Sol 存在 over-agency 倾向且从 CC 的 commit message/PR 描述中读取上下文 → Inherited Drift + over-agency 双重风险 → 必须执行 Phase 1 + CC 二次验证 |
 | Kimi 独立审查（每版本） | 🔴 高 | **审查隔离要求最严格**——Kimi 是唯一与所有 Agent 模型不同的审查者，其独立判断价值最高。Kimi 必须：① 先独立分析（不看任何 Agent 的推理）② 提交「独立发现清单」+「与 CC 结论的差异对比」③ 明确标注"独立发现"vs"确认已有发现" |
 
 ### 8.3 审查输出规范（防 Inherited Drift）
