@@ -5,6 +5,14 @@
 > **剩余债务**：**0C / 0H / 0M / 0L / 0I** 🎉 全部清零
 > **今日交付**：Codex GPT-5.6-Sol 升级 + 分级派遣体系落地 + v0.0.50–v0.0.60 路线图同步调整
 
+## 安全阻断状态（2026-07-11）
+
+- **Nuclei synchronization: BLOCKED** — 执行前模板解析、完整标签白名单、命令级不可绕过测试、来源审计和 wheel 安装态烟测全部通过后方可解除。
+- **v0.0.56 WSGI: BLOCKED** — wheel 运行资源、非回环默认凭据门禁、门面故障语义和多进程任务状态设计全部验证后方可解除。
+- **AssetRegistry: BLOCKED** — `adr-v052-r2-multi-target-redesign.md` 已退回 `Proposed - Changes Required`，替代 ADR 重新 Accepted 前不得实现。
+
+阻断优先于下方既有路线表中的负责人和版本安排；不得以版本进度为由绕过。
+
 ---
 
 ### 2026-06-29：C-004 / H-005 / H-006 三个 MEDIUM 清零

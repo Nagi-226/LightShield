@@ -11,13 +11,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 # Allow direct script execution (python lightshield/adapters/nuclei_adapter.py)
 if __package__ in {None, ""}:
@@ -48,7 +52,7 @@ def is_template_safe(tags: list[str]) -> tuple[bool, str]:
     """校验模板标签是否安全（R1 + R5 防线）。
 
     黑名单优先：任何标签命中 NUCLEI_BLOCKED_TAGS → 拒绝。
-    白名单放行：至少一个标签命中 NUCLEI_ALLOWED_TAGS → 通过。
+    白名单放行：所有标签均命中 NUCLEI_ALLOWED_TAGS → 通过。
     空标签列表 → 拒绝（无法确认安全性）。
 
     Args:
@@ -66,13 +70,11 @@ def is_template_safe(tags: list[str]) -> tuple[bool, str]:
         if tag_lower in NUCLEI_BLOCKED_TAGS:
             return False, f"模板标签 '{tag}' 命中黑名单"
 
-    # 白名单放行
-    for tag in tags:
-        tag_lower = tag.lower().strip()
-        if tag_lower in NUCLEI_ALLOWED_TAGS:
-            return True, "通过"
+    unknown_tags = [tag for tag in tags if tag.lower().strip() not in NUCLEI_ALLOWED_TAGS]
+    if unknown_tags:
+        return False, f"模板标签 {unknown_tags} 不在白名单内"
 
-    return False, f"模板标签 {tags} 不在白名单内"
+    return True, "通过"
 
 
 class NucleiAdapter(BaseAdapter):
@@ -163,7 +165,17 @@ class NucleiAdapter(BaseAdapter):
         extra_args = kwargs.get("extra_args", "")
         timeout = kwargs.get("timeout", self._timeout)
 
-        # 4. 检查 Nuclei CLI 可用性
+        # 4. 执行前审查模板。任何 Nuclei subprocess 都必须晚于此防线。
+        try:
+            reviewed_templates = self._review_template_source(templates, allowed_tags)
+        except NucleiSecurityError as exc:
+            error_msg = str(exc)
+            self._logger.error("nuclei", error_msg)
+            result = ScanResult(status=ScanStatus.FAILED, target=target, error=error_msg)
+            self._log_scan_end(scan_id, result)
+            return result
+
+        # 5. 检查 Nuclei CLI 可用性
         if not self._check_nuclei_exists():
             error_msg = (
                 f"Nuclei 未安装或路径错误: {self._nuclei_path}。"
@@ -178,16 +190,12 @@ class NucleiAdapter(BaseAdapter):
             self._log_scan_end(scan_id, result)
             return result
 
-        # 5. 构造命令
+        # 6. 构造命令
         cmd = [self._nuclei_path, "-u", target, "-jsonl", "-silent"]
 
-        # 模板路径
-        if templates:
-            cmd.extend(["-t", self._sanitize_path(templates)])
-
-        # 标签过滤（白名单标签通过 -tags 传入 nuclei，黑名单模板被其自身 tags 过滤）
-        if allowed_tags:
-            cmd.extend(["-tags", self._sanitize_tags_arg(str(allowed_tags))])
+        # 只传递已审查的具体文件，绝不把原始目录或 URL 交给 Nuclei。
+        for template_path in reviewed_templates:
+            cmd.extend(["-t", self._sanitize_path(template_path)])
 
         # 额外参数（仅允许安全参数）
         if extra_args:
@@ -197,7 +205,7 @@ class NucleiAdapter(BaseAdapter):
 
         self._logger.info("nuclei", f"执行扫描: {' '.join(cmd)}")
 
-        # 6. 执行
+        # 7. 执行
         start_time = time.monotonic()
         try:
             completed = subprocess.run(
@@ -218,6 +226,7 @@ class NucleiAdapter(BaseAdapter):
             )
             self._log_scan_end(scan_id, result)
             return result
+
         except FileNotFoundError:
             error_msg = f"Nuclei 未安装或路径错误: {self._nuclei_path}"
             self._logger.error("nuclei", error_msg)
@@ -269,6 +278,113 @@ class NucleiAdapter(BaseAdapter):
             )
             self._log_scan_end(scan_id, result)
             return result
+
+    # =========================================================================
+    # 执行前模板审查
+    # =========================================================================
+
+    def _review_template_source(self, source: str, requested_tags: object) -> list[str]:
+        """Resolve and approve local template files before invoking Nuclei."""
+        requested = self._normalize_requested_tags(requested_tags)
+        if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", source):
+            raise NucleiSecurityError([], "模板来源必须是本地文件或目录，拒绝 URL")
+
+        try:
+            resolved = Path(source).expanduser().resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise NucleiSecurityError([], f"模板来源不存在或不可访问: {source}") from exc
+
+        if resolved.is_file():
+            candidates = [resolved] if resolved.suffix.lower() in {".yaml", ".yml"} else []
+        elif resolved.is_dir():
+            candidates = sorted(
+                path.resolve()
+                for path in resolved.rglob("*")
+                if path.is_file() and path.suffix.lower() in {".yaml", ".yml"}
+            )
+        else:
+            candidates = []
+
+        if not candidates:
+            raise NucleiSecurityError([], f"模板来源不包含 YAML 模板: {resolved}")
+
+        approved: list[str] = []
+        for candidate in candidates:
+            tags: list[str] = []
+            digest = self._sha256(candidate)
+            try:
+                document = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+                if not isinstance(document, dict):
+                    raise ValueError("模板根节点必须是对象")
+                if "workflows" in document:
+                    raise ValueError("工作流可组合未审查模板")
+                info = document.get("info")
+                if not isinstance(info, dict):
+                    raise ValueError("模板缺少 info")
+                tags = self._normalize_template_tags(info.get("tags"))
+                safe, reason = is_template_safe(tags)
+                if not safe:
+                    raise ValueError(reason)
+                if not requested.intersection(tags):
+                    self._audit_template(candidate, digest, tags, False, "不匹配请求标签")
+                    continue
+            except (OSError, UnicodeError, yaml.YAMLError, ValueError, TypeError) as exc:
+                self._audit_template(candidate, digest, tags, False, str(exc))
+                continue
+
+            self._audit_template(candidate, digest, tags, True, "全部标签通过白名单")
+            approved.append(str(candidate))
+
+        if not approved:
+            raise NucleiSecurityError([], "没有模板通过执行前安全审查")
+        return approved
+
+    @staticmethod
+    def _normalize_requested_tags(requested_tags: object) -> set[str]:
+        """Allow callers to narrow, but never expand, the global tag policy."""
+        if isinstance(requested_tags, str):
+            tags = [tag.strip().lower() for tag in requested_tags.split(",") if tag.strip()]
+        elif isinstance(requested_tags, list | tuple | set):
+            tags = [str(tag).strip().lower() for tag in requested_tags if str(tag).strip()]
+        else:
+            raise NucleiSecurityError([], "标签参数必须是逗号分隔字符串或字符串列表")
+
+        safe, reason = is_template_safe(tags)
+        if not safe:
+            raise NucleiSecurityError(tags, f"请求标签越过白名单: {reason}")
+        return set(tags)
+
+    @staticmethod
+    def _normalize_template_tags(raw_tags: object) -> list[str]:
+        """Normalize Nuclei's string-or-list tag representation."""
+        if isinstance(raw_tags, str):
+            tags = [tag.strip().lower() for tag in raw_tags.split(",") if tag.strip()]
+        elif isinstance(raw_tags, list) and all(isinstance(tag, str) for tag in raw_tags):
+            tags = [tag.strip().lower() for tag in raw_tags if tag.strip()]
+        else:
+            tags = []
+        if not tags:
+            raise ValueError("模板未声明有效标签")
+        return tags
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        """Return a stable provenance digest for a local template."""
+        try:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return "unreadable"
+
+    def _audit_template(
+        self,
+        path: Path,
+        digest: str,
+        tags: list[str],
+        allowed: bool,
+        reason: str,
+    ) -> None:
+        """Record each template decision in the dedicated audit log."""
+        self._logger.audit_nuclei_template(str(path), digest, tags, allowed, reason)
 
     # =========================================================================
     # Nuclei 可用性

@@ -51,3 +51,5 @@ lightshield.egg-info/
 
 # 个人开发笔记（不推送）
 docs/interview-narratives/
+build/
+.wheel-audit/

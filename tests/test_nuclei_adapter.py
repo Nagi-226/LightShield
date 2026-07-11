@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -37,9 +38,14 @@ from lightshield.utils.constants import RiskLevel, ScanStatus
 
 
 @pytest.fixture
-def adapter() -> NucleiAdapter:
+def adapter(tmp_path_factory: pytest.TempPathFactory) -> NucleiAdapter:
     """创建 NucleiAdapter 实例（不依赖真实 nuclei CLI）。"""
-    return NucleiAdapter(nuclei_path="nuclei")
+    templates_dir = tmp_path_factory.mktemp("nuclei-default-templates")
+    (templates_dir / "default.yaml").write_text(
+        "id: default\ninfo:\n  name: Default\n  author: test\n  severity: info\n  tags: detection\nhttp:\n  - method: GET\n",
+        encoding="utf-8",
+    )
+    return NucleiAdapter(nuclei_path="nuclei", templates_dir=str(templates_dir))
 
 
 # =============================================================================
@@ -113,6 +119,13 @@ class TestIsTemplateSafe:
         """未知标签（不在白名单也不在黑名单）应拒绝——默认拒绝策略。"""
         is_safe, reason = is_template_safe(["unknown-tag"])
         assert is_safe is False
+
+    def test_allowed_tag_does_not_mask_unknown_tag(self) -> None:
+        """Every declared tag must be allowlisted, not merely one of them."""
+        is_safe, reason = is_template_safe(["detection", "custom-action"])
+
+        assert is_safe is False
+        assert "custom-action" in reason
 
     def test_case_insensitive(self) -> None:
         """标签匹配应不区分大小写。"""
@@ -442,6 +455,80 @@ class TestScanWithMockSubprocess:
         cmd = scan_call[0][0]
         assert "-u" in cmd
         assert "example.com" in cmd
+
+
+class TestPreExecutionTemplateReview:
+    """Template policy must run before every Nuclei subprocess."""
+
+    @staticmethod
+    def _write_template(path: Path, *, tags: str, body: str = "http:\n  - method: GET\n") -> Path:
+        path.write_text(
+            f"id: test-template\ninfo:\n  name: Test\n  author: test\n  severity: info\n  tags: {tags}\n{body}",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_caller_cannot_expand_tags_outside_allowlist(self, adapter: NucleiAdapter, tmp_path: Path) -> None:
+        """Caller tag overrides may narrow policy but never expand it."""
+        self._write_template(tmp_path / "safe.yaml", tags="detection")
+
+        with patch("lightshield.adapters.nuclei_adapter.subprocess.run") as run:
+            result = adapter.scan("127.0.0.1", templates=str(tmp_path), tags="exploit")
+
+        assert result.status == ScanStatus.FAILED
+        run.assert_not_called()
+
+    def test_mixed_safe_and_blocked_template_never_executes(self, adapter: NucleiAdapter, tmp_path: Path) -> None:
+        """A safe-looking tag cannot mask a blocked side-effecting tag."""
+        self._write_template(tmp_path / "mixed.yaml", tags="detection,exploit")
+
+        with patch("lightshield.adapters.nuclei_adapter.subprocess.run") as run:
+            result = adapter.scan("127.0.0.1", templates=str(tmp_path))
+
+        assert result.status == ScanStatus.FAILED
+        run.assert_not_called()
+
+    def test_url_template_source_is_rejected_before_version_probe(self, adapter: NucleiAdapter) -> None:
+        """Remote templates cannot bypass local provenance review."""
+        with patch("lightshield.adapters.nuclei_adapter.subprocess.run") as run:
+            result = adapter.scan("127.0.0.1", templates="https://example.com/template.yaml")
+
+        assert result.status == ScanStatus.FAILED
+        run.assert_not_called()
+
+    def test_workflow_source_is_rejected_before_version_probe(self, adapter: NucleiAdapter, tmp_path: Path) -> None:
+        """Nuclei workflows can compose unreviewed templates and are denied."""
+        workflow = tmp_path / "workflow.yaml"
+        workflow.write_text(
+            "id: workflow\ninfo:\n  name: Workflow\n  author: test\n  tags: detection\nworkflows:\n  - template: child.yaml\n",
+            encoding="utf-8",
+        )
+
+        with patch("lightshield.adapters.nuclei_adapter.subprocess.run") as run:
+            result = adapter.scan("127.0.0.1", templates=str(workflow))
+
+        assert result.status == ScanStatus.FAILED
+        run.assert_not_called()
+
+    def test_scan_command_contains_only_explicit_reviewed_files(self, adapter: NucleiAdapter, tmp_path: Path) -> None:
+        """The original directory must never reach the Nuclei process."""
+        first = self._write_template(tmp_path / "first.yaml", tags="detection")
+        second = self._write_template(tmp_path / "second.yml", tags="misconfig")
+        fake_version = SimpleNamespace(returncode=0, stdout="nuclei v3", stderr="")
+        fake_scan = SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        with patch(
+            "lightshield.adapters.nuclei_adapter.subprocess.run",
+            side_effect=[fake_version, fake_scan],
+        ) as run:
+            result = adapter.scan("127.0.0.1", templates=str(tmp_path))
+
+        assert result.status == ScanStatus.COMPLETED
+        cmd = run.call_args_list[1].args[0]
+        assert str(tmp_path) not in cmd
+        assert cmd.count("-t") == 2
+        assert str(first.resolve()) in cmd
+        assert str(second.resolve()) in cmd
 
 
 # =============================================================================

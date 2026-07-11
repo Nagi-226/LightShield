@@ -1,11 +1,13 @@
 # ADR-v052：R2 合规红线重定义 — 从单目标到多目标资产清单
 
-> **状态**：✅ Accepted
+> **状态**：Proposed - Changes Required
 > **日期**：2026-07-09
 > **决策者**：Claude Code（架构 + 安全终审）
 > **前置依赖**：`adr-v052-offline-definition.md` ✅ Accepted — 本 ADR 的资产来源假设基于其约束框架
 > **关联**：`.guardrails/PROGRESS.md`（v0.0.57 资产清单、v0.0.61+ 批量扫描）、`lightshield/utils/validator.py`（当前 R2 实现）
 > **类型**：合规红线重定义 → 范围漂移阀值「架构模式改变→🟠 暂停+ADR」强制立项
+
+> **实施阻断（2026-07-11）**：AssetRegistry: BLOCKED。当前方案同时要求逐资产确认、又允许清单级一次确认，并可通过把公网 CIDR 展开为 JSON 目标列表绕过 R2 的批量限制。在替代 ADR 定义与不可变目标集绑定的授权证据、有效期、撤销和清单变更后重新确认之前，不得实现 AssetRegistry 或批量扫描。
 
 ---
 

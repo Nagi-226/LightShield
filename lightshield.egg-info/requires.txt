@@ -10,9 +10,11 @@ pre-commit>=3.0
 bandit>=1.7
 mypy>=1.0
 Flask<4.0,>=3.0
+fpdf2<3.0,>=2.8
 
 [nmap]
 python-nmap<1.0,>=0.7.0
 
 [web]
 Flask<4.0,>=3.0
+fpdf2<3.0,>=2.8

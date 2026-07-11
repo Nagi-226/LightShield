@@ -1,12 +1,39 @@
 Metadata-Version: 2.4
 Name: lightshield
-Version: 0.0.27
+Version: 0.0.51
 Summary: LightShield 轻盾 — 开源轻量化安全自检 + 防御加固工具
-Author: LightShield Team
+Author: Nagi_226
 License: MIT
-Project-URL: Homepage, https://github.com/LightShield/lightshield
-Project-URL: Source, https://github.com/LightShield/lightshield
-Project-URL: BugTracker, https://github.com/LightShield/lightshield/issues
+Project-URL: Homepage, https://github.com/Nagi-226/LightShield
+Project-URL: Repository, https://github.com/Nagi-226/LightShield
+Project-URL: Issues, https://github.com/Nagi-226/LightShield/issues
+Project-URL: Changelog, https://github.com/Nagi-226/LightShield/blob/main/CHANGELOG.md
+Project-URL: Documentation, https://github.com/Nagi-226/LightShield/tree/main/docs
+Project-URL: Bug Tracker, https://github.com/Nagi-226/LightShield/issues
+Keywords: security,vulnerability-scanner,hardening,nmap,self-check,compliance,owasp
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Flask
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: Chinese (Simplified)
+Classifier: Natural Language :: English
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: MacOS
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Security
+Classifier: Topic :: Security :: Vulnerability Scanners
+Classifier: Topic :: System :: Installation/Setup
+Classifier: Topic :: System :: Systems Administration
+Classifier: Topic :: Internet :: WWW/HTTP :: WSGI :: Application
+Classifier: Typing :: Typed
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
@@ -17,6 +44,7 @@ Provides-Extra: nmap
 Requires-Dist: python-nmap<1.0,>=0.7.0; extra == "nmap"
 Provides-Extra: web
 Requires-Dist: Flask<4.0,>=3.0; extra == "web"
+Requires-Dist: fpdf2<3.0,>=2.8; extra == "web"
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0; extra == "dev"
@@ -25,18 +53,20 @@ Requires-Dist: pre-commit>=3.0; extra == "dev"
 Requires-Dist: bandit>=1.7; extra == "dev"
 Requires-Dist: mypy>=1.0; extra == "dev"
 Requires-Dist: Flask<4.0,>=3.0; extra == "dev"
+Requires-Dist: fpdf2<3.0,>=2.8; extra == "dev"
 Dynamic: license-file
-Dynamic: requires-python
 
-# LightShield 轻盾
+﻿# LightShield 轻盾
 
 > 开源轻量化安全自检 + 防御加固工具
 
 <p align="left">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.10+-brightgreen.svg" alt="Python 3.10+"></a>
-  <a href="https://github.com/LightShield/lightshield"><img src="https://img.shields.io/badge/Version-0.2.0-orange.svg" alt="Version 0.2.0"></a>
+  <a href="https://github.com/Nagi-226/LightShield/actions"><img src="https://img.shields.io/badge/tests-798%20passed-brightgreen.svg" alt="Tests: 798 passed"></a>
+  <a href="#"><img src="https://img.shields.io/badge/coverage-79.6%25-yellow.svg" alt="Coverage: 79.6%"></a>
   <a href="https://nmap.org/"><img src="https://img.shields.io/badge/Nmap-7.x+-blueviolet.svg" alt="Nmap 7.x+"></a>
+  <a href="https://github.com/Nagi-226/LightShield"><img src="https://img.shields.io/badge/Version-0.0.46-orange.svg" alt="Version 0.0.46"></a>
 </p>
 
 LightShield（轻盾）是一款面向开发者和运维人员的**轻量级安全自检工具**。它不依赖商业安全平台或云端服务，只需一条命令即可对自有资产完成端口扫描、服务识别、漏洞检测和加固建议生成 —— 全程离线运行。
@@ -48,11 +78,30 @@ LightShield（轻盾）是一款面向开发者和运维人员的**轻量级安�
 ## 核心特性
 
 - **🔍 资产扫描** — 自动探测开放端口、运行服务、操作系统指纹（基于 Nmap）
-- **⚠️ 漏洞检测** — Web 漏洞扫描、弱口令检测、组件/依赖安全检查
-- **📄 中文报告** — 自动生成 Markdown / Text 格式的详细安全报告
-- **🛡️ 加固脚本生成** — 根据扫描结果自动生成加固脚本和回滚脚本
+- **⚠️ 漏洞检测** — Web 漏洞扫描、弱口令检测、组件/依赖安全检查、Nuclei 模板扫描
+- **📄 中文报告** — 自动生成 Markdown / Text / PDF 格式的详细安全报告
+- **🛡️ 加固脚本生成** — 根据扫描结果自动生成加固脚本和回滚脚本（Linux `.sh` / Windows `.ps1`）
+- **🔄 自动加固闭环** — 扫描 → 推荐 → 生成 → 执行（DRY_RUN/APPLY）→ 复扫 → 验证 → 汇总
+- **🌐 Web 仪表板** — Flask 图形界面，中英双语，SSE 实时进度，OpenAPI 文档
 - **💻 跨平台** — 支持 Linux（CentOS/Ubuntu/Debian）和 Windows（10+/Server 2016+）
-- **✅ 合规自查** — 内置所有权确认机制（R4），仅允许扫描自有资产
+- **✅ 合规自查** — 内置 6 条合规红线（R1-R6），仅允许扫描自有资产
+
+---
+
+## 功能矩阵
+
+| 功能 | CLI | Web 仪表板 | 文档 |
+|------|:--:|:--:|------|
+| 全量扫描（端口+漏洞+报告） | ✅ | ✅ | [USAGE.md](docs/USAGE.md#扫描资产) |
+| 快速扫描（Top 100 端口） | ✅ | ✅ | [USAGE.md](docs/USAGE.md#lightshield-quick-scan--快速扫描) |
+| 加固脚本生成 | ✅ | ✅ | [USAGE.md](docs/USAGE.md#生成加固脚本) |
+| 自动加固闭环（DRY_RUN/APPLY） | ✅ | ✅ | [USAGE.md](docs/USAGE.md#自动加固闭环) |
+| Markdown / Text / PDF 报告 | ✅ | ✅ | [USAGE.md](docs/USAGE.md#查看报告) |
+| 扫描历史查询 | ✅ `history` | ✅ | [USAGE.md](docs/USAGE.md#查看历史) |
+| 规则导入（文件/URL） | ✅ `--rules-url` | ❌ | [USAGE.md](docs/USAGE.md#规则导入) |
+| Bark 通知推送 | ✅ `--bark-key` | ❌ | [USAGE.md](docs/USAGE.md#bark-通知推送) |
+| OpenAPI 文档 | — | ✅ `/docs` | [API.md](docs/API.md) |
+| 中英双语 i18n | — | ✅ | [USAGE.md](docs/USAGE.md#web-仪表板) |
 
 ---
 
@@ -61,19 +110,18 @@ LightShield（轻盾）是一款面向开发者和运维人员的**轻量级安�
 ### 1. 安装
 
 ```bash
-# Linux
-git clone https://github.com/LightShield/lightshield.git
+# 方式一：从源码安装（推荐，获取最新功能）
+git clone https://github.com/Nagi-226/LightShield.git
 cd lightshield
-pip install -r requirements.txt
 pip install -e .
-```
 
-```powershell
-# Windows（管理员）
-git clone https://github.com/LightShield/lightshield.git
-cd lightshield
-pip install -r requirements.txt
-pip install -e .
+# 方式二：从 PyPI 安装（稳定版）
+pip install lightshield
+
+# 可选依赖（按需安装）
+pip install lightshield[nmap]    # Nmap Python 封装
+pip install lightshield[web]     # Web 仪表板 + PDF 报告
+pip install lightshield[dev]     # 开发工具（测试/lint/类型检查）
 ```
 
 > 详细安装说明请参见 [安装指南](docs/INSTALL.md)。
@@ -90,6 +138,15 @@ lightshield scan 127.0.0.1 --confirm-ownership
 
 扫描完成后，报告默认保存在 `./reports/` 目录下，格式为 Markdown。
 
+```bash
+# 查看报告
+cat ./reports/report-*.md
+
+# 或启动 Web 仪表板在浏览器中查看
+lightshield serve
+# 浏览器访问 http://127.0.0.1:5000
+```
+
 ---
 
 ## 命令参考
@@ -99,36 +156,47 @@ lightshield scan 127.0.0.1 --confirm-ownership
 | `scan` | 全量扫描（资产 + 漏洞 + 报告） | `lightshield scan 192.168.1.1 --confirm-ownership` |
 | `quick-scan` | 快速扫描（Top 100 端口） | `lightshield quick-scan 127.0.0.1 --confirm-ownership` |
 | `harden` | 扫描 + 加固脚本生成 | `lightshield harden 192.168.1.1 --confirm-ownership` |
+| `harden --closed-loop` | 自动加固闭环（v0.0.40+） | `lightshield harden 127.0.0.1 --closed-loop --confirm-ownership` |
+| `harden --closed-loop --apply` | 真机执行加固（改真实系统） | `lightshield harden 127.0.0.1 --closed-loop --apply --confirm-ownership` |
+| `history` | 查看扫描历史 | `lightshield history --limit 20` |
+| `serve` | 启动 Web 仪表板 | `lightshield serve --host 127.0.0.1 --port 5000` |
 | `version` | 查看版本号 | `lightshield version` |
 
 ### 通用参数
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `--output-format` | 报告格式：`markdown` / `text` | `markdown` |
+| `--output-format` | 报告格式：`markdown` / `text` / `pdf` | `markdown` |
 | `--output-dir` | 输出目录 | `./reports` |
-| `--confirm-ownership` | 确认目标所有权 | 否（需交互确认） |
+| `--confirm-ownership` | 确认目标所有权（R4 合规） | 否（需交互确认） |
+| `--scan-types` | 扫描类型，逗号分隔 | `port_scan,service_detect` |
 | `--timeout` | 超时时间（秒） | `60` |
+| `--rules-url` | 从远程 URL 导入额外规则 | 无 |
+| `--bark-key` | Bark 推送 Key（扫描完成通知手机） | 无（可用 `LS_BARK_KEY` 环境变量） |
 | `--verbose` | 输出详细日志 | 否 |
 
 ---
 
-## 安装方法
+## 文档导航
 
-- 📖 [安装指南](docs/INSTALL.md) — 环境要求、Linux / Windows 部署步骤、常见安装问题
-- 🚀 一键部署脚本：`scripts/deploy_linux.sh`（Linux）、`scripts/deploy_win.ps1`（Windows）
+| 文档 | 说明 |
+|------|------|
+| 📖 [安装指南](docs/INSTALL.md) | 环境要求、Linux / Windows 部署步骤、常见安装问题 |
+| 📖 [使用手册](docs/USAGE.md) | 命令详解、扫描参数、报告解读、加固闭环、Web 仪表板 |
+| 📖 [API 参考](docs/API.md) | REST API 端点、请求/响应示例、错误码、合规要求 |
+| ❓ [常见问题](docs/FAQ.md) | 权限要求、与 Nmap 的关系、操作系统兼容性、Web 部署 |
+| 📋 [变更日志](CHANGELOG.md) | 版本历史与变更详情 |
+| 🤝 [贡献指南](CONTRIBUTING.md) | 开发环境搭建、代码规范、PR 流程、合规约束 |
+| 🔒 [安全策略](SECURITY.md) | 安全漏洞报告流程与响应承诺 |
+| 📜 [行为准则](CODE_OF_CONDUCT.md) | 社区行为准则 |
 
 ---
 
-## 使用文档
+## 一键部署
 
-- 📖 [使用手册](docs/USAGE.md) — 命令详解、扫描参数、报告解读、加固脚本使用
-
----
-
-## 常见问题
-
-- ❓ [常见问题](docs/FAQ.md) — 权限要求、与 Nmap 的关系、操作系统兼容性等
+- 🚀 Linux：`scripts/deploy_linux.sh`
+- 🚀 Windows：`scripts/deploy_win.ps1`
+- 🐳 Docker：`docker compose up`（详见 [docs/INSTALL.md](docs/INSTALL.md#docker-部署)）
 
 ---
 
@@ -137,17 +205,20 @@ lightshield scan 127.0.0.1 --confirm-ownership
 ```
 LightShield/
 ├── lightshield/          # 核心 Python 包
-│   ├── cli.py            # 命令行入口（4 子命令）
-│   ├── core.py           # 核心调度器（扫描编排+加固编排）
+│   ├── cli.py            # 命令行入口（7 子命令）
+│   ├── core.py           # 核心调度器（扫描编排 + 加固编排 + 闭环编排）
 │   ├── config.py         # 配置管理（YAML/JSON + 环境变量覆盖）
-│   ├── adapters/         # 扫描适配器（Nmap/MSF/自研引擎）
-│   ├── scanners/         # 漏洞扫描器（Web漏洞/弱口令/组件）
-│   ├── rules/            # 规则引擎（14条漏洞规则 + 6条加固规则）
-│   ├── harden/           # 加固脚本生成器（Linux .sh / Windows .ps1）
-│   ├── report/           # 中文报告生成（Markdown / Text）
-│   └── utils/            # 工具函数（校验/日志/常量）
+│   ├── adapters/         # 扫描适配器（Nmap / MSF scanner / Nuclei）
+│   ├── scanners/         # 漏洞扫描器（Web漏洞 / 弱口令 / 组件 CVE）
+│   ├── rules/            # 规则引擎（漏洞规则 + 加固规则，支持远程导入）
+│   ├── harden/           # 加固脚本生成器（Linux .sh / Windows .ps1）+ 闭环验证
+│   ├── sandbox/          # 沙箱执行器（Docker 隔离 + 真机执行）
+│   ├── report/           # 中文报告生成（Markdown / Text / PDF）
+│   ├── repository/       # 扫描结果持久化（SQLite / JSON 文件）
+│   ├── web/              # Flask Web 仪表板（API + 页面 + i18n + CSRF）
+│   └── utils/            # 工具函数（校验 / 日志 / 常量 / 通知 / 归档）
 ├── scripts/              # 一键部署脚本
-├── tests/                # 单元测试（441 项，零失败）
+├── tests/                # 单元测试（798 项，零失败）
 ├── docs/                 # 用户文档
 ├── LICENSE               # MIT 许可证
 └── README.md             # 本文件
@@ -156,8 +227,31 @@ LightShield/
 
 ---
 
+## 合规红线（R1-R6）
+
+LightShield 是安全自检工具，**不是攻击工具**。以下 6 条红线不可逾越：
+
+| 红线 | 内容 |
+|:--:|------|
+| R1 | 禁止对外主动攻击（仅检测，不含 exploit） |
+| R2 | 禁止批量扫描公网 IP（只接受单 IP/域名） |
+| R3 | 禁止远控/后门/木马 |
+| R4 | 仅允许自查自有资产（所有权确认门） |
+| R5 | MSF 调用仅限 `auxiliary/scanner/*` 白名单 |
+| R6 | 扫描并发 ≤20，间隔 ≥5s |
+
+详见 [CLAUDE.md §五](./CLAUDE.md#五合规红线强制遵守)。
+
+---
+
 ## 许可证
 
 [MIT License](./LICENSE) — Copyright (c) 2026 LightShield Team
 
 本工具仅用于自有资产安全自查，**禁止**用于未授权的非法扫描。使用者须自行承担一切法律责任。
+
+---
+
+## 致谢
+
+感谢所有为 LightShield 贡献代码、文档和反馈的社区成员。（贡献者名单将在 v1.0.0 正式版发布时补全。）

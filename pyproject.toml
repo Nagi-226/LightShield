@@ -84,7 +84,16 @@ Documentation = "https://github.com/Nagi-226/LightShield/tree/main/docs"
 include = ["lightshield*"]
 
 [tool.setuptools.package-data]
-"lightshield" = ["rules/*.json"]
+"lightshield" = [
+    "rules/*.json",
+    "nuclei-templates/*",
+    "web/templates/*.html",
+    "web/static/*.json",
+    "web/static/*.css",
+    "web/static/vendor/swagger-ui/*.js",
+    "web/static/vendor/swagger-ui/*.css",
+    "web/locales/*.json",
+]
 
 # === 工具配置（开发用） ===
 [tool.pytest.ini_options]

@@ -3,6 +3,12 @@
 > **迭代原则**：每个小版本 = 1-2 个可独立验证的模块产出，遵循"骨架→基础设施→核心能力→集成"的渐进路径。
 > **护栏**：每个版本完成后必须通过 Gate A（合规）+ Gate B（范围忠实度），里程碑版本追加 Gate C（质量审计）。
 
+## 当前安全阻断（覆盖历史路线安排）
+
+- **Nuclei synchronization: BLOCKED** — 等待执行前模板审查、不可绕过测试、来源审计与发行包烟测。
+- **v0.0.56 WSGI: BLOCKED** — 等待发行资源、对外监听凭据门禁、门面错误语义与多进程任务状态设计。
+- **AssetRegistry: BLOCKED** — 等待 R2 多目标 ADR 从 `Proposed - Changes Required` 重新评审为 Accepted。
+
 ---
 
 ## 版本总览

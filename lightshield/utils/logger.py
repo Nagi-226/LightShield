@@ -218,6 +218,23 @@ class LightShieldLogger:
         )
         self.info("audit", f"MSF调用 module={module_path} target={target} status={status} duration={duration}s")
 
+    def audit_nuclei_template(
+        self,
+        path: str,
+        digest: str,
+        tags: list[str],
+        allowed: bool,
+        reason: str,
+    ) -> None:
+        """Record a pre-execution Nuclei template policy decision."""
+        status = "allowed" if allowed else "rejected"
+        tags_text = ",".join(tags)
+        message = (
+            f"nuclei_template | path={path} | sha256={digest} | tags={tags_text} | status={status} | reason={reason}"
+        )
+        self._audit_logger.info(message)
+        self.info("audit", message)
+
     def audit_config_change(self, key: str, old_value: str, new_value: str) -> None:
         """记录配置变更"""
         self._audit_logger.info(f"config_change | key={key} | old={old_value} | new={new_value}")
