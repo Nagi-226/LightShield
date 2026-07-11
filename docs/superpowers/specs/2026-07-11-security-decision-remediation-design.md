@@ -1,7 +1,7 @@
 # Security Decision Remediation Design
 
 **Date:** 2026-07-11
-**Status:** Awaiting written-spec review
+**Status:** Approved for implementation
 **Scope:** Remediate audit findings 1-5, block unsafe roadmap work, and return the R2 multi-target ADR for revision.
 
 ## Goals
