@@ -8,7 +8,7 @@
   <a href="https://github.com/Nagi-226/LightShield/actions"><img src="https://img.shields.io/badge/tests-798%20passed-brightgreen.svg" alt="Tests: 798 passed"></a>
   <a href="#"><img src="https://img.shields.io/badge/coverage-79.6%25-yellow.svg" alt="Coverage: 79.6%"></a>
   <a href="https://nmap.org/"><img src="https://img.shields.io/badge/Nmap-7.x+-blueviolet.svg" alt="Nmap 7.x+"></a>
-  <a href="https://github.com/Nagi-226/LightShield"><img src="https://img.shields.io/badge/Version-0.0.46-orange.svg" alt="Version 0.0.46"></a>
+  <a href="https://github.com/Nagi-226/LightShield"><img src="https://img.shields.io/badge/Version-0.0.51-orange.svg" alt="Version 0.0.51"></a>
 </p>
 
 LightShield（轻盾）是一款面向开发者和运维人员的**轻量级安全自检工具**。它不依赖商业安全平台或云端服务，只需一条命令即可对自有资产完成端口扫描、服务识别、漏洞检测和加固建议生成 —— 全程离线运行。
