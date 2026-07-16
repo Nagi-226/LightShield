@@ -42,6 +42,8 @@ from lightshield.sandbox.base import ExecutionResult, SandboxExecutor
 from lightshield.utils.constants import RiskLevel, ScanStatus
 from lightshield.utils.validator import TargetValidator
 
+R4_CONFIRMATION_REQUIRED = "[R4] 所有权未确认：调用方必须在获得目标授权后显式传入 confirm_ownership=True。"
+
 # =============================================================================
 # 异步任务信息（v0.0.31: threading.Thread 异步扫描）
 # =============================================================================
@@ -180,8 +182,7 @@ class LightShieldCore:
 
         流程：
         1. R2 输入校验 → 不合法则拒绝
-        2. R4 所有权确认 → 如未确认则记录警告，但允许继续（CLI 模式）
-                           生产环境应设置 confirm_ownership=True
+        2. R4 所有权确认 → 未确认则拒绝，不调用适配器
         3. 匹配 scan_types 对应的适配器
         4. R6 并发数检查 → 超过限制则拒绝
         5. 按 R6 频率限制逐个执行扫描
@@ -192,7 +193,7 @@ class LightShieldCore:
             scan_types: 指定扫描类型列表，默认全部
             confirm_ownership: 是否已确认对目标拥有所有权（R4）。
                                必须由用户显式传入 True。
-                               未确认时扫描仍会继续，但会标记为"所有权未确认"。
+                               未确认时返回 FAILED，不调用适配器。
             **kwargs: 传递给适配器的额外参数
 
         Returns:
@@ -213,18 +214,14 @@ class LightShieldCore:
 
         # ---- Step 2: R4 所有权确认 ----
         if not confirm_ownership:
-            confirm_msg = self._confirm_ownership(target)
-            logger.warning(
-                "core",
-                f"R4 所有权未确认: {target}。{confirm_msg}",
+            logger.warning("core", f"拒绝未确认所有权的扫描: {target}。{R4_CONFIRMATION_REQUIRED}")
+            self._log_audit("ownership_rejected", target, R4_CONFIRMATION_REQUIRED)
+            return ScanResult(
+                status=ScanStatus.FAILED,
+                target=target,
+                error=R4_CONFIRMATION_REQUIRED,
             )
-            self._log_audit(
-                "ownership_unconfirmed",
-                target,
-                "用户未显式确认所有权，扫描仍继续执行（CLI 模式）",
-            )
-        else:
-            self._log_audit("ownership_confirmed", target, "用户已确认所有权")
+        self._log_audit("ownership_confirmed", target, "用户已确认所有权")
 
         # ---- Step 3: R6 并发数检查 ----
         requested_count = len(scan_types) if scan_types else len(self._adapters)
@@ -369,6 +366,24 @@ class LightShieldCore:
         """
         now = datetime.datetime.now()
         task_id = f"LS-{now.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+
+        if not confirm_ownership:
+            result = ScanResult(
+                status=ScanStatus.FAILED,
+                target=target,
+                error=R4_CONFIRMATION_REQUIRED,
+            )
+            task = _TaskInfo(
+                status=ScanStatus.FAILED,
+                target=target,
+                created_at=now.isoformat(),
+                result=result,
+                error=R4_CONFIRMATION_REQUIRED,
+            )
+            with self._tasks_lock:
+                self._task_results[task_id] = task
+            self._log_audit("ownership_rejected", target, R4_CONFIRMATION_REQUIRED)
+            return task_id
 
         task = _TaskInfo(
             status=ScanStatus.PENDING,

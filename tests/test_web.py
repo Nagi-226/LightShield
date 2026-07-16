@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -204,7 +206,7 @@ class TestAuth:
         """已登录调用受保护端点应正常返回。"""
         resp = auth_client.post(
             "/api/scan",
-            json={"target": "127.0.0.1"},
+            json={"target": "127.0.0.1", "confirm_ownership": True},
             headers=csrf_header(auth_client),
         )
         assert resp.status_code == 202
@@ -281,11 +283,47 @@ class TestScanAPI:
         """不传 scan_types 时应传 None 给 core（表示全部）。"""
         resp = auth_client.post(
             "/api/scan",
-            json={"target": "127.0.0.1"},
+            json={"target": "127.0.0.1", "confirm_ownership": True},
             headers=csrf_header(auth_client),
         )
         assert resp.status_code == 202
-        mock_core["submit_scan"].assert_called_once_with(target="127.0.0.1", scan_types=None, confirm_ownership=False)
+        mock_core["submit_scan"].assert_called_once_with(target="127.0.0.1", scan_types=None, confirm_ownership=True)
+
+    def test_submit_scan_rejects_missing_ownership_confirmation(self, auth_client, mock_core):
+        """Missing R4 confirmation is rejected before core submission."""
+        resp = auth_client.post(
+            "/api/scan",
+            json={"target": "127.0.0.1"},
+            headers=csrf_header(auth_client),
+        )
+
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "R4" in data["message"]
+        assert "confirm_ownership" in data["message"]
+        mock_core["submit_scan"].assert_not_called()
+
+    def test_submit_scan_rejects_false_ownership_confirmation(self, auth_client, mock_core):
+        """Explicit false R4 confirmation is rejected before core submission."""
+        resp = auth_client.post(
+            "/api/scan",
+            json={"target": "127.0.0.1", "confirm_ownership": False},
+            headers=csrf_header(auth_client),
+        )
+
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert "R4" in data["message"]
+        assert "confirm_ownership" in data["message"]
+        mock_core["submit_scan"].assert_not_called()
+
+    def test_openapi_requires_ownership_confirmation(self):
+        """The published scan contract must require the R4 confirmation field."""
+        document = json.loads(Path("lightshield/web/static/openapi.json").read_text(encoding="utf-8"))
+        scan_request = document["components"]["schemas"]["ScanRequest"]
+
+        assert "confirm_ownership" in scan_request["required"]
+        assert "default" not in scan_request["properties"]["confirm_ownership"]
 
     def test_get_scan_status_found(self, auth_client, mock_core):
         """存在的 task_id 应返回完整状态。"""

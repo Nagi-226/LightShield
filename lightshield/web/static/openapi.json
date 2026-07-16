@@ -123,8 +123,8 @@
       },
       "ScanRequest": {
         "type": "object",
-        "description": "提交扫描任务的请求体。受 R2 合规约束：target 必须是单一 IP 或域名，禁止 CIDR / 网段 / 通配符。",
-        "required": ["target"],
+        "description": "提交扫描任务的请求体。受 R2 与 R4 合规约束：target 必须是单一 IP 或域名，且调用方必须确认已获得目标所有权或明确授权。",
+        "required": ["target", "confirm_ownership"],
         "properties": {
           "target": {
             "type": "string",
@@ -141,8 +141,7 @@
           },
           "confirm_ownership": {
             "type": "boolean",
-            "description": "可选。R4 所有权确认标志，默认 false。",
-            "default": false,
+            "description": "必填。仅在已获得目标所有权或明确授权后传 true；缺失或 false 时请求被拒绝。",
             "example": true
           }
         }
@@ -381,7 +380,7 @@
       "post": {
         "tags": ["扫描"],
         "summary": "提交扫描任务",
-        "description": "异步提交一个扫描任务，立即返回 task_id。target 经 R2 双层校验（API 层 + core 内部）：必须是单一 IP 或域名，拒绝 CIDR / 网段 / 通配符 / 批量公网地址。提交后任务进入 pending 状态，由后台线程执行。",
+        "description": "异步提交一个扫描任务，立即返回 task_id。target 经 R2 双层校验（API 层 + core 内部）：必须是单一 IP 或域名，拒绝 CIDR / 网段 / 通配符 / 批量公网地址。confirm_ownership 必须为 true；缺失或 false 时按 R4 返回 400，且不会创建后台任务。",
         "operationId": "submitScan",
         "security": [
           {
@@ -411,7 +410,7 @@
             }
           },
           "400": {
-            "description": "请求体为空 / 缺 target / R2 校验失败。",
+            "description": "请求体为空 / 缺 target / R2 校验失败 / R4 所有权未确认。",
             "content": {
               "application/json": {
                 "schema": {

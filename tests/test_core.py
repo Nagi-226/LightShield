@@ -13,7 +13,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -172,6 +172,19 @@ class TestAsyncInterface:
         status = core.get_scan_status(task_id)
         assert status["status"] == "failed"
 
+    def test_submit_scan_rejects_unconfirmed_without_starting_thread(self, core, mock_adapter):
+        """Unconfirmed async scans fail immediately without creating a worker."""
+        core.register_adapter(mock_adapter)
+
+        with patch("lightshield.core.threading.Thread") as thread_cls:
+            task_id = core.submit_scan("127.0.0.1")
+
+        thread_cls.assert_not_called()
+        status = core.get_scan_status(task_id)
+        assert status["status"] == "failed"
+        assert "confirm_ownership=True" in status["error"]
+        mock_adapter.scan.assert_not_called()
+
 
 # =============================================================================
 # 合规确认
@@ -186,6 +199,17 @@ class TestComplianceConfirmation:
         prompt = core._confirm_ownership("192.168.1.1")
         assert isinstance(prompt, str)
         assert len(prompt) > 0
+
+    def test_run_scan_rejects_unconfirmed_before_adapter(self, core, mock_adapter):
+        """Unconfirmed direct calls fail closed before adapter execution."""
+        core.register_adapter(mock_adapter)
+
+        result = core.run_scan("127.0.0.1")
+
+        assert result.status == ScanStatus.FAILED
+        assert result.error is not None
+        assert "confirm_ownership=True" in result.error
+        mock_adapter.scan.assert_not_called()
 
 
 # =============================================================================

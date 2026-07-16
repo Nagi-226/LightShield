@@ -24,6 +24,7 @@ from pathlib import Path
 from flask import Blueprint, Response, current_app, jsonify, request, send_from_directory, session, stream_with_context
 
 from lightshield.config import LightShieldConfig
+from lightshield.core import R4_CONFIRMATION_REQUIRED
 from lightshield.report.reporter import ReportGenerator
 from lightshield.utils.constants import ScanStatus
 from lightshield.utils.logger import get_logger
@@ -109,7 +110,7 @@ def api_submit_scan():
         {
             "target": "192.168.1.1",          // 必填：目标 IP/域名
             "scan_types": ["port_scan", ...],  // 可选：扫描类型列表，默认全部
-            "confirm_ownership": true          // 可选：所有权确认，默认 false
+            "confirm_ownership": true          // 必填：已获得目标所有权或明确授权
         }
 
     Response 202:
@@ -152,15 +153,17 @@ def api_submit_scan():
                     }
                 ), 400
 
+    if not _is_truthy(data.get("confirm_ownership")):
+        return jsonify({"error": True, "message": R4_CONFIRMATION_REQUIRED, "code": 400}), 400
+
     scan_types: list[str] | None = raw_scan_types
-    confirm_ownership: bool = data.get("confirm_ownership", False)
 
     core = current_app.config["LIGHTSHIELD_CORE"]
     try:
         task_id = core.submit_scan(
             target=target,
             scan_types=scan_types,
-            confirm_ownership=confirm_ownership,
+            confirm_ownership=True,
         )
     except Exception as exc:
         return jsonify({"error": True, "message": f"扫描提交失败：{exc}", "code": 500}), 500
