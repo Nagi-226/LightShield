@@ -2,7 +2,7 @@
 
 > **用途**：集中记录项目从 v0.0.01 至今的所有重大技术与架构决策，便于追溯遗留问题、审计决策链路、理解"为什么当时这么做"。
 > **维护规则**：每次做出影响架构/Agent 分工/合规/外部依赖的决策后，在此文件追加一条 + 更新速查表。
-> **最后更新**：2026-07-11 | **条目数**：28
+> **最后更新**：2026-07-16 | **条目数**：29
 
 ---
 
@@ -25,7 +25,7 @@
 | 13 | 2026-06-25 | v0.0.40 | Kimi 加入为第 6 Agent（双模式·K2.7-code+K2.6） | 集群 | ✅ |
 | 14 | 2026-06-25 | v0.0.40 | ZCode 角色升级：文档→长程主力+全量审查→特种部队 | 集群 | ✅ |
 | 15 | 2026-06-25 | v0.0.40 | QoderWork 角色升级：VM+前端→高级开发主力（Code Arena #2） | 集群 | ✅ |
-| 16 | 2026-06-25 | v0.0.40 | CC 切回 DeepSeek-V4-Pro | 集群 | ✅ |
+| 16 | 2026-06-25 | v0.0.40 | CC 切回 DeepSeek-V4-Pro | 集群 | 🔄 #29 推翻 |
 | 17 | 2026-06-26 | v0.0.40 | ADR-v040：加固执行基底——真机 HostExecutor（非 Docker） | 架构 | ✅ |
 | 18 | 2026-06-26 | v0.0.40 | 八荣八耻→十荣十耻 Agent 行为准则（翻车模式+四问自检） | 流程 | 🔄 v1.3 |
 | 19 | 2026-06-26 | v0.0.40 | 三阶段全项目组合排查审查体系（Kimi+ZCode→Codex→CC+QW） | 流程 | ✅ |
@@ -38,6 +38,7 @@
 | 26 | 2026-07-08 | v0.0.50 | v0.0.50–v0.0.60 十一版本迭代规划（三阶段+六项硬约束） | 规划 | ✅ |
 | 27 | 2026-07-08 | v0.0.52 | ADR×3：离线定义 + R2 多目标重设计 + WSGI 迁移方案 | 架构 | ⚠️ 部分退回/阻断 |
 | 28 | 2026-07-11 | v0.0.52 | Codex GPT-5.6-Sol 升级 + 分级派遣体系（🔪 手术刀定位） | 集群 | ✅ |
+| 29 | 2026-07-16 | v0.0.52+ | CC 切回 Opus 4.8（原生模型）+ 扩权直做（推翻 #16） | 集群 | ✅ |
 
 ---
 
@@ -451,6 +452,29 @@ Proposer (Codex) → Opponent (Kimi) → Revision (Codex) → Arbitration (CC) �
 
 ---
 
+### #29 · 2026-07-16 · v0.0.52+ · CC 切回 Opus 4.8 + 扩权直做
+
+**决策**：CC 底层模型从 DeepSeek-V4-Pro 切回 **Opus 4.8**（Claude Code 原生模型）。定位保持"架构师 + 编排 + 安全终审"不变，🆕 **扩权**：CC 可直接承接复杂 + 安全关键实现（sandbox/validator/MSF/R2 等），降低对最贵 Agent（Codex $5/$30）的**实现**依赖。
+
+**推翻 #16 的理由**：#16（2026-06-25）以"Opus 溢出/慢/贵"为由切回 DS。本次由用户主动切回 Opus——等于接受"成本换能力"，#16 的成本顾虑不再构成约束。
+
+**定位为何"可变但非被迫"**：
+- CC 的编排/架构/安全终审角色从未被 DS 的能力卡住（#9 时 CC=Opus 亦是此角色）→ 升级 Opus 不"强制"改角色
+- 但 Opus 4.8 是本文档体系里其他模型对标的基准（GLM 与 Opus <1%、AIME 超 Opus）→ CC 从"集群最快最省但编码上限不如前三"跃入第一梯队 → 解锁"直接吃重活"的**选项**
+
+**三个连带修正**：
+1. **评审矩阵同源盲区消除**：原 `REVIEW_CHECKLIST` 判定 CodeBuddy-on-DS 由 CC(DS) 审查 = ❌ 同模型盲区。CC=Opus 后 CC≠DS → 跨模型（✅）；集群无第二个 Opus → CC 审全员皆跨模型
+2. **跨模型复审纪律强化**：CC 自写代码仍由不同模型审（安全关键→Codex GPT-5.6-Sol、常规→Kimi K2.7-code，均 ≠ Opus）。CC 写得越多，此门禁越关键、越不可省
+3. **ZCode/Codex 措辞校准**：ZCode"集群编码最强"、Codex"唯一能突破"相对 CC 的表述弱化——ZCode 护城河收窄为 1M 上下文 + CLI 异步长任务；Codex 收敛为"最硬骨头 + CC 安全产出复审"。二者相对 CC 的优势从"更强"转为"上下文/模型多样性"
+
+**⚠️ 诚实标注**：GPT-5.6-Sol / GLM-5.2 / Qwen-3.7-Max 等第三方基准数字超出 CC（Opus 4.8）知识范围，无法独立核实；本决策的能力对比在**文档自身框架内** + Opus 4.8 已知能力做出，非为第三方数字背书。
+
+**同步文件**：`CLAUDE.md §零-B`、`.cluster/CLUSTER.md`（header/能力表/§3.1/§3.4/§3.6/§3.7/§四/§八/§九审计/§十）、`.guardrails/REVIEW_CHECKLIST.md`、`.guardrails/PROGRESS.md`
+
+**参阅**：`CLAUDE.md §零-B`、`.cluster/CLUSTER.md §九`、决策 #9（上次 Opus 时期）、#16（被本条推翻）
+
+---
+
 ## 待复查决策
 
 以下决策设有明确的复查时间点，到达后需评估是否调整：
@@ -461,6 +485,7 @@ Proposer (Codex) → Opponent (Kimi) → Revision (Codex) → Arbitration (CC) �
 | 26 | v0.0.50–v0.0.60 路线图 | v0.0.55（阶段二中期） | 进度偏差 + Codex 任务是否真正"刀刃" |
 | 23 | Debate 循环 2-3 轮 | 每次 Debate 后 | 是否真的需要 3 轮，还是 2 轮足够 |
 | 20 | ZCode 下线·CodeBuddy 替补 | ZCode 恢复上线时 | 替补期间产出质量 |
+| 29 | CC 扩权直做安全关键实现 | v0.0.55 | CC 自写安全代码的跨模型复审覆盖率 + Codex 调用频率是否真的下降 |
 
 ---
 
@@ -468,7 +493,7 @@ Proposer (Codex) → Opponent (Kimi) → Revision (Codex) → Arbitration (CC) �
 
 ```
 架构决策（7）： #2 #4 #10 #17 #24 #27（×3）
-集群决策（9）： #7 #9 #12 #13 #14 #15 #16 #22 #28
+集群决策（10）：#7 #9 #12 #13 #14 #15 #16 #22 #28 #29
 流程决策（7）： #5 #8 #11 #18 #19 #20 #21 #23
 产品决策（2）： #1 #26
 合规决策（1）： #3
@@ -481,15 +506,15 @@ Proposer (Codex) → Opponent (Kimi) → Revision (Codex) → Arbitration (CC) �
 
 | 决策记录位置 | 涵盖决策 |
 |------|:--:|
-| 本文档 | #1-#28（主索引） |
+| 本文档 | #1-#29（主索引） |
 | `docs/adr-v040-execution-substrate.md` | #17 详细 |
 | `docs/adr-v043-web-core-facade.md` | #24 详细 |
 | `docs/adr-v052-offline-definition.md` | #27-1 详细 |
 | `docs/adr-v052-r2-multi-target-redesign.md` | #27-2 详细 |
 | `docs/adr-v052-wsgi-migration.md` | #27-3 详细 |
 | `.guardrails/PROGRESS.md` | 全量审计日志（#10-#28） |
-| `.cluster/CLUSTER.md §九` | 集群决策（#9 #12-#16 #22 #28） |
-| `CLAUDE.md §零-B` | 集群成员 + 编排规则（#7 #12-#16 #28） |
+| `.cluster/CLUSTER.md §九` | 集群决策（#9 #12-#16 #22 #28 #29） |
+| `CLAUDE.md §零-B` | 集群成员 + 编排规则（#7 #12-#16 #28 #29） |
 | `.guardrails/AGENT_CODE_OF_CONDUCT.md` | 护栏演进（#8 #18） |
 | `.guardrails/REVIEW_CHECKLIST.md §六` | 审查制度（#23 #28） |
 | `C:\Users\FJL03\.claude\projects\E--Github-Project-LightShield\memory\` | 会话级决策记录（#25 #26 #28） |

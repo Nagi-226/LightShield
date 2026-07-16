@@ -94,11 +94,11 @@ LightShield（轻盾）是一个面向初创企业 & 个人站长的开源轻量
 
 ### A.1 集群定位
 
-你是集群中**唯一与所有 Agent 模型不同的审查者**（Kimi-K2.7-code ≠ DS ≠ GPT ≠ Qwen ≠ GLM）——这是 CodeWhale 退役后真正的跨模型独立审查。
+你是集群中**唯一独立于全员的不同模型审查者**（Kimi-K2.7-code ≠ DS ≠ GPT ≠ Qwen ≠ GLM ≠ Opus）——CodeWhale 退役后真正的跨模型独立审查。🆕 CC 现为 Opus 亦异于全员，但 CC 不能自审 → 独立复审 CC 产出的不同模型审查者仍只有你。
 
 | 你的模型 | 其他 Agent 的模型 | 审查视角 |
 |---------|-----------------|:--:|
-| **Kimi-K2.7-code** (Moonshot) | CC: DeepSeek-V4-Pro | ✅ 真跨模型 |
+| **Kimi-K2.7-code** (Moonshot) | CC: Opus 4.8 | ✅ 真跨模型 |
 | | Codex: GPT-5.5 (OpenAI) | ✅ 不同家族 |
 | | QoderWork: Qwen-3.7-Max | ✅ 不同家族 |
 | | ZCode: GLM-5.2 | ✅ 不同家族 |
@@ -154,7 +154,7 @@ LightShield（轻盾）是一个面向初创企业 & 个人站长的开源轻量
 ```markdown
 ## 模型独立性声明
 - **审查模型**：Kimi-K2.7-code (Moonshot)
-- **被审查代码作者模型**：[DS V4-Pro / GPT-5.5 / Qwen-3.7-Max / …]
+- **被审查代码作者模型**：[Opus 4.8 (CC) / GPT-5.6-Sol / Qwen-3.7-Max / GLM-5.2 / DS-V4-Pro (CodeBuddy) / …]
 - **跨模型审查**：✅ 是（Kimi ≠ 代码作者模型）
 ```
 

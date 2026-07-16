@@ -4,7 +4,7 @@
 > **维护**：架构变更、依赖路径变化、合规规则调整时同步更新。
 > **集群模式**：本项目开启了多 Agent 开发集群，详见 `.cluster/CLUSTER.md`（含 🔭 §十 观察名单·Agent 候选技术储备）。
 > **护栏体系**：基于 Nagi Dev Guardrails v3.3 的六层防御架构（+ Goal Drift 防护），详见 `.guardrails/`。v1.3 十荣十耻 + 翻车模式 + 四问自检 + Goal Drift 五模式六反制 + 注意力管理 + 6 Agent 全分发。
-> **上次会话**：2026-07-08 — v0.0.50–v0.0.60 十一版本迭代规划（修订版 v2）+ 报告页前端设计刷新（severity bar + risk badge 增强）。全量测试 1001/0/1 通过。
+> **上次会话**：2026-07-16 — 🆕 CC 底层模型 DeepSeek-V4-Pro → **Opus 4.8**（原生模型·决策 #29）；集群文档全量同步（CLAUDE/CLUSTER/REVIEW_CHECKLIST/DECISION_LOG/PROGRESS/ZCODE/KIMI）；CC 扩权直做（复杂+安全关键实现）+ 评审矩阵同源盲区消除 + ZCode/Codex 措辞校准。（前次 2026-07-08：v0.0.50–v0.0.60 迭代规划 + 报告页前端刷新，测试 1001/0/1）
 >   - 质量基线：**1001 tests** / 0 fail / 1 skip / 12 门禁全绿 / 覆盖率 ~82.95%
 >   - 剩余债务：**0 CRITICAL / 0 HIGH / 0 MEDIUM / 0 LOW / 0 INFO** 🎉 全部清零
 >   - 债务清零报告：`docs/audit-v051-debt-resolution.md`
@@ -66,17 +66,17 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 本项目配置了一个 **6 Agent 开发集群**，Claude Code 担任架构师+编排器角色。
 
 > **🔄 2026-06-25 集群精简**：Reasonix/CodeWhale/Hermes → CodeBuddy（多模型 IDE 承接，同模型零能力损失）；Qoder IDE → QoderWork（同模型 Qwen-3.7-Max + 同付费体系，双模式共存）。
-> **🆕 Kimi Code 加入**：Kimi-K2.7-code 作为第 6 Agent，担任深度调试 + 独立模型审查专员。Kimi 是集群中**唯一与所有其他 Agent 模型不同的审查者**（Kimi ≠ DS ≠ GPT ≠ Qwen ≠ GLM），填补 CodeWhale 退役后"同源盲区"的审查缺口——这一次模型真正不同。
+> **🆕 Kimi Code 加入**：Kimi-K2.7-code 作为第 6 Agent，担任深度调试 + 独立模型审查专员。Kimi 是集群中**唯一与所有其他 Agent 模型不同的审查者**（Kimi ≠ DS ≠ GPT ≠ Qwen ≠ GLM ≠ Opus），填补 CodeWhale 退役后"同源盲区"的审查缺口——这一次模型真正不同。
 > **🆕 Codex 角色精炼（分级派遣）**：2026-07-11 起 GPT-5.6-Sol 从"安全+前端+审查全干"→ 🔪 高精度手术刀（仅安全关键实现·跨模块突破·发版终审·安全 commit 审查）。常规 commit 交叉审查交 Kimi 批量审（攒 5-10 commit 一次），常规前端交 CodeBuddy。Codex 集群最贵（$5/$30），确保每次调用在刀刃上。分级派遣表见 `.cluster/CLUSTER.md §3.2`。
 >
-> **CC 模型**：DeepSeek-V4-Pro（2026-06-25 切回）。
+> **CC 模型**：**Opus 4.8**（2026-07-16 切回·Claude Code 原生模型；决策日志 #29）。第一梯队编码能力——CC 从"编排优先"扩展为**可直接承接复杂+安全关键实现**（见编排规则 5），跨模型复审纪律不变。
 > **CodeBuddy 多模型能力**：可随时在 IDE 中切换 DeepSeek-V4-Pro/Flash、GLM-5.2/5.0-Turbo、MiniMax-M3、Kimi-K2.7-code/2.6、Hy3-Preview——按任务需要在派工书中指定模型即可。
 
 ### 集群成员
 
 | Agent | 角色 | 底层模型 | 非交互调用 |
 |-------|------|---------|-----------|
-| **Claude Code** | 🏛️ 架构师 + 编排器 + 安全终审 | **DeepSeek-V4-Pro**（2026-06-25 切回） | —（自身） |
+| **Claude Code** | 🏛️ 架构师 + 编排器 + 安全终审（🆕 可直接承接复杂+安全关键实现） | **Opus 4.8**（2026-07-16·原生模型） | —（自身） |
 | **Codex** | 🔪 高精度手术刀（分级派遣：仅安全关键实现·跨模块突破·发版终审·安全 commit 审查） | **GPT-5.6-Sol**（Coding Agent Index #1·集群最贵 $5/$30） | `codex exec "$(cat task.md)"` |
 | **CodeBuddy** 🆕 | 💻 多模型 A/B 双模式：Mode A = CodeBuddy IDE（手动编码·默认实现+测试+样板+🔄ZCode替补）/ Mode B = WorkBuddy（自主Agent·CLI可调度·三大体系切换·SkillHub 22K+ Skills·100+ Agent并行·MCP多应用连接器） | DeepSeek-V4-Pro/Flash、GLM 5.2/5.1、MiniMax M3/2.7、Kimi K2.7/2.6、Qwen 3.7/3.6+（A/B 同模型池） | Mode A：需人工 IDE / Mode B：`workbuddy craft "$(cat task.md)"` |
 | **Kimi** | 🔬 Kimi 统一 Agent（双模式：CLI 代码审查+深度调试 / 桌面自动化+E2E 验证）+ 🆕 常规 commit 批量交叉审查 | K2.7-code（模式A）+ K2.6（模式B） | `kimi exec`（A）/ Kimi Work 桌面端（B） |
@@ -85,12 +85,12 @@ Gate E: 回归验证   → QoderWork VM 中 smoke test
 
 ### 编排规则
 
-1. **Claude Code 负责架构设计、接口定义、任务拆分、安全终审、集成合并** — 标准实现和样板代码由 CodeBuddy 承接
+1. **Claude Code 负责架构设计、接口定义、任务拆分、安全终审、集成合并** — 标准实现和样板代码由 CodeBuddy 承接；🆕 CC 底层切 Opus 4.8 后，**复杂+安全关键实现 CC 可直接承接**（不再必须外派 Codex），常规/批量实现仍走 CodeBuddy 以保成本与并行
 2. **每个独立模块通过任务文件下发** — 任务文件在 `.cluster/tasks/pending/` 中，自包含上下文。**CodeBuddy 任务须在开头标注 `【CodeBuddy 模式：A/B】` + `【模型切换：XXX】`**。Mode A = CodeBuddy IDE 手动操作；Mode B = WorkBuddy CLI 非交互调度（`workbuddy craft`）
 3. **并行执行 + 集中集成** — 各 Agent 并行产出，Claude Code 审查后合并
-4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）。**CC 自写代码分两级审查**：① 安全关键 commit（sandbox/validator/MSF/R2）→ Codex（GPT-5.6-Sol）交叉审查（强制，⚠️ over-agency——CC 需二次验证）；② 常规 commit（Web/报告/测试/文档）→ Kimi 批量审查（攒 5-10 commit 一次，K2.7-code ≠ DS → 跨模型视角不丢）。**Kimi Code 每版本强制一次独立审查**（集群唯一与所有 Agent 模型不同的审查者）。**🔑 CC 架构决策由 ZCode（GLM-5.2）做全局一致性二审**（每里程碑一次）。**🆕 Debate 对抗审查**（Codex↔Kimi 对抗循环）用于安全关键模块变更——架构级 Debate 由 Codex 提案·Kimi 反驳，非架构级 Debate 由 Kimi 提案·CC 反驳。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
+4. **审查机制** — CC 审查所有 Agent 产出（已是跨模型审查）。**CC 自写代码分两级审查**：① 安全关键 commit（sandbox/validator/MSF/R2）→ Codex（GPT-5.6-Sol）交叉审查（强制，⚠️ over-agency——CC 需二次验证）；② 常规 commit（Web/报告/测试/文档）→ Kimi 批量审查（攒 5-10 commit 一次，K2.7-code ≠ Opus → 跨模型视角不丢）。**CC 承接更多实现后，此跨模型复审更关键、不可省。****Kimi Code 每版本强制一次独立审查**（集群唯一与所有 Agent 模型不同的审查者）。**🔑 CC 架构决策由 ZCode（GLM-5.2）做全局一致性二审**（每里程碑一次）。**🆕 Debate 对抗审查**（Codex↔Kimi 对抗循环）用于安全关键模块变更——架构级 Debate 由 Codex 提案·Kimi 反驳，非架构级 Debate 由 Kimi 提案·CC 反驳。审查清单见 `.guardrails/REVIEW_CHECKLIST.md`
 5. **模型优势对齐（分级派遣体系）** —
-   - 🔪 **高精度手术刀层（Codex·GPT-5.6-Sol）**：安全关键实现·跨模块突破·发版终审·安全 commit 审查。全球最强编码模型（Coding Agent #1），集群最贵（$5/$30）。**仅在其他 Agent 无法突破时动用**——不是"特种部队"标签，是逐任务判定。
+   - 🔪 **高精度手术刀层（Codex·GPT-5.6-Sol）**：安全关键实现·跨模块突破·发版终审·安全 commit 审查。全球最强编码模型（Coding Agent #1），集群最贵（$5/$30）。**仅在其他 Agent 无法突破时动用**——不是"特种部队"标签，是逐任务判定。🆕 **CC=Opus 4.8 后**：安全关键实现 CC 可自行完成 → Codex 收敛为「CC/其他 Agent 确实啃不动的最硬骨头 + CC 安全关键产出的跨模型复审」，调用频率进一步下降。
    - 🎯 **高级开发层**：高级实现主力→QoderWork(Qwen-3.7-Max，Code Arena #2·35h 长程·VM 隔离)；特种部队→ZCode(GLM-5.2，1M 上下文·Code Arena #2，关键时刻动用)
    - 🔧 **常规开发层**：默认实现+测试+样板+常规前端→CodeBuddy Mode A(多模型按需切换)；批量模板化/可标准化任务→CodeBuddy Mode B(WorkBuddy CLI·三大体系·SkillHub)
    - 🔬 **专业审查层**：独立审查+深度调试(MCP)+🆕 常规 commit 批量审查→Kimi 模式A(K2.7-code)；桌面自动化+E2E→Kimi 模式B(K2.6)
@@ -129,7 +129,7 @@ Phase 2: 验证（集中 — Codex）
                    ▼
 Phase 3: 修复（集中 — CC + QoderWork）
 ┌──────────────────────────────────────────────────────┐
-│  Claude Code (DS V4-Pro) + QoderWork (Qwen-3.7-Max)  │
+│  Claude Code (Opus 4.8) + QoderWork (Qwen-3.7-Max)   │
 │  🔧 优化修复                                          │
 │                                                        │
 │  • CC 判定哪些要修 / 哪些已知悉不修                    │
@@ -148,7 +148,7 @@ Phase 3: 修复（集中 — CC + QoderWork）
 | 维度 | 为什么是 ZCode（GLM-5.2） |
 |------|------|
 | **上下文宽度** | 1M token = 全项目 22 个 `.py` + 全部 ADR + 全部契约文档一次装载。架构错误不在单一文件里——它在文件之间的关系里。其他 Agent 受限于窗口，只能在文件间跳转拼图。ZCode 直接看到全图。 |
-| **模型独立性** | GLM ≠ DS（CC 的模型），无同源盲区。CC 用 DS-V4-Pro 做的架构决策，GLM 的审查视角天然不同。 |
+| **模型独立性** | GLM ≠ Opus（CC 的模型），无同源盲区。CC 用 Opus 4.8 做的架构决策，GLM 的审查视角天然不同。 |
 | **推理深度** | 744B MoE，Code Arena #2（1595），AIME 99.2——能挑战抽象层级和设计模式选择。 |
 | **成本** | 智谱免费额度 300 万 token/天——架构审查看全项目 + 全部文档约 10-15 万 token，成本极低。 |
 

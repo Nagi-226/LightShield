@@ -399,7 +399,7 @@ CC: 6    Codex: 3    Hermes: 2    CodeWhale: 1    Qoder: 1    QoderWork: 1    ZC
 
 | Agent | 已完成 | 待完成 | 备注 |
 |------|:--:|:--:|------|
-| Claude Code | 18 | 1 | v0.0.40 架构/集成；已切回 DeepSeek-V4-Pro；吸收 Hermes 样板职责 + CodeWhale 审查方法论 |
+| Claude Code | 18 | 1 | v0.0.40 架构/集成；🆕 2026-07-16 切回 Opus 4.8（原生·第一梯队·可直接承接复杂+安全关键实现）；吸收 Hermes 样板职责 + CodeWhale 审查方法论 |
 | Codex | 11 | 2 | 🔪 高精度手术刀（分级派遣·2026-07-11）。GPT-5.5→**GPT-5.6-Sol**（Coding Agent #1·ExploitBench2 +53%·价格不变 $5/$30）。仅安全关键实现+跨模块突破+发版终审+安全 commit 审查。v0.0.54 Nuclei 安全审查 + v0.0.60 Phase 2 |
 | CodeBuddy | 2 | 2 | v0.0.40 verify+i18n（两任务）；吸收 Reasonix+Hermes |
 | Kimi 🆕 | 0 | 3 | 双模式：模式A(K2.7-code) v0.0.40 闭环全量独立审查 + 安全关键路径复查；模式B(K2.6) v0.0.40 Web E2E 自动化测试 + 部署验证 + 文档截图 |
